@@ -30,5 +30,16 @@ namespace BellwortBurrow.Data.Professions.Botany
             }
             return false;
         }
+
+        internal void ConfigureForTesting(ProfessionDefinition profession, ItemDefinition seedItem, ItemDefinition harvestItem,
+            int growthStageCount, int daysPerStage, int harvestXp)
+        {
+            this.profession = profession;
+            this.seedItem = seedItem;
+            this.harvestItem = harvestItem;
+            this.growthStageCount = growthStageCount;
+            this.daysPerStage = daysPerStage;
+            this.harvestXp = harvestXp;
+        }
     }
 }
