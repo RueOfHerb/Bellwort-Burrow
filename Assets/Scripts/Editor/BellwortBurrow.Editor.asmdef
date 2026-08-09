@@ -1,0 +1,22 @@
+{
+    "name": "BellwortBurrow.Editor",
+    "rootNamespace": "BellwortBurrow.EditorTools",
+    "references": [
+        "BellwortBurrow.Core",
+        "BellwortBurrow.Data",
+        "BellwortBurrow.Systems",
+        "BellwortBurrow.Player",
+        "BellwortBurrow.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
