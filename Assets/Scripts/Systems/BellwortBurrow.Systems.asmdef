@@ -1,0 +1,17 @@
+{
+    "name": "BellwortBurrow.Systems",
+    "rootNamespace": "BellwortBurrow.Systems",
+    "references": [
+        "BellwortBurrow.Core",
+        "BellwortBurrow.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

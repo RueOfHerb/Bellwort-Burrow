@@ -1,0 +1,19 @@
+{
+    "name": "BellwortBurrow.Player",
+    "rootNamespace": "BellwortBurrow.Player",
+    "references": [
+        "BellwortBurrow.Core",
+        "BellwortBurrow.Data",
+        "BellwortBurrow.Systems",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
