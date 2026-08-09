@@ -1,0 +1,24 @@
+{
+    "name": "BellwortBurrow.Tests.EditMode",
+    "rootNamespace": "BellwortBurrow.Tests.EditMode",
+    "references": [
+        "BellwortBurrow.Core",
+        "BellwortBurrow.Data",
+        "BellwortBurrow.Systems",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
