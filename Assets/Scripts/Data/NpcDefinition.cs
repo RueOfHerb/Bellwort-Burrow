@@ -16,5 +16,11 @@ namespace BellwortBurrow.Data
         public Sprite Portrait => portrait;
         public string HomeLocationId => homeLocationId;
         public ScheduleDefinition Schedule => schedule;
+
+        internal void ConfigureForTesting(string homeLocationId, ScheduleDefinition schedule = null)
+        {
+            this.homeLocationId = homeLocationId;
+            this.schedule = schedule;
+        }
     }
 }
