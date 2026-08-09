@@ -168,4 +168,4 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   calendarConfig: {fileID: 11400000, guid: 4487d98fba3d4c3e9a2d692216929b52, type: 2}
-  dayChangedChannel: {fileID: 0}
+  dayChangedChannel: {fileID: 11400000, guid: 1413766ffaff2cd81641ff74e2074aa6, type: 2}

@@ -32,5 +32,7 @@ namespace BellwortBurrow.Data
             }
             return current;
         }
+
+        internal void ConfigureForTesting(ScheduleEntry[] entries) => this.entries = entries;
     }
 }
