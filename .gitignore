@@ -105,3 +105,6 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Per-machine AI Assistant editor preferences (e.g. local git backend choice)
+/ProjectSettings/Packages/com.unity.ai.assistant/Settings.json
