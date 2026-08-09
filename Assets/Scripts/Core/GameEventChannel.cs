@@ -9,12 +9,4 @@ namespace BellwortBurrow.Core
 
         public void Raise(T payload) => Raised?.Invoke(payload);
     }
-
-    [CreateAssetMenu(menuName = "Bellwort Burrow/Events/Void Event Channel", fileName = "NewVoidEventChannel")]
-    public class VoidEventChannel : ScriptableObject
-    {
-        public event Action Raised;
-
-        public void Raise() => Raised?.Invoke();
-    }
 }

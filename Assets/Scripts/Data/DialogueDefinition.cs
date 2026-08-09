@@ -34,5 +34,11 @@ namespace BellwortBurrow.Data
             line = default;
             return false;
         }
+
+        internal void ConfigureForTesting(string startLineId, DialogueLine[] lines)
+        {
+            this.startLineId = startLineId;
+            this.lines = lines;
+        }
     }
 }
