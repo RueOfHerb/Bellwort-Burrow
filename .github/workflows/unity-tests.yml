@@ -3,14 +3,40 @@ name: Unity Tests
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "Assets/**"
+      - "Packages/**"
+      - "ProjectSettings/**"
+      - ".github/workflows/unity-tests.yml"
   push:
     branches: [main]
+    paths:
+      - "Assets/**"
+      - "Packages/**"
+      - "ProjectSettings/**"
+      - ".github/workflows/unity-tests.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     name: EditMode Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+          tool-cache: true
+
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -28,3 +54,8 @@ jobs:
         with:
           testMode: EditMode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+          # EditMode tests run inside the Editor process and never build a player,
+          # so the plain "base" image is enough — it skips the IL2CPP toolchain and
+          # platform SDKs bundled into the default linux-il2cpp image, which is too
+          # large to fit in the ~14GB free on a stock ubuntu-latest runner.
+          customImage: "unityci/editor:ubuntu-6000.5.7f1-base-3"
