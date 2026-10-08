@@ -126,3 +126,6 @@ InitTestScene*.unity*
 
 # Personal Claude Code permissions
 .claude/settings.local.json
+
+# One-off scripts that placed things in a scene, kept for reference only
+/[Tt]mp/

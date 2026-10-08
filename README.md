@@ -22,16 +22,29 @@ You can also unzip the package by hand: extract it into the project folder (the 
 | Project settings, render pipeline assets | ✓ | |
 | Scenes | ✓ | |
 | Aseprite sheets, palettes and their `.meta` files | | ✓ (`Assets/Art`) |
-| Prefabs, stacked trees, tile palettes made from the sheets | | ✓ (`Assets/Art/Prefabs`, `Assets/Art/Tile Palettes`) |
+| Prefabs, stacked trees, ground tiles and tile palettes made from the sheets | | ✓ (`Assets/Art/Prefabs`, `Assets/Art/Tiles`, `Assets/Art/Tile Palettes`) |
 
-Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.meta` files travel with the art. Old art versions stay on the artist's machine in `Art Archive/`, which git ignores.
+Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.meta` files travel with the art. Old art versions stay on the artist's machine in `Art Archive/`, and one-off scripts that once placed things in a scene stay in `tmp/`; git ignores both.
+
+## Building scenes
+
+Everything in a scene is placed by hand; only backgrounds and skyboxes are exceptions.
+
+- **Objects:** drag prefabs from `Assets/Art/Prefabs` into the scene. Their pivot is at their feet, so they sort correctly as you move them up and down.
+- **Ground:** open **Window > 2D > Tile Palette**, pick the **Forest Ground** palette, set **Active Tilemap** to the layer you want, and paint. The top row of the palette holds the tiles you paint with:
+  - **Forest Grass** on the **Grass** layer picks a random grass variation for each tile.
+  - **Forest Deer Trail** on the **Deer Trails** layer and **Forest Path** on the **Paths** layer are Unity Auto Tiles (2x2 mask). Paint where the trail or path goes and Unity picks the edge pieces. Paint them at least two tiles wide: the edges land halfway into the outer tiles, so three painted rows make a path two tiles wide.
+  - Tufts and crop circles go on the **Tufts and Crop Circles** layer. Drag a box around a whole crop circle in the palette to stamp it in one click.
+- Save the scene, and it's in git.
+
+For future tilesets, use Unity's own tiles from 2D Tilemap Extras: a 2x2 Auto Tile (16 pieces) for organic areas painted two or more tiles wide, like paths, water or meadows, and a 3x3 Auto Tile (47 pieces) for anything that has to work one tile at a time, like farmland or fences.
 
 ## Working on art
 
 The art notes are in `Assets/Art/README.md` once the package is installed. In short:
 
 - Edit the sheets in Aseprite and save. Unity reimports them on its own through the Bellwort Sheet Importer (`Assets/Scripts/Editor/Art`), which turns every Aseprite slice into a named sprite, plus a `_glow` sprite for anything on the Glow layer.
-- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forlorn Forest (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, repaints the Forest Ground tile palette and rebuilds the Forlorn Forest scene. Each step is also under **Setup > Forest Steps**.
+- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, refreshes the ground tiles and repaints the Forest Ground tile palette. Each step is also under **Setup > Forest Steps**. None of them touch a scene.
 - To share art changes, choose **Bellwort Burrow > Art Package > Export Art Package**. It writes a dated zip to `ArtPackage/` next to `Assets`. Upload that to the Drive folder.
 
 ## Pixel art setup
