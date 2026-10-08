@@ -54,6 +54,8 @@ namespace BellwortBurrow.EditorTools
                 {
                     importer.pixelsPerUnit = PixelsPerUnit;
                     importer.tileSize = Path.GetFileNameWithoutExtension(path).EndsWith("_ground") ? 16 : 0;
+                    // SaveAndReimport only saves settings on an importer marked dirty.
+                    EditorUtility.SetDirty(importer);
                     importer.SaveAndReimport();
                     switched++;
                 }
