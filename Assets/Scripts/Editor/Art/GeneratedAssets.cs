@@ -45,7 +45,9 @@ namespace BellwortBurrow.EditorTools
             if (importer.userData == userData) return;
             importer.userData = userData;
             EditorUtility.SetDirty(importer);
-            AssetDatabase.WriteImportSettingsIfDirty(path);
+            // Save through a reimport, so the asset database's record of the .meta stays in step with the file.
+            // (Writing the .meta alone leaves the database with an older copy, and Unity warns about it on the next import.)
+            importer.SaveAndReimport();
         }
 
         /// <summary>Logs one warning listing everything a tool left alone.</summary>
@@ -106,7 +108,7 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>A hash of the file's text, ignoring Windows vs Unix line endings.</summary>
-        static string Fingerprint(string path)
+        internal static string Fingerprint(string path)
         {
             var bytes = File.ReadAllBytes(path);
             var normalized = new List<byte>(bytes.Length);

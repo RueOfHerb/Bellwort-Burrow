@@ -89,6 +89,12 @@ namespace BellwortBurrow.EditorTools
         static float AddPiece(GameObject root, GameObject piecePrefab, float y, int order)
         {
             var piece = (GameObject)PrefabUtility.InstantiatePrefab(piecePrefab, root.transform);
+            // Unity matches children by name when this tree is rebuilt, so repeated pieces get their own names
+            // ("vine_middle", "vine_middle 2") and stay the same objects across rebuilds.
+            int repeats = 0;
+            foreach (Transform sibling in root.transform)
+                if (sibling != piece.transform && PrefabUtility.GetCorrespondingObjectFromSource(sibling.gameObject) == piecePrefab) repeats++;
+            if (repeats > 0) piece.name = $"{piecePrefab.name} {repeats + 1}";
             piece.transform.localPosition = new Vector3(0f, y, 0f);
 
             var renderer = piece.GetComponent<SpriteRenderer>();

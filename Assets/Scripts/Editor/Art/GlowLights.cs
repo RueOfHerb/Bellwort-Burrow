@@ -167,13 +167,20 @@ namespace BellwortBurrow.EditorTools
             return spots;
         }
 
-        /// <summary>Adds a point light child for each spot.</summary>
+        /// <summary>
+        /// Adds a point light child for each spot. Each child gets its own name ("Window Light", "Window Light 2"...),
+        /// because Unity matches children by name when setup rebuilds a prefab: unique names keep each light the same
+        /// object across rebuilds, so changes made to it in a scene keep applying.
+        /// </summary>
         public static void AddLights(GameObject root, List<Spot> spots)
         {
             var layers = AllSortingLayers();
+            var used = new Dictionary<string, int>();
             foreach (var spot in spots)
             {
-                var lightObject = new GameObject(spot.Name);
+                used.TryGetValue(spot.Name, out int count);
+                used[spot.Name] = ++count;
+                var lightObject = new GameObject(count == 1 ? spot.Name : $"{spot.Name} {count}");
                 lightObject.transform.SetParent(root.transform, false);
                 lightObject.transform.localPosition = spot.Position;
                 var light = lightObject.AddComponent<Light2D>();

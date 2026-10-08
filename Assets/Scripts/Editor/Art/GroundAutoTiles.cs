@@ -153,7 +153,7 @@ namespace BellwortBurrow.EditorTools
         /// Sheet corners (top left 1, top right 2, bottom left 4, bottom right 8) to the Auto Tile's 2x2 mask
         /// (bottom left 1, bottom right 2, top left 4, top right 8).
         /// </summary>
-        static uint ToAutoTileMask(int corners)
+        internal static uint ToAutoTileMask(int corners)
         {
             uint mask = 0;
             if ((corners & 1) != 0) mask |= 4;

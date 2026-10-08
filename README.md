@@ -7,7 +7,7 @@ The code, settings and scenes are in git. The art is a separate download, the ar
 ## Getting started
 
 1. Clone the repo.
-2. Open the project in Unity 6000.5.7f1. The console warns about missing art until you install it.
+2. Open the project in Unity 6000.5.7f1. Scenes show missing prefabs until the art is installed.
 3. Download the art (see below).
 4. Open `Assets/Scenes/Zones/ForlornForest.unity` to see the forest hamlet. There's no player yet; Play shows it through the game camera.
 
@@ -16,8 +16,8 @@ The code, settings and scenes are in git. The art is a separate download, the ar
 Do this when you first set up, and whenever someone has shared new art.
 
 1. **Download** the latest `BellwortBurrow-Art-<date>.zip` from the [Bellwort Burrow Art folder on Google Drive](https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC) into the `ArtPackage` folder in the project. Ask Jocelyn for access if the link doesn't open for you.
-2. **Check:** in Unity, choose **Bellwort Burrow > Art Package > Check And Install Art Package...**. It picks up the newest zip in `ArtPackage` by itself (if there isn't one, it offers to open the Drive folder and the `ArtPackage` folder). Before writing anything, it compares the package with the art you already have and tells you how many files it would add or update. It warns you about any file that's newer on your machine than in the package, since that may be your own unshared work.
-3. **Confirm:** choose **Install** (or **Install, Keep My Newer Files** when it warned you). Choose **Install, Replace Everything** only when you're sure you want the package's version of those files. Files you have that aren't in the package are never touched.
+2. **Check:** in Unity, choose **Bellwort Burrow > Art Package > Check And Install Art Package...**. It picks up the newest zip in `ArtPackage` by itself (if there isn't one, it offers to open the Drive folder and the `ArtPackage` folder). Before writing anything, it compares the package with the art you already have and tells you how many files it would add or update. It warns you about any file you changed since the last package you installed or exported, since that may be your own unshared work. (Each machine keeps a small record of its last package in `ArtPackage/last-sync.txt`, which git ignores. Without one, every difference counts as yours.)
+3. **Confirm:** choose **Install** (or **Install, Keep My Changes** when it warned you). Choose **Install, Replace Everything** only when you're sure you want the package's version of those files. Files you have that aren't in the package are never touched.
 
 The package fills in `Assets/Art`, the art's `.meta` files included, so scenes find every sprite.
 
@@ -72,6 +72,11 @@ The art notes are in `Assets/Art/README.md` once the package is installed. In sh
 - Pixel Perfect Camera at 480x270, upscaled from a render texture
 - Sprites sort by height (custom axis 0, 1, 0) with their pivot at their feet
 - Each zone has a 2D global light; the Forlorn Forest's is a tranquil blue (#A4B8E6) at 72%. Glows use an unlit material so they shine through it.
+- 2D lights only light the sorting layers listed on them. If you add a sorting layer, lights in open scenes pick it up, but run **Set Up Forest Art** again so the lights inside the prefabs do too, and check the zone light in any scene that wasn't open.
+
+## Tests
+
+Open **Window > General > Test Runner**, pick **EditMode** and choose **Run All**. `Assets/Tests/EditMode` covers the game systems and `Assets/Tests/Editor` covers the art tools: reading Aseprite files, the tile corner numbering, the fingerprints that protect hand edits, and the art package's install rules.
 
 ## Design docs
 
