@@ -4,6 +4,11 @@ A cozy crafting and life sim, made in Unity 6 (6000.5.7f1) with URP 2D lighting 
 
 The code, settings and scenes are in git. The art is a separate download, the art package, so the repo stays small. Art packages live in the `ArtPackage` folder next to `Assets`: git keeps the empty folder but never the zips, so downloads go there, exports land there, and the tools look there on their own. Getting the art and sharing it are their own steps, and each one checks before it changes anything.
 
+## How we work
+
+- `CLAUDE.md` is the working routine for every PC: when to pull, commit and push, when to export art, which checks to run, and the rules every change follows. Claude reads it at the start of each session, and it's written for people too.
+- Every feature has a page in the **Features** database in Notion (Bellwort Burrow, Compendium > [Features](https://app.notion.com/p/f36db380b84640c88bb9905c8c177064)), keyed by type and number, like `arc-1`. Read a feature's page before changing it, and update the page after.
+
 ## Getting started
 
 1. Clone the repo.
