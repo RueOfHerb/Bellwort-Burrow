@@ -1,9 +1,0 @@
-﻿<Solution>
-  <Project Path="BellwortBurrow.Core.csproj" />
-  <Project Path="BellwortBurrow.Systems.csproj" />
-  <Project Path="BellwortBurrow.Tests.EditMode.csproj" />
-  <Project Path="BellwortBurrow.Data.csproj" />
-  <Project Path="BellwortBurrow.UI.csproj" />
-  <Project Path="BellwortBurrow.Player.csproj" />
-  <Project Path="BellwortBurrow.Editor.csproj" />
-</Solution>
