@@ -4,9 +4,9 @@ Indie project, worked on from 2 or 3 PCs a week. Keep usage low: do the cheap th
 
 ## Session rhythm
 
-- **Start (once per session, on this PC):** `git pull`. If new art was shared, download the newest zip from Drive into `ArtPackage/` and run Bellwort Burrow > Art Package > Check And Install.
+- **Start (once per session, on this PC):** `git pull`. If new art was shared, download the newest zip from Drive into `ArtPackage/` and run Bellwort Burrow > Art Package > Check And Install. Read the Features pages (below) for whatever we're about to touch.
 - **During:** commit locally after each finished step. No pushes, pull request edits, CI checks or Drive uploads mid-session.
-- **End (when Jocelyn says the session is done):** run the checks below that match what changed, then push once and update the pull request once. If art changed, ask whether the round is done before Check And Export and the Drive upload. If the art continues on another PC next, export anyway so that PC can install it.
+- **End (when Jocelyn says the session is done):** run the checks below that match what changed, then push once and update the pull request once. If art changed, ask whether the round is done before Check And Export and the Drive upload. If the art continues on another PC next, export anyway so that PC can install it. Create or update the Features page for each feature we worked on.
 - In a cloud session linked to the PC, the PC's shell has no GitHub login: bundle the session's commits (`git bundle create ArtPackage/x.bundle origin/<branch>..<branch>`), push from the cloud copy, then `git update-ref` the PC's remote branch and delete the bundle.
 
 ## Checks, matched to what changed
@@ -22,9 +22,19 @@ Indie project, worked on from 2 or 3 PCs a week. Keep usage low: do the cheap th
 
 Don't repeat one-time checks (rebuild determinism, fresh-clone GUID scans) unless the prefab tools or the package format change.
 
+## Feature pages
+
+Every feature gets a page in the **Features** database in Notion (Bellwort Burrow, Compendium > Features: https://app.notion.com/p/f36db380b84640c88bb9905c8c177064). It's the memory between sessions and PCs, so keep it current.
+
+- **Key:** a type prefix plus that type's next number, at the start of the title, like `arc-1 Aseprite sheet importer and pixel art settings`. Types: `arc` architecture and tools, `art` art sets, `lvl` levels and scenes, `sys` gameplay systems, `ui` interface, `fix` bug fixes. Search the database for the prefix to find the next number.
+- **Sections:** What we built (with file paths), How it works (decisions and why), How to use it, Rules to keep, Tests and checks, Related work (pull request, commits, Drive, Notion pages), Open items.
+- **Properties:** Type, Status (Building, In PR, Merged, Replaced), Summary, Systems (Systems & Mechanics entries), Lore (Codex entries), Builds On (earlier features), PR, Branch, Built.
+- Mention the key in commit messages for that feature. When a pull request merges, set its features to Merged.
+
 ## Looking at Unity cheaply
 
 - Edit files directly on the PC through its shell instead of copying them through the cloud.
+- Read Unity's log instead of screenshotting the Console: on Jocelyn's main PC it's `C:\Users\rueof\AppData\Local\Unity\Editor\Editor.log` (ask for read access to that folder once per session; the PC shell sees it under `$HOME/mnt/Editor`).
 - Prefer files and logs over screenshots. Take screenshots at half scale and zoom only into the part you need.
 - If the Unity MCP server is connected to the session, use it for console logs and menu items instead of driving the editor.
 
