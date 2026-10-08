@@ -10,7 +10,8 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// Builds the "Forest Ground" Tile Palette (Window > 2D > Tile Palette) from forest_ground.aseprite.
-    /// Tiles sit where they sit on the sheet, so the palette looks like the Aseprite file.
+    /// The top row holds the tiles you paint with (grass, path, deer trail; see <see cref="GroundAutoTiles"/>).
+    /// Below them, every single piece sits where it sits on the sheet, so that part looks like the Aseprite file.
     /// </summary>
     public static class ForestGroundPalette
     {
@@ -19,7 +20,7 @@ namespace BellwortBurrow.EditorTools
         const string PaletteName = "Forest Ground";
         public const string PalettePath = Folder + "/" + PaletteName + ".prefab";
 
-        [MenuItem("Bellwort Burrow/Setup/Forest Steps/4. Make Ground Tile Palette", false, 204)]
+        [MenuItem("Bellwort Burrow/Setup/Forest Steps/5. Make Ground Tile Palette", false, 205)]
         static void MakeFromMenu()
         {
             if (!ArtLibrary.CheckArtInstalled()) return;
@@ -73,6 +74,15 @@ namespace BellwortBurrow.EditorTools
                         tilemap.SetTile(cell, tile);
                     }
                 }
+            }
+            // The painting tiles, in a row above the sheet.
+            int paintColumn = 1;
+            foreach (var path in GroundAutoTiles.TilePaths())
+            {
+                var paintTile = AssetDatabase.LoadAssetAtPath<TileBase>(path);
+                if (paintTile == null) continue;
+                tilemap.SetTile(new Vector3Int(paintColumn, 1, 0), paintTile);
+                paintColumn += 2;
             }
             tilemap.CompressBounds();
 

@@ -9,7 +9,8 @@
         "BellwortBurrow.UI",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Universal.2D.Runtime",
-        "Unity.2D.Tilemap.Editor"
+        "Unity.2D.Tilemap.Editor",
+        "Unity.2D.Tilemap.Extras"
     ],
     "includePlatforms": [
         "Editor"
