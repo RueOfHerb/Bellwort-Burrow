@@ -2,17 +2,34 @@
 
 A cozy crafting and life sim, made in Unity 6 (6000.5.7f1) with URP 2D lighting and 16 px pixel art.
 
+The code, settings and scenes are in git. The art is a separate download, the art package, so the repo stays small. Getting the art and sharing it are their own steps, and each one checks before it changes anything.
+
 ## Getting started
 
-The code, settings and scenes are in git. The art is a separate download, so the repo stays small.
-
 1. Clone the repo.
-2. Download the latest art package (`BellwortBurrow-Art-<date>.zip`) from the [Bellwort Burrow Art folder on Google Drive](https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC). Ask Jocelyn for access if the link doesn't open for you.
-3. Open the project in Unity 6000.5.7f1. The console warns about missing art until the next step.
-4. Choose **Bellwort Burrow > Art Package > Install Art Package...** and pick the zip. It fills in `Assets/Art`, the art's `.meta` files included, so scenes find every sprite.
-5. Open `Assets/Scenes/Zones/ForlornForest.unity` to see the forest hamlet. There's no player yet; Play shows it through the game camera.
+2. Open the project in Unity 6000.5.7f1. The console warns about missing art until you install it.
+3. Download the art (see below).
+4. Open `Assets/Scenes/Zones/ForlornForest.unity` to see the forest hamlet. There's no player yet; Play shows it through the game camera.
 
-You can also unzip the package by hand: extract it into the project folder (the one with `Assets` in it) so that it creates `Assets/Art`.
+## Downloading the art
+
+Do this when you first set up, and whenever someone has shared new art.
+
+1. **Download** the latest `BellwortBurrow-Art-<date>.zip` from the [Bellwort Burrow Art folder on Google Drive](https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC). Ask Jocelyn for access if the link doesn't open for you.
+2. **Check:** in Unity, choose **Bellwort Burrow > Art Package > Check And Install Art Package...** and pick the zip. Before writing anything, it compares the package with the art you already have and tells you how many files it would add or update. It warns you about any file that's newer on your machine than in the package, since that may be your own unshared work.
+3. **Confirm:** choose **Install** (or **Install, Keep My Newer Files** when it warned you). Choose **Install, Replace Everything** only when you're sure you want the package's version of those files. Files you have that aren't in the package are never touched.
+
+The package fills in `Assets/Art`, the art's `.meta` files included, so scenes find every sprite.
+
+## Sharing art changes
+
+Do this only once a round of art is finished.
+
+1. **Finish:** save the sheets in Aseprite, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)** if you added or renamed slices, and save your scenes.
+2. **Check:** choose **Bellwort Burrow > Art Package > Check And Export Art Package...**. It saves open scenes, checks that the prefabs and tiles are up to date with the sheets, and lists anything you changed by hand.
+3. **Confirm:** it asks whether you're done and ready to export. Only then does it write a dated zip to `ArtPackage/` next to `Assets`.
+4. **Upload** the zip to the Drive folder. If Drive asks, choose **Replace existing file** so the download link stays the same.
+5. **Commit** your code and scene changes to git as usual.
 
 ## What lives where
 
@@ -37,6 +54,8 @@ Everything in a scene is placed by hand; only backgrounds and skyboxes are excep
   - Tufts and crop circles go on the **Tufts and Crop Circles** layer. Drag a box around a whole crop circle in the palette to stamp it in one click.
 - Save the scene, and it's in git.
 
+No tool in the project rebuilds a scene. The one-off script that first laid out the Forlorn Forest is kept in `tmp/`, and it checks the scene's fingerprint before doing anything: if the scene changed since that script built it, it refuses (the Forlorn Forest has changed, so it will never be rebuilt). The setup tools also never write over a prefab, tile or palette you changed by hand: each thing they make is stamped with a fingerprint, and if it changed since, they leave it alone and list it in the console. To let setup rebuild something you changed (throwing your changes away), select it or its folder and choose **Assets > Bellwort Burrow > Let Setup Rebuild Selected**.
+
 For future tilesets, use Unity's own tiles from 2D Tilemap Extras: a 2x2 Auto Tile (16 pieces) for organic areas painted two or more tiles wide, like paths, water or meadows, and a 3x3 Auto Tile (47 pieces) for anything that has to work one tile at a time, like farmland or fences.
 
 ## Working on art
@@ -44,8 +63,8 @@ For future tilesets, use Unity's own tiles from 2D Tilemap Extras: a 2x2 Auto Ti
 The art notes are in `Assets/Art/README.md` once the package is installed. In short:
 
 - Edit the sheets in Aseprite and save. Unity reimports them on its own through the Bellwort Sheet Importer (`Assets/Scripts/Editor/Art`), which turns every Aseprite slice into a named sprite, plus a `_glow` sprite for anything on the Glow layer.
-- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, refreshes the ground tiles and repaints the Forest Ground tile palette. Each step is also under **Setup > Forest Steps**. None of them touch a scene.
-- To share art changes, choose **Bellwort Burrow > Art Package > Export Art Package**. It writes a dated zip to `ArtPackage/` next to `Assets`. Upload that to the Drive folder.
+- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, refreshes the ground tiles and repaints the Forest Ground tile palette, skipping anything changed by hand. Each step is also under **Setup > Forest Steps**.
+- When the round is finished, share it (see Sharing art changes).
 
 ## Pixel art setup
 

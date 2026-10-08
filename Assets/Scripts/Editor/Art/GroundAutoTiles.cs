@@ -12,7 +12,8 @@ namespace BellwortBurrow.EditorTools
     ///   make a path two tiles wide.
     /// - Forest Grass: a Rule Tile that picks one of the grass variations at random.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change which piece goes with which
-    /// layout. Running this again refreshes them in place, so scenes painted with them keep working.
+    /// layout. Running this again refreshes them in place, so scenes painted with them keep working; a tile you changed
+    /// by hand is left alone (see <see cref="GeneratedAssets"/>).
     ///
     /// A 2x2 sheet slice holds 16 pieces named "slice_00" to "slice_15", numbered by which corners of the piece are
     /// filled: top left 1, top right 2, bottom left 4, bottom right 8 (00 is empty, 15 is full).
@@ -56,12 +57,22 @@ namespace BellwortBurrow.EditorTools
             var sprites = ArtLibrary.LoadSubAssets<Sprite>(sheetPath);
             ArtLibrary.EnsureFolder(Folder);
 
-            int made = 0;
+            var written = new List<string>();
+            var kept = new List<string>();
             foreach (var set in CornerSets)
-                if (MakeCornerTile(set, sprites)) made++;
-            if (MakeGrassTile(sprites)) made++;
+            {
+                string path = $"{Folder}/{set.Asset}.asset";
+                if (!GeneratedAssets.CanOverwrite(path)) kept.Add(path);
+                else if (MakeCornerTile(set, sprites, path)) written.Add(path);
+            }
+            string grassPath = $"{Folder}/Forest Grass.asset";
+            if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
+            else if (MakeGrassTile(sprites, grassPath)) written.Add(grassPath);
+
             AssetDatabase.SaveAssets();
-            return made;
+            foreach (var path in written) GeneratedAssets.Stamp(path);
+            GeneratedAssets.ReportKept("Make Ground Auto Tiles", kept);
+            return written.Count;
         }
 
         /// <summary>Paths in the order the painting tiles should sit in the tile palette.</summary>
@@ -71,7 +82,7 @@ namespace BellwortBurrow.EditorTools
             foreach (var set in CornerSets) yield return $"{Folder}/{set.Asset}.asset";
         }
 
-        static bool MakeCornerTile(CornerSet set, Dictionary<string, Sprite> sprites)
+        static bool MakeCornerTile(CornerSet set, Dictionary<string, Sprite> sprites, string path)
         {
             var fills = new List<Sprite>();
             foreach (var name in set.Fills)
@@ -83,7 +94,6 @@ namespace BellwortBurrow.EditorTools
                 return false;
             }
 
-            string path = $"{Folder}/{set.Asset}.asset";
             var tile = AssetDatabase.LoadAssetAtPath<AutoTile>(path);
             bool isNew = tile == null;
             if (isNew) tile = ScriptableObject.CreateInstance<AutoTile>();
@@ -153,14 +163,13 @@ namespace BellwortBurrow.EditorTools
             return mask;
         }
 
-        static bool MakeGrassTile(Dictionary<string, Sprite> sprites)
+        static bool MakeGrassTile(Dictionary<string, Sprite> sprites, string path)
         {
             var grass = new List<Sprite>();
             foreach (var name in GrassPieces)
                 if (sprites.TryGetValue(name, out var sprite)) grass.Add(sprite);
             if (grass.Count == 0) return false;
 
-            string path = $"{Folder}/Forest Grass.asset";
             var tile = AssetDatabase.LoadAssetAtPath<RuleTile>(path);
             bool isNew = tile == null;
             if (isNew) tile = ScriptableObject.CreateInstance<RuleTile>();

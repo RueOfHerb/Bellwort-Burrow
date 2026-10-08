@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -36,11 +37,12 @@ namespace BellwortBurrow.EditorTools
             Debug.Log($"Bellwort Burrow: stacked {MakeAll()} tall trees in {Folder}.");
         }
 
-        /// <summary>Builds every tall tree prefab. Needs the forest_trees piece prefabs first.</summary>
+        /// <summary>Builds every tall tree prefab. Needs the forest_trees piece prefabs first. Trees changed by hand are left alone.</summary>
         public static int MakeAll()
         {
             ArtLibrary.EnsureFolder(Folder);
             int made = 0;
+            var kept = new List<string>();
             foreach (var kind in Kinds)
             {
                 var basePiece = LoadPiece(kind.Base);
@@ -55,6 +57,9 @@ namespace BellwortBurrow.EditorTools
 
                 for (int middles = 0; middles <= kind.MostMiddles; middles++)
                 {
+                    string prefabPath = $"{Folder}/{kind.Name}_{middles}.prefab";
+                    if (!GeneratedAssets.CanOverwrite(prefabPath)) { kept.Add(prefabPath); continue; }
+
                     var root = new GameObject($"{kind.Name}_{middles}");
                     root.AddComponent<SortingGroup>();
                     int order = 0;
@@ -67,12 +72,13 @@ namespace BellwortBurrow.EditorTools
                     }
                     AddPiece(root, crown, top, order);
 
-                    PrefabUtility.SaveAsPrefabAsset(root, $"{Folder}/{root.name}.prefab");
+                    PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                     Object.DestroyImmediate(root);
+                    GeneratedAssets.Stamp(prefabPath);
                     made++;
                 }
             }
-            AssetDatabase.SaveAssets();
+            GeneratedAssets.ReportKept("Stack Tall Trees", kept);
             return made;
         }
 
