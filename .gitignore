@@ -126,5 +126,8 @@ InitTestScene*.unity*
 # Solution file the IDE packages regenerate (like *.sln and *.csproj above)
 *.slnx
 
+# Per-machine MCP server setup (local paths, ports)
+.mcp.json
+
 # One-off scripts that placed things in a scene, kept for reference only
 /[Tt]mp/
