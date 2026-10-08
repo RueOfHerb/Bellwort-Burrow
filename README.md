@@ -2,7 +2,7 @@
 
 A cozy crafting and life sim, made in Unity 6 (6000.5.7f1) with URP 2D lighting and 16 px pixel art.
 
-The code, settings and scenes are in git. The art is a separate download, the art package, so the repo stays small. Getting the art and sharing it are their own steps, and each one checks before it changes anything.
+The code, settings and scenes are in git. The art is a separate download, the art package, so the repo stays small. Art packages live in the `ArtPackage` folder next to `Assets`: git keeps the empty folder but never the zips, so downloads go there, exports land there, and the tools look there on their own. Getting the art and sharing it are their own steps, and each one checks before it changes anything.
 
 ## Getting started
 
@@ -15,8 +15,8 @@ The code, settings and scenes are in git. The art is a separate download, the ar
 
 Do this when you first set up, and whenever someone has shared new art.
 
-1. **Download** the latest `BellwortBurrow-Art-<date>.zip` from the [Bellwort Burrow Art folder on Google Drive](https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC). Ask Jocelyn for access if the link doesn't open for you.
-2. **Check:** in Unity, choose **Bellwort Burrow > Art Package > Check And Install Art Package...** and pick the zip. Before writing anything, it compares the package with the art you already have and tells you how many files it would add or update. It warns you about any file that's newer on your machine than in the package, since that may be your own unshared work.
+1. **Download** the latest `BellwortBurrow-Art-<date>.zip` from the [Bellwort Burrow Art folder on Google Drive](https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC) into the `ArtPackage` folder in the project. Ask Jocelyn for access if the link doesn't open for you.
+2. **Check:** in Unity, choose **Bellwort Burrow > Art Package > Check And Install Art Package...**. It picks up the newest zip in `ArtPackage` by itself (if there isn't one, it offers to open the Drive folder and the `ArtPackage` folder). Before writing anything, it compares the package with the art you already have and tells you how many files it would add or update. It warns you about any file that's newer on your machine than in the package, since that may be your own unshared work.
 3. **Confirm:** choose **Install** (or **Install, Keep My Newer Files** when it warned you). Choose **Install, Replace Everything** only when you're sure you want the package's version of those files. Files you have that aren't in the package are never touched.
 
 The package fills in `Assets/Art`, the art's `.meta` files included, so scenes find every sprite.
@@ -27,8 +27,8 @@ Do this only once a round of art is finished.
 
 1. **Finish:** save the sheets in Aseprite, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)** if you added or renamed slices, and save your scenes.
 2. **Check:** choose **Bellwort Burrow > Art Package > Check And Export Art Package...**. It saves open scenes, checks that the prefabs and tiles are up to date with the sheets, and lists anything you changed by hand.
-3. **Confirm:** it asks whether you're done and ready to export. Only then does it write a dated zip to `ArtPackage/` next to `Assets`.
-4. **Upload** the zip to the Drive folder. If Drive asks, choose **Replace existing file** so the download link stays the same.
+3. **Confirm:** it asks whether you're done and ready to export. Only then does it write a dated zip to the `ArtPackage` folder.
+4. **Upload** the zip from `ArtPackage` to the Drive folder. If Drive asks, choose **Replace existing file** so the download link stays the same.
 5. **Commit** your code and scene changes to git as usual.
 
 ## What lives where
@@ -41,7 +41,7 @@ Do this only once a round of art is finished.
 | Aseprite sheets, palettes and their `.meta` files | | ✓ (`Assets/Art`) |
 | Prefabs, stacked trees, ground tiles and tile palettes made from the sheets | | ✓ (`Assets/Art/Prefabs`, `Assets/Art/Tiles`, `Assets/Art/Tile Palettes`) |
 
-Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.meta` files travel with the art. Old art versions stay on the artist's machine in `Art Archive/`, and one-off scripts that once placed things in a scene stay in `tmp/`; git ignores both.
+Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.meta` files travel with the art. The zips themselves sit in `ArtPackage/`, which git keeps empty (just a `.gitkeep`). Old art versions stay on the artist's machine in `Art Archive/`, and one-off scripts that once placed things in a scene stay in `tmp/`; git ignores both.
 
 ## Building scenes
 

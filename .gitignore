@@ -118,8 +118,10 @@ InitTestScene*.unity*
 # Old art versions kept on the artist's machine
 /[Aa]rt [Aa]rchive/
 
-# Art package zips made by Bellwort Burrow > Art Package > Export Art Package
-/[Aa]rt[Pp]ackage/
+# Art package zips: exports land in ArtPackage/ and downloads go there to be installed.
+# Git keeps the empty folder (ArtPackage/.gitkeep) so the tools always know where to look, but never the zips.
+/[Aa]rt[Pp]ackage/*
+!/[Aa]rt[Pp]ackage/.gitkeep
 
 # Solution file the IDE packages regenerate (like *.sln and *.csproj above)
 *.slnx

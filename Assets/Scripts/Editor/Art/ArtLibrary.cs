@@ -29,8 +29,8 @@ namespace BellwortBurrow.EditorTools
         public static bool CheckArtInstalled()
         {
             if (AssetDatabase.IsValidFolder(ArtRoot)) return true;
-            Debug.LogError("Bellwort Burrow: Assets/Art is missing. Download the art package, then choose " +
-                           "Bellwort Burrow > Art Package > Install Art Package (see README.md).");
+            Debug.LogError("Bellwort Burrow: Assets/Art is missing. Download the art package into the ArtPackage folder, then choose " +
+                           "Bellwort Burrow > Art Package > Check And Install Art Package (see README.md).");
             return false;
         }
 
