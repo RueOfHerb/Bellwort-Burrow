@@ -25,6 +25,13 @@ jobs:
     name: EditMode Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    
+    # Grants the job permission to report the test metrics back to the GitHub PR/Check UI
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +74,7 @@ jobs:
         with:
           unityVersion: ${{ matrix.unityVersion }}
           testMode: editmode
+          githubToken: ${{ github.token }} # Links the write token permission into the runner action
           
           # Crucial Fixes for Unity 6 Linux Docker Deadlocks:
           dockerShmSize: '1025m'          # Overrides the default 64MB Docker memory limit to avoid Unity 6 crashes
