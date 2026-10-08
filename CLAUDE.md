@@ -1,12 +1,12 @@
 # Working on Bellwort Burrow with Claude
 
-Indie project, worked on from 2 or 3 PCs a week. Keep usage low: do the cheap thing by default and save the expensive checks for when they can catch something.
+Indie project, worked on almost always from Jocelyn's main PC, in person or by remote access, and only now and then from another PC. Keep usage low: do the cheap thing by default and save the expensive checks for when they can catch something.
 
 ## Session rhythm
 
-- **Start (once per session, on this PC):** `git pull`. If new art was shared, download the newest zip from Drive into `ArtPackage/` and run Bellwort Burrow > Art Package > Check And Install. Read the Features pages (below) for whatever we're about to touch.
+- **Start (once per session):** on the main PC, skip the pull unless the last session ended somewhere else. On any other PC, `git pull`. If new art was shared, download the newest zip from Drive into `ArtPackage/` and run Bellwort Burrow > Art Package > Check And Install. Read the Features pages (below) for whatever we're about to touch.
 - **During:** commit locally after each finished step. No pushes, pull request edits, CI checks or Drive uploads mid-session.
-- **End (when Jocelyn says the session is done):** run the checks below that match what changed, then push once and update the pull request once. If art changed, ask whether the round is done before Check And Export and the Drive upload. If the art continues on another PC next, export anyway so that PC can install it. Create or update the Features page for each feature we worked on.
+- **End (when Jocelyn says the session is done):** run the checks below that match what changed, then push once and update the pull request once. If art changed, ask whether the round is done before Check And Export and the Drive upload. Before working on another PC, export from the main PC first so that PC can install the current art. Create or update the Features page for each feature we worked on.
 - In a cloud session linked to the PC, the PC's shell has no GitHub login: bundle the session's commits (`git bundle create ArtPackage/x.bundle origin/<branch>..<branch>`), push from the cloud copy, then `git update-ref` the PC's remote branch and delete the bundle.
 
 ## Checks, matched to what changed
