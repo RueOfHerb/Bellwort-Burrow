@@ -12,6 +12,8 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// The art lives outside git, in a zip of Assets/Art (with its .meta files, so scenes keep their links).
+    /// Zips live in the ArtPackage folder next to Assets. Git keeps the empty folder (ArtPackage/.gitkeep) but never the zips,
+    /// so exports land there and downloads go there, and both tools know where to look.
     /// Both directions check before they do anything:
     /// - Export: first checks that the work is finished (scenes saved, setup run since the sheets last changed),
     ///   shows what it found, and only zips Assets/Art into ArtPackage/ once you confirm. Uploading stays a separate step.
@@ -20,10 +22,25 @@ namespace BellwortBurrow.EditorTools
     /// </summary>
     public static class ArtPackage
     {
-        const string OutputFolder = "ArtPackage";
+        public const string FolderName = "ArtPackage";
+        const string ZipPattern = "BellwortBurrow-Art-*.zip";
         const string DriveFolder = "the Bellwort Burrow Art folder on Google Drive";
+        const string DriveFolderUrl = "https://drive.google.com/drive/folders/1vh2IrLCfF2ghyih9uQhOeNi9hRS9URCC";
 
         static string ProjectRoot => Path.GetFullPath(Path.GetDirectoryName(Application.dataPath));
+
+        /// <summary>The ArtPackage folder next to Assets, where exports land and downloads go.</summary>
+        public static string PackageFolder => Path.Combine(ProjectRoot, FolderName);
+
+        /// <summary>The most recently saved or downloaded package in the ArtPackage folder, or null when there is none.</summary>
+        public static string NewestPackage(out int packageCount)
+        {
+            packageCount = 0;
+            if (!Directory.Exists(PackageFolder)) return null;
+            var zips = Directory.GetFiles(PackageFolder, ZipPattern);
+            packageCount = zips.Length;
+            return zips.Length == 0 ? null : zips.OrderByDescending(zip => File.GetLastWriteTimeUtc(zip)).First();
+        }
 
         // ---------- Export ----------
 
@@ -44,7 +61,8 @@ namespace BellwortBurrow.EditorTools
             else
             {
                 report.AppendLine("⚠ These sheets changed after their prefabs or tiles were made:");
-                foreach (var sheet in stale.Take(8)) report.AppendLine("    " + sheet);
+                foreach (var sheet in stale.Take(4)) report.AppendLine("    " + sheet);
+                if (stale.Count > 4) report.AppendLine($"    and {stale.Count - 4} more");
                 report.AppendLine("  Run setup first so the package matches the art.");
             }
             if (handEdited.Count > 0)
@@ -52,7 +70,7 @@ namespace BellwortBurrow.EditorTools
                 report.AppendLine($"• {handEdited.Count} prefab(s) or tile(s) were changed by hand. They go into the package as they are.");
             }
             report.AppendLine("✓ Open scenes are saved.");
-            string zipPath = Path.Combine(ProjectRoot, OutputFolder, $"BellwortBurrow-Art-{DateTime.Now:yyyy-MM-dd}.zip");
+            string zipPath = Path.Combine(PackageFolder, $"BellwortBurrow-Art-{DateTime.Now:yyyy-MM-dd}.zip");
             if (File.Exists(zipPath)) report.AppendLine($"• Today's package already exists and will be replaced.");
             report.AppendLine();
             report.Append("Are you done with this round of art and ready to export?");
@@ -134,8 +152,19 @@ namespace BellwortBurrow.EditorTools
         [MenuItem("Bellwort Burrow/Art Package/Check And Install Art Package...", false, 301)]
         public static void Install()
         {
-            string zipPath = EditorUtility.OpenFilePanel("Choose the Bellwort Burrow art package", "", "zip");
-            if (string.IsNullOrEmpty(zipPath)) return;
+            // 0. Find the package: the newest zip in the ArtPackage folder.
+            string zipPath = NewestPackage(out int packageCount);
+            if (zipPath == null)
+            {
+                Directory.CreateDirectory(PackageFolder);
+                int next = EditorUtility.DisplayDialogComplex("No art package to install",
+                    $"There's no {ZipPattern} in the {FolderName} folder yet.\n\n" +
+                    $"Download the latest one from {DriveFolder} into:\n{PackageFolder}\n\nThen choose Check And Install again.",
+                    "Open Drive Folder", "Cancel", $"Open {FolderName} Folder");
+                if (next == 0) Application.OpenURL(DriveFolderUrl);
+                if (next == 2) EditorUtility.OpenWithDefaultApp(PackageFolder);
+                return;
+            }
 
             string root = ProjectRoot;
             string artFolder = Path.Combine(root, "Assets", "Art");
@@ -168,14 +197,16 @@ namespace BellwortBurrow.EditorTools
 
                 // 2. Show what would change and ask.
                 var report = new StringBuilder();
+                if (packageCount > 1)
+                    report.AppendLine($"Using the newest of the {packageCount} packages in {FolderName}/.");
                 report.AppendLine($"{Path.GetFileName(zipPath)} would add {added.Count} file(s) and update {updated.Count}.");
                 if (unchanged > 0) report.AppendLine($"{unchanged} file(s) already match.");
                 if (newerHere.Count > 0)
                 {
                     report.AppendLine();
                     report.AppendLine($"⚠ {newerHere.Count} file(s) here are newer than the package, so they may hold your own changes:");
-                    foreach (var entry in newerHere.Take(8)) report.AppendLine("    " + entry.FullName);
-                    if (newerHere.Count > 8) report.AppendLine($"    and {newerHere.Count - 8} more");
+                    foreach (var entry in newerHere.Take(4)) report.AppendLine("    " + entry.FullName);
+                    if (newerHere.Count > 4) report.AppendLine($"    and {newerHere.Count - 4} more");
                 }
                 report.AppendLine();
                 report.Append("Files here that aren't in the package are never touched.");
