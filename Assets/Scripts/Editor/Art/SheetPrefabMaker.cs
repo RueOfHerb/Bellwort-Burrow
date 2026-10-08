@@ -14,8 +14,8 @@ namespace BellwortBurrow.EditorTools
     /// - A matching "_glow" sprite becomes a Glow child on an unlit material, so windows, wisps and gem glints stay bright at night.
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
     /// Run it from Bellwort Burrow > Setup, or right-click sheets and choose Bellwort Burrow > Make Prefabs From Sheet.
-    /// Running it again rebuilds the prefabs in place, so scenes keep their links. Add your own changes in the scene
-    /// or in a prefab variant, since a rebuild replaces edits made inside these prefabs.
+    /// Running it again rebuilds the prefabs in place, so scenes keep their links. A prefab you changed by hand is left
+    /// alone (see <see cref="GeneratedAssets"/>).
     /// </summary>
     public static class SheetPrefabMaker
     {
@@ -25,9 +25,10 @@ namespace BellwortBurrow.EditorTools
         static void MakeFromSelection()
         {
             int made = 0;
+            var kept = new List<string>();
             foreach (var path in SelectedSheets())
-                made += Make(path);
-            AssetDatabase.SaveAssets();
+                made += Make(path, kept);
+            GeneratedAssets.ReportKept("Make Prefabs From Sheet", kept);
             Debug.Log($"Bellwort Burrow: made or updated {made} prefabs in {ArtLibrary.PrefabRoot}.");
         }
 
@@ -46,13 +47,14 @@ namespace BellwortBurrow.EditorTools
             Debug.Log($"Bellwort Burrow: made or updated {made} prefabs in {ArtLibrary.PrefabRoot}.");
         }
 
-        /// <summary>Makes prefabs for every sprite sheet under Assets/Art. Returns how many.</summary>
+        /// <summary>Makes prefabs for every sprite sheet under Assets/Art. Returns how many. Prefabs changed by hand are left alone.</summary>
         public static int MakeAll()
         {
             int made = 0;
+            var kept = new List<string>();
             foreach (var path in ArtLibrary.SheetPaths(tileSheets: false))
-                made += Make(path);
-            AssetDatabase.SaveAssets();
+                made += Make(path, kept);
+            GeneratedAssets.ReportKept("Make Prefabs From Sheets", kept);
             return made;
         }
 
@@ -66,7 +68,8 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        public static int Make(string sheetPath)
+        /// <summary>Makes a prefab per sprite on the sheet. Prefabs changed by hand are added to <paramref name="kept"/> instead.</summary>
+        public static int Make(string sheetPath, List<string> kept)
         {
             var sprites = ArtLibrary.LoadSubAssets<Sprite>(sheetPath);
 
@@ -94,6 +97,9 @@ namespace BellwortBurrow.EditorTools
             {
                 if (pair.Key.EndsWith("_glow") && sprites.ContainsKey(pair.Key.Substring(0, pair.Key.Length - 5))) continue;
 
+                string prefabPath = $"{folder}/{pair.Key}.prefab";
+                if (!GeneratedAssets.CanOverwrite(prefabPath)) { kept.Add(prefabPath); continue; }
+
                 var root = new GameObject(pair.Key);
                 var renderer = root.AddComponent<SpriteRenderer>();
                 renderer.sprite = pair.Value;
@@ -117,8 +123,9 @@ namespace BellwortBurrow.EditorTools
                         GlowLights.AddLights(root, GlowLights.Find(sheet, slice));
                 }
 
-                PrefabUtility.SaveAsPrefabAsset(root, $"{folder}/{pair.Key}.prefab");
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                 Object.DestroyImmediate(root);
+                GeneratedAssets.Stamp(prefabPath);
                 made++;
             }
             return made;

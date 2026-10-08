@@ -12,6 +12,7 @@ namespace BellwortBurrow.EditorTools
     /// Builds the "Forest Ground" Tile Palette (Window > 2D > Tile Palette) from forest_ground.aseprite.
     /// The top row holds the tiles you paint with (grass, path, deer trail; see <see cref="GroundAutoTiles"/>).
     /// Below them, every single piece sits where it sits on the sheet, so that part looks like the Aseprite file.
+    /// If you rearranged the palette by hand, it is left alone (see <see cref="GeneratedAssets"/>).
     /// </summary>
     public static class ForestGroundPalette
     {
@@ -48,6 +49,11 @@ namespace BellwortBurrow.EditorTools
             var tiles = ArtLibrary.LoadSubAssets<TileBase>(sheetPath);
 
             ArtLibrary.EnsureFolder(Folder);
+            if (!GeneratedAssets.CanOverwrite(PalettePath))
+            {
+                GeneratedAssets.ReportKept("Make Ground Tile Palette", new System.Collections.Generic.List<string> { PalettePath });
+                return true;
+            }
             var palette = AssetDatabase.LoadAssetAtPath<GameObject>(PalettePath);
             if (palette == null)
             {
@@ -89,6 +95,7 @@ namespace BellwortBurrow.EditorTools
             PrefabUtility.SaveAsPrefabAssetAndConnect(instance, PalettePath, InteractionMode.AutomatedAction);
             Object.DestroyImmediate(instance);
             AssetDatabase.SaveAssets();
+            GeneratedAssets.Stamp(PalettePath);
             return true;
         }
     }
