@@ -108,3 +108,26 @@ InitTestScene*.unity*
 
 # Per-machine AI Assistant editor preferences (e.g. local git backend choice)
 /ProjectSettings/Packages/com.unity.ai.assistant/Settings.json
+
+# ---- Bellwort Burrow ----
+# Art ships as a separate download (the art package, see README.md), not through git.
+# Its .meta files travel with it so scenes keep their links.
+/[Aa]ssets/[Aa]rt/
+/[Aa]ssets/[Aa]rt.meta
+
+# Old art versions kept on the artist's machine
+/[Aa]rt [Aa]rchive/
+
+# Art package zips: exports land in ArtPackage/ and downloads go there to be installed.
+# Git keeps the empty folder (ArtPackage/.gitkeep) so the tools always know where to look, but never the zips.
+/[Aa]rt[Pp]ackage/*
+!/[Aa]rt[Pp]ackage/.gitkeep
+
+# Solution file the IDE packages regenerate (like *.sln and *.csproj above)
+*.slnx
+
+# Per-machine MCP server setup (local paths, ports)
+.mcp.json
+
+# One-off scripts that placed things in a scene, kept for reference only
+/[Tt]mp/
