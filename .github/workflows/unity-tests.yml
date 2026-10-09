@@ -12,16 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write # Needed if Game-CI posts test summaries to your PR
+      checks: write # Allows GameCI to post test summaries directly to your PR
 
     steps:
-      # 1. Pull down the repository code
+      # 1. Pull down your repository code
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          lfs: true # Crucial if you use Git LFS for heavy assets
+          lfs: true # Essential if you use Git LFS for heavy assets
 
-      # 2. Restore/Save the Library cache to skip re-importing assets
+      # 2. Restore/Save the Library cache to stop Unity from re-importing assets on every run
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
@@ -30,11 +30,12 @@ jobs:
           restore-keys: |
             Library-${{ runner.os }}-
 
-      # 3. Execute the tests using fixed configuration inputs
+      # 3. Execute Unity tests with correct Personal License credentials
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }} # Make sure this secret is set in your repo settings
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 6000.5.7f1
           testMode: editmode
