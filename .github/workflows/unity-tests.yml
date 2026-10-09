@@ -46,3 +46,4 @@ jobs:
           # Add this line to force Unity 6 to skip service connection loops:
           customParameters: -nographics -batchmode -no-proxy -noUpmTelemetry -disable-assembly-updater
           runAsHostUser: true
+          useHostNetwork: true
