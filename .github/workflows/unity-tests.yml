@@ -46,5 +46,5 @@ jobs:
           artifactsPath: artifacts
           # Removed runAsHostUser so Docker doesn't mask the account user profile UPDATED: Caused 3 minute hang
           runAsHostUser: true
-          # Explicitly direct Unity's asset and system cache paths directly into repo workspace
-          customParameters: -batchmode -nographics -localCacheServerRootDir "${{ github.workspace }}/.cache"
+          # REMOVED runAsHostUser, useHostNetwork, and absolute host paths
+          customParameters: -batchmode -nographics -disable-assembly-updater -localCacheServerRootDir "./.cache"
