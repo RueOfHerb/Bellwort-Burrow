@@ -1,81 +1,43 @@
-name: Unity Tests
+name: Unity CI
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "Assets/**"
-      - "Packages/**"
-      - "ProjectSettings/**"
-      - ".github/workflows/unity-tests.yml"
   push:
-    branches: [main]
-    paths:
-      - "Assets/**"
-      - "Packages/**"
-      - "ProjectSettings/**"
-      - ".github/workflows/unity-tests.yml"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   test:
-    name: EditMode Tests
+    name: Run Unity Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    
-    # Grants the job permission to report the test metrics back to the GitHub PR/Check UI
     permissions:
       contents: read
-      checks: write
-      pull-requests: write
+      checks: write # Needed if Game-CI posts test summaries to your PR
 
-    strategy:
-      fail-fast: false
-      matrix:
-        unityVersion:
-          - 6000.5.7f1
     steps:
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-          tool-cache: true
-
-      - name: Checkout Repository
+      # 1. Pull down the repository code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: true # Crucial if you use Git LFS for heavy assets
 
-      # Explicitly ensure Git LFS assets are decompressed and pulled
-      - name: Checkout LFS objects
-        run: git lfs pull
-
+      # 2. Restore/Save the Library cache to skip re-importing assets
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ runner.os }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json') }}
           restore-keys: |
-            Library-
+            Library-${{ runner.os }}-
 
+      # 3. Execute the tests using fixed configuration inputs
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }} # Make sure this secret is set in your repo settings
         with:
-          unityVersion: ${{ matrix.unityVersion }}
+          unityVersion: 6000.5.7f1
           testMode: editmode
-          githubToken: ${{ github.token }} # Links the write token permission into the runner action
-          
-          # Crucial Fixes for Unity 6 Linux Docker Deadlocks:
-          coverageEnabled: false      # Disables the Coverage engine which induces freezing in headless Unity 6
-          useHostNetwork: true           # Unblocks local container port-loopbacks during license checking
+          coverageEnabled: true
+          coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;dontClear'
+          artifactsPath: artifacts
