@@ -77,6 +77,5 @@ jobs:
           githubToken: ${{ github.token }} # Links the write token permission into the runner action
           
           # Crucial Fixes for Unity 6 Linux Docker Deadlocks:
-          dockerShmSize: '1025m'          # Overrides the default 64MB Docker memory limit to avoid Unity 6 crashes
-          enableCodeCoverage: false      # Disables the Coverage engine which induces freezing in headless Unity 6
+          coverageEnabled: false      # Disables the Coverage engine which induces freezing in headless Unity 6
           useHostNetwork: true           # Unblocks local container port-loopbacks during license checking
