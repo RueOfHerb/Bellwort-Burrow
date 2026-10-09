@@ -45,5 +45,6 @@ jobs:
           coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;dontClear'
           artifactsPath: artifacts
           # Removed runAsHostUser so Docker doesn't mask the account user profile
-          runAsHostUser: false 
-          customParameters: -batchmode -nographics
+          runAsHostUser: false
+          # Explicitly direct Unity's asset and system cache paths directly into repo workspace
+          customParameters: -batchmode -nographics -localCacheServerRootDir "${{ github.workspace }}/.cache"
