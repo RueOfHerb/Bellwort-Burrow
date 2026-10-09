@@ -30,20 +30,20 @@ jobs:
           restore-keys: |
             Library-${{ runner.os }}-
 
-      # 3. Execute Unity tests with correct Personal License credentials
+      # 3. Execute Unity tests using clean Personal Account parameters
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }} # Bypasses .ulf dependencies completely
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # Forces Unity 6 to write its local licensing sockets safely inside your open repository workspace
+          XDG_CACHE_HOME: ${{ github.workspace }}/.cache
         with:
           unityVersion: 6000.5.7f1
           testMode: editmode
           coverageEnabled: true
           coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;dontClear'
           artifactsPath: artifacts
-          # Add this line to force Unity 6 to skip service connection loops:
-          customParameters: -nographics -batchmode -no-proxy -noUpmTelemetry -disable-assembly-updater
-          runAsHostUser: true
-          useHostNetwork: true
+          # Removed runAsHostUser so Docker doesn't mask the account user profile
+          runAsHostUser: false 
+          customParameters: -batchmode -nographics
