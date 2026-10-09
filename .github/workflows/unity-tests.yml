@@ -47,4 +47,13 @@ jobs:
           # Removed runAsHostUser so Docker doesn't mask the account user profile UPDATED: Caused 3 minute hang
           runAsHostUser: true
           # REMOVED runAsHostUser, useHostNetwork, and absolute host paths
-          customParameters: -batchmode -nographics -disable-assembly-updater -localCacheServerRootDir "./.cache"
+                    # FORCES INTERNAL NETWORK SUB-SYSTEMS TO TIMEOUT IN SECONDS INSTEAD OF MINUTES
+          customParameters: >-
+            -batchmode
+            -nographics
+            -disable-assembly-updater
+            -localCacheServerRootDir "./.cache"
+            --override "clientConnectTimeoutSec=5"
+            --override "clientHandshakeTimeoutSec=5"
+            --override "clientUpdateLicenseTimeoutSec=5"
+            --override "clientResolveEntitlementsTimeoutSec=5"
