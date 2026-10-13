@@ -102,7 +102,9 @@ namespace BellwortBurrow.EditorTools
             else if (renderer != null) renderer.sortingOrder = order;
 
             if (renderer == null || renderer.sprite == null) return y;
-            return y + renderer.sprite.rect.height / renderer.sprite.pixelsPerUnit;
+            // Measure from the pivot (the feet), not the bottom of the slice: a base can draw a little below its feet,
+            // like the contact shadow under the tree homes.
+            return y + (renderer.sprite.rect.height - renderer.sprite.pivot.y) / renderer.sprite.pixelsPerUnit;
         }
     }
 }
