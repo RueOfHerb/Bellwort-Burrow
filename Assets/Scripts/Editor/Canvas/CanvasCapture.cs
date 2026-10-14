@@ -107,7 +107,7 @@ namespace BellwortBurrow.EditorTools
         static List<(string name, Vector3 position)> TreeHomes()
         {
             var homes = new List<(string, Vector3)>();
-            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>())
             {
                 if (!PrefabUtility.IsOutermostPrefabInstanceRoot(t.gameObject)) continue;
                 var source = PrefabUtility.GetCorrespondingObjectFromSource(t.gameObject);
@@ -124,7 +124,7 @@ namespace BellwortBurrow.EditorTools
         {
             bool any = false;
             Vector3 min = Vector3.zero, max = Vector3.zero;
-            foreach (var map in UnityEngine.Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None))
+            foreach (var map in UnityEngine.Object.FindObjectsByType<Tilemap>())
             {
                 var cells = map.cellBounds;
                 if (cells.size.x <= 0 || cells.size.y <= 0) continue;
