@@ -9,7 +9,7 @@ namespace BellwortBurrow.EditorTools
     /// <summary>
     /// Checks that what setup makes still matches the sheets. Used before exporting the art package, so a package never
     /// goes out with a slice that has no prefab, or a prefab that points at a slice that's gone.
-    /// Redrawing pixels inside existing slices needs no setup run, so that alone is never reported.
+    /// Redrawing Art pixels inside existing slices needs no setup run, so that alone is never reported; Glow changes are (see SetupStamp).
     /// </summary>
     public static class ArtChecks
     {
@@ -67,6 +67,9 @@ namespace BellwortBurrow.EditorTools
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(ForestGroundPalette.PalettePath) == null)
                     problems.Add("the Forest Ground tile palette is missing");
             }
+
+            // Glow or slices changed since setup last ran (the lights and prefabs are built from them).
+            problems.AddRange(SetupStamp.Changes());
             return problems;
         }
     }

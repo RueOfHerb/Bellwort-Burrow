@@ -33,7 +33,11 @@ namespace BellwortBurrow.EditorTools
                 bool palette = ForestGroundPalette.Make();
 
                 if (palette)
+                {
+                    // Remember the Glow layers and slices this run was built from, so Check Art Rules can tell when it's out of date.
+                    SetupStamp.Write();
                     Debug.Log($"Bellwort Burrow: forest art set up. {prefabs} prefabs, {trees} tall trees, {groundTiles} ground tiles and the Forest Ground tile palette.");
+                }
                 else
                     Debug.LogError($"Bellwort Burrow: forest art setup finished with problems ({prefabs} prefabs, {trees} tall trees, " +
                                    $"{groundTiles} ground tiles, palette not made). See the messages above.");

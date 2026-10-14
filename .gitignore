@@ -131,3 +131,6 @@ InitTestScene*.unity*
 
 # One-off scripts that placed things in a scene, kept for reference only
 /[Tt]mp/
+
+# Canvas images saved by Bellwort Burrow > Canvas > Capture Shots
+/Captures/
