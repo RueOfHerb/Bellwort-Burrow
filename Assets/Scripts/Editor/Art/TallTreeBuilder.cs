@@ -26,6 +26,8 @@ namespace BellwortBurrow.EditorTools
         {
             new Kind { Name = "vine_tree", Base = "vine_base", Middle = "vine_middle", Crown = "vine_crown", MostMiddles = 3 },
             new Kind { Name = "brown_tree", Base = "brown_base", Middle = "brown_middle", KnotMiddle = "brown_middle_knot", Crown = "brown_crown", MostMiddles = 3 },
+            new Kind { Name = "wiggle_tree", Base = "wiggle_base", Middle = "wiggle_middle", KnotMiddle = "wiggle_middle_knot", Crown = "wiggle_crown", MostMiddles = 3 },
+            new Kind { Name = "stout_tree", Base = "stout_base", Middle = "stout_middle", KnotMiddle = "stout_middle_knot", Crown = "stout_crown", MostMiddles = 3 },
             new Kind { Name = "giant_vine_home", Base = "giant_vine_home_base", Middle = "giant_vine_middle", Crown = "giant_vine_crown", MostMiddles = 2 },
             new Kind { Name = "giant_brown_home", Base = "giant_brown_home_base", Middle = "giant_brown_middle", Crown = "giant_brown_crown", MostMiddles = 3 },
         };
@@ -66,7 +68,7 @@ namespace BellwortBurrow.EditorTools
                     float top = AddPiece(root, basePiece, 0f, order++);
                     for (int i = 0; i < middles; i++)
                     {
-                        // Brown trunks show their knot second from the bottom (or alone on a one-middle tree).
+                        // Trunks with a knot show it second from the bottom (or alone on a one-middle tree).
                         bool useKnot = knot != null && (middles == 1 || i % 2 == 1);
                         top = AddPiece(root, useKnot ? knot : middle, top, order++);
                     }
