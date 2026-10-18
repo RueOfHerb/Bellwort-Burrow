@@ -219,7 +219,7 @@ namespace BellwortBurrow.EditorTools
             foreach (var path in ArtLibrary.SheetPaths(false)) yield return path;
             foreach (var path in ArtLibrary.SheetPaths(true)) yield return path;
             if (Directory.Exists(ArtLibrary.CharacterFolder))
-                foreach (var path in Directory.GetFiles(ArtLibrary.CharacterFolder, "*.aseprite").OrderBy(p => p, StringComparer.Ordinal))
+                foreach (var path in Directory.GetFiles(ArtLibrary.CharacterFolder, "*.aseprite", SearchOption.AllDirectories).OrderBy(p => p, StringComparer.Ordinal))
                     yield return path.Replace('\\', '/');
         }
 
@@ -243,17 +243,18 @@ namespace BellwortBurrow.EditorTools
 
         // ---------- Record ----------
 
-        /// <summary>Every source file the Sync Ledger tracks: sheets, characters, palettes and zone scenes.</summary>
+        /// <summary>Every source file the Sync Ledger tracks: sheets, backdrops, characters (subfolders too, like Player), palettes and zone scenes.</summary>
         public static List<string> LedgerSources()
         {
             var sources = new List<string>();
             void Add(string folder, string pattern)
             {
                 if (!Directory.Exists(folder)) return;
-                foreach (var path in Directory.GetFiles(folder, pattern))
+                foreach (var path in Directory.GetFiles(folder, pattern, SearchOption.AllDirectories))
                     sources.Add(path.Replace('\\', '/'));
             }
             Add(ArtLibrary.ArtRoot + "/Forest", "*.aseprite");
+            Add(ArtLibrary.ArtRoot + "/Backdrops", "*.aseprite");
             Add(ArtLibrary.CharacterFolder, "*.aseprite");
             Add(ArtLibrary.ArtRoot + "/Palettes", "*.gpl");
             Add("Assets/Scenes/Zones", "*.unity");
