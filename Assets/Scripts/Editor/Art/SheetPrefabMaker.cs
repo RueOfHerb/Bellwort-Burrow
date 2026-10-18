@@ -13,6 +13,8 @@ namespace BellwortBurrow.EditorTools
     /// - The sprite sits on a lit material, with its feet on the prefab's origin.
     /// - A matching "_glow" sprite becomes a Glow child on an unlit material, so windows, wisps and gem glints stay bright at night.
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
+    /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
+    ///   every scene it draws behind the characters and props and in front of the ground tiles, with nothing to set per scene.
     /// Run it from Bellwort Burrow > Setup, or right-click sheets and choose Bellwort Burrow > Make Prefabs From Sheet.
     /// Running it again rebuilds the prefabs in place, so scenes keep their links. A prefab you changed by hand is left
     /// alone (see <see cref="GeneratedAssets"/>).
@@ -20,6 +22,10 @@ namespace BellwortBurrow.EditorTools
     public static class SheetPrefabMaker
     {
         const string AssetsMenuPath = "Assets/Bellwort Burrow/Make Prefabs From Sheet";
+
+        /// <summary>Behind everything that stands in the world (order 0), in front of the ground tilemaps (-30 to -10).</summary>
+        public const int BackdropSortingOrder = -5;
+        const string BackdropFolder = ArtLibrary.ArtRoot + "/Backdrops/";
 
         [MenuItem(AssetsMenuPath)]
         static void MakeFromSelection()
@@ -72,6 +78,7 @@ namespace BellwortBurrow.EditorTools
         public static int Make(string sheetPath, List<string> kept)
         {
             var sprites = ArtLibrary.LoadSubAssets<Sprite>(sheetPath);
+            bool backdrop = sheetPath.Replace('\\', '/').StartsWith(BackdropFolder);
 
             // The sheet itself tells us where the glow sits, for the lights.
             AsepriteSheet sheet = null;
@@ -121,6 +128,14 @@ namespace BellwortBurrow.EditorTools
 
                     if (sheet != null && slices.TryGetValue(pair.Key, out var slice))
                         GlowLights.AddLights(root, GlowLights.Find(sheet, slice));
+                }
+
+                if (backdrop)
+                {
+                    // A flat painting far behind the walkable band: it never sorts by height against what stands in front of it.
+                    var group = root.GetComponent<SortingGroup>();
+                    if (group == null) group = root.AddComponent<SortingGroup>();
+                    group.sortingOrder = BackdropSortingOrder;
                 }
 
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
