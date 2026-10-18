@@ -49,6 +49,8 @@ namespace BellwortBurrow.EditorTools
             {
                 int switched = ArtLibrary.UseSheetImporter();
                 if (switched > 0) Debug.Log($"Bellwort Burrow: switched {switched} sheet(s) to the Bellwort Sheet Importer.");
+                int characters = ArtLibrary.UseCharacterPixelsPerUnit();
+                if (characters > 0) Debug.Log($"Bellwort Burrow: set {characters} character(s) to {ArtLibrary.PixelsPerUnit} pixels per unit.");
             }
         }
     }

@@ -67,6 +67,30 @@ namespace BellwortBurrow.EditorTools
             return switched;
         }
 
+        /// <summary>
+        /// Characters keep Unity's own Aseprite importer, at the game's 16 pixels per unit (Unity's default is 100,
+        /// which makes a new character tiny). Looks in subfolders too, like Characters/Player. Returns how many changed.
+        /// </summary>
+        public static int UseCharacterPixelsPerUnit()
+        {
+            int changed = 0;
+            foreach (var path in AssetDatabase.GetAllAssetPaths())
+            {
+                if (!path.StartsWith(CharacterFolder + "/")) continue;
+                if (!path.EndsWith(".aseprite") && !path.EndsWith(".ase")) continue;
+                var importer = AssetImporter.GetAtPath(path);
+                if (importer == null) continue;
+                var serialized = new SerializedObject(importer);
+                var ppu = serialized.FindProperty("m_TextureImporterSettings.m_SpritePixelsToUnits");
+                if (ppu == null || Mathf.Approximately(ppu.floatValue, PixelsPerUnit)) continue;
+                ppu.floatValue = PixelsPerUnit;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                importer.SaveAndReimport();
+                changed++;
+            }
+            return changed;
+        }
+
         /// <summary>Sheets under Assets/Art that use the Bellwort Sheet Importer: sprite sheets, or tile sheets.</summary>
         public static List<string> SheetPaths(bool tileSheets)
         {
