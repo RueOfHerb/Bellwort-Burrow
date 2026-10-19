@@ -276,6 +276,8 @@ namespace BellwortBurrow.EditorTools
             File.Copy(temp, path, true);
             AssetDatabase.DeleteAsset(temp);
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            // Tilemaps keep calling the old kind's code for an asset whose kind changed until scripts reload.
+            EditorUtility.RequestScriptReload();
         }
 
         static bool MakeGrassTile(Dictionary<string, Sprite> sprites, string path)
