@@ -52,7 +52,7 @@ Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.me
 Everything in a scene is placed by hand; only backgrounds and skyboxes are exceptions.
 
 - **Objects:** drag prefabs from `Assets/Art/Prefabs` into the scene. Their pivot is at their feet, so they sort correctly as you move them up and down.
-- **Ground:** open **Window > 2D > Tile Palette**, pick the **Forest Ground** palette, set **Active Tilemap** to the layer you want, and paint. The top row of the palette holds the tiles you paint with:
+- **Ground:** open **Window > 2D > Tile Palette**, pick the **Forest Ground** palette, choose the layer you want in the **Active Target** dropdown (the layers icon at the top of the Tile Palette window; clicking the layer under Ground in the Hierarchy does the same), and paint. The top row of the palette holds the tiles you paint with:
   - **Forest Grass** on the **Grass** layer picks a random grass variation for each tile.
   - **Forest Deer Trail** on the **Deer Trails** layer and **Forest Path** on the **Paths** layer are Unity Auto Tiles (2x2 mask). Paint where the trail or path goes and Unity picks the edge pieces. Paint them at least two tiles wide: the edges land halfway into the outer tiles, so three painted rows make a path two tiles wide.
   - Tufts and crop circles go on the **Tufts and Crop Circles** layer. Drag a box around a whole crop circle in the palette to stamp it in one click.
