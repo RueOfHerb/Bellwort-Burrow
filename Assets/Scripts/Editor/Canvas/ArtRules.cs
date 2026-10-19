@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace BellwortBurrow.EditorTools
 {
@@ -87,6 +88,52 @@ namespace BellwortBurrow.EditorTools
             return pairs;
         }
 
+        static readonly Regex TreePiece = new Regex(@"^(.+)_(base|middle|middle_knot|crown)$");
+        static readonly Regex HousePiece = new Regex(@"^((?:vine_)?tree)_(house|stairs|room)_(.+)$");
+        static readonly string[] TreeOrder = { "base", "middle", "middle_knot", "crown" };
+        static readonly string[] HouseOrder = { "house", "stairs", "room" };
+
+        /// <summary>
+        /// Pieces that go together are laid out on the sheet as if painted together: a tree's base, middles and crown
+        /// (bottom to top, the way they stack) and a tree house set's ground house, stairs and upper room, each one
+        /// standing straight on the one below it (touching, no gap) on one center line (the pivot column).
+        /// Returns a line for every piece that doesn't.
+        /// </summary>
+        public static List<string> StandTogether(IReadOnlyList<SheetSlice> slices)
+        {
+            var groups = new Dictionary<string, SortedDictionary<int, SheetSlice>>();
+            foreach (var slice in slices)
+            {
+                var tree = TreePiece.Match(slice.Name);
+                var house = HousePiece.Match(slice.Name);
+                string key; int rank;
+                if (house.Success) { key = $"{house.Groups[1].Value}_{house.Groups[3].Value} set"; rank = Array.IndexOf(HouseOrder, house.Groups[2].Value); }
+                else if (tree.Success) { key = tree.Groups[1].Value; rank = Array.IndexOf(TreeOrder, tree.Groups[2].Value); }
+                else continue;
+                if (!groups.TryGetValue(key, out var group)) groups[key] = group = new SortedDictionary<int, SheetSlice>();
+                group[rank] = slice;
+            }
+            var problems = new List<string>();
+            foreach (var pair in groups)
+            {
+                if (pair.Value.Count < 2) continue;
+                SheetSlice? below = null;
+                foreach (var piece in pair.Value.Values)
+                {
+                    if (below.HasValue)
+                    {
+                        var b = below.Value;
+                        int column = piece.X + (piece.HasPivot ? piece.PivotX : piece.Width / 2);
+                        int belowColumn = b.X + (b.HasPivot ? b.PivotX : b.Width / 2);
+                        if (column != belowColumn || piece.Y + piece.Height != b.Y)
+                            problems.Add($"{piece.Name} doesn't stand straight on {b.Name}");
+                    }
+                    below = piece;
+                }
+            }
+            return problems;
+        }
+
         /// <summary>Every rule broken on one sheet, as short lines. Empty when the sheet follows the specs.</summary>
         public static List<string> Check(string sheetName, int width, int height, byte[] art, byte[] glow,
                                          IReadOnlyList<SheetSlice> slices, bool tileSheet)
@@ -94,6 +141,9 @@ namespace BellwortBurrow.EditorTools
             var problems = new List<string>();
             foreach (var pair in Overlaps(slices))
                 problems.Add($"{sheetName}: slices {pair} overlap");
+            if (!tileSheet)
+                foreach (var line in StandTogether(slices))
+                    problems.Add($"{sheetName}: {line} (pieces that go together are laid out stacked as if painted together, touching, on one center line)");
 
             foreach (var slice in slices)
             {
