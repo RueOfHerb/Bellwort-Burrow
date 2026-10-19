@@ -10,7 +10,8 @@
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Universal.2D.Runtime",
         "Unity.2D.Tilemap.Editor",
-        "Unity.2D.Tilemap.Extras"
+        "Unity.2D.Tilemap.Extras",
+        "BellwortBurrow.Tiles"
     ],
     "includePlatforms": [
         "Editor"

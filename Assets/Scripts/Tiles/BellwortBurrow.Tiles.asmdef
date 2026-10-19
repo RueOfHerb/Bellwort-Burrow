@@ -1,0 +1,16 @@
+{
+    "name": "BellwortBurrow.Tiles",
+    "rootNamespace": "BellwortBurrow.Tiles",
+    "references": [
+        "Unity.2D.Tilemap.Extras"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

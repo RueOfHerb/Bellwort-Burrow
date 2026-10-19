@@ -1,8 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using BellwortBurrow.Tiles;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Object = UnityEngine.Object;
 
 namespace BellwortBurrow.EditorTools
 {
@@ -12,6 +16,10 @@ namespace BellwortBurrow.EditorTools
     ///   any width down to one tile, and each tile picks its piece from which neighbours are painted. The edge sits a
     ///   couple of pixels inside the painted tiles, so every tile you paint shows. Paint a staircase and the steps
     ///   become a slope: a corner whose next step carries on diagonally is cut from tile corner to tile corner.
+    /// - Forest Path Half: a half tile of path. Set it beside the path and it fills the half of its tile that touches
+    ///   the path (beside two paths, both halves), so a path can end half way into a tile, be half a tile wider, or
+    ///   fill the inside of a turn. Forest Path and Forest Path Half are Path Rule Tiles (<see cref="PathRuleTile"/>):
+    ///   Rule Tiles whose neighbour conditions tell full path, half path and no path apart.
     /// - Forest Grass: a Rule Tile that picks one of the grass variations at random.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
@@ -20,12 +28,16 @@ namespace BellwortBurrow.EditorTools
     /// Every ground set is painted together on the sheet as one patch, from <see cref="Template"/>: each painted ('#')
     /// cell of the slice is a piece, and its layout is read from its neighbours in the template, exactly as the Rule
     /// Tile reads them in a scene. The template holds all 83 layouts (<see cref="Layout"/>); a layout that comes up
-    /// more than once gives the tile several pieces to pick from at random. tools/ground_sets.py reads this template too.
+    /// more than once gives the tile several pieces to pick from at random. The half path set is painted the same way
+    /// from <see cref="HalfTemplate"/>. tools/ground_sets.py reads these templates too.
     /// </summary>
     public static class GroundAutoTiles
     {
         public const string Folder = ArtLibrary.ArtRoot + "/Tiles";
         const string SheetName = "forest_ground";
+        const string PathAsset = "Forest Path", HalfPathAsset = "Forest Path Half";
+        const string PathSlice = "path_set", HalfPathSlice = "path_half_set";
+        static readonly string[] PathFills = { "path_fill_00", "path_fill_01" };
 
         /// <summary>
         /// The patch every 3x3 ground set is painted from, top row first: '#' is a painted tile, '.' is not. Outside
@@ -44,6 +56,46 @@ namespace BellwortBurrow.EditorTools
             "##.##.#.##.###...",
             "#.##.##.##..#..##",
         };
+
+        /// <summary>
+        /// The patch the half path set is painted from, top row first: 'H' is a half path tile, 'F' a full path tile
+        /// and '.' neither. Every look a half tile can have (<see cref="HalfLook"/>) comes up on at least one 'H'; the
+        /// 'F' tiles are there so the halves have path to turn toward, and become more full path pieces. Change it only
+        /// together with the sheet's slices.
+        /// </summary>
+        public static readonly string[] HalfTemplate =
+        {
+            "HF.F.FFHFH.FHHHFH",
+            "FHFHFHHHHHFHFHHFH",
+            ".FHF.F.FFFFHHFFFH",
+            ".F.FFHFHHHFFHFHHF",
+            "FHFHHHFHFHFHHFFHF",
+            ".FFHFF.HFH.FFF.FH",
+            ".FFHHHFF.F.FFHFHH",
+            "FHHF.FHHHHFHFHHFF",
+            "FHFHFFHFFF.F.FFH.",
+            ".F.F.HF..FHHFHFHF",
+            ".HFHFFHFFHFFHF.FH",
+            "FHF.F.HFHHFFHHHFH",
+            ".F.FHFHFF.HHFFHF.",
+            "FFF.F.FHHF.F.FF.F",
+            "HHH.FF.FHFFHFHHFH",
+            "FHFFHHFHHHHFH.F.F",
+            "FHHFF..FFFH.FFHF.",
+            "HFF.HHFHFFHFHFHHF",
+            "F.FHFF.FHF.F.FHFF",
+            "HF.FFFHHHFFH.HFHH",
+            "F.FH..FFHFFHF.H..",
+            "FHFFHF.FHF.FHFHF.",
+            ".HF.F.H.F.FHF.FHF",
+            "HFHHFHFH.HFFHFH.H",
+            ".FFFHF.FHF.FHF..F",
+            "....FF.FHF.FF....",
+            ".......FFF..HF...",
+        };
+
+        /// <summary>How many looks a half path tile has.</summary>
+        public const int HalfLookCount = 131;
 
         /// <summary>How many layouts a ground set has: the 47 of Unity's 3x3 Auto Tile plus 36 slope pieces.</summary>
         public const int LayoutCount = 83;
@@ -71,7 +123,6 @@ namespace BellwortBurrow.EditorTools
 
         static readonly GroundSet[] Sets =
         {
-            new GroundSet { Asset = "Forest Path", Slice = "path_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
             new GroundSet { Asset = "Forest Deer Trail", Slice = "trail_set", Fills = new[] { "trail_00", "trail_01" } },
         };
 
@@ -99,6 +150,10 @@ namespace BellwortBurrow.EditorTools
 
             var written = new List<string>();
             var kept = new List<string>();
+            string pathPath = $"{Folder}/{PathAsset}.asset", halfPath = $"{Folder}/{HalfPathAsset}.asset";
+            if (!GeneratedAssets.CanOverwrite(pathPath) || !GeneratedAssets.CanOverwrite(halfPath))
+                kept.AddRange(new[] { pathPath, halfPath }.Where(p => !GeneratedAssets.CanOverwrite(p)));
+            else if (MakePathTiles(sprites, pathPath, halfPath)) written.AddRange(new[] { pathPath, halfPath });
             foreach (var set in Sets)
             {
                 string path = $"{Folder}/{set.Asset}.asset";
@@ -119,6 +174,8 @@ namespace BellwortBurrow.EditorTools
         public static IEnumerable<string> TilePaths()
         {
             yield return $"{Folder}/Forest Grass.asset";
+            yield return $"{Folder}/{PathAsset}.asset";
+            yield return $"{Folder}/{HalfPathAsset}.asset";
             foreach (var set in Sets) yield return $"{Folder}/{set.Asset}.asset";
         }
 
@@ -193,6 +250,301 @@ namespace BellwortBurrow.EditorTools
             int columns = template[0].Length, count = columns * template.Length;
             string digits = new string('0', Mathf.Max(2, count.ToString().Length));
             return slice + "_" + (row * columns + column).ToString(digits);
+        }
+
+        // ---- Full and half path ----------------------------------------------------------------------------------
+        // A neighbourhood is the eight neighbours' types in the Rule Tile's order (NW, N, NE, W, E, SW, S, SE):
+        // 'F' full path, 'H' half path, '.' neither. Quarters of a tile, top row first: top left 1, top right 2,
+        // bottom left 4, bottom right 8.
+        const int TL = 1, TR = 2, BL = 4, BR = 8;
+        const string Types = "FH.";
+
+        /// <summary>How many neighbourhoods there are: three types for each of eight neighbours.</summary>
+        internal const int Neighbourhoods = 6561;
+
+        /// <summary>
+        /// Which quarters of its tile a tile fills, from its type and its side neighbours' types. A full tile fills
+        /// all four. A half tile turns toward the full path beside it: the two quarters on each side with a full tile.
+        /// With no full tile beside it, a half tile is a lone dot (no quarters).
+        /// </summary>
+        internal static int Quarters(char tile, char n, char s, char w, char e)
+        {
+            if (tile == 'F') return TL | TR | BL | BR;
+            if (tile != 'H') return 0;
+            int q = 0;
+            if (n == 'F') q |= TL | TR;
+            if (s == 'F') q |= BL | BR;
+            if (w == 'F') q |= TL | BL;
+            if (e == 'F') q |= TR | BR;
+            return q;
+        }
+
+        /// <summary>The neighbourhood with the given number (0 to 6560): each neighbour's type is one base 3 digit.</summary>
+        internal static char[] NeighbourhoodOf(int number)
+        {
+            var around = new char[8];
+            for (int i = 0; i < 8; i++) { around[i] = Types[number % 3]; number /= 3; }
+            return around;
+        }
+
+        /// <summary>A template cell's neighbourhood ('#' counts as full path; outside the template is neither).</summary>
+        internal static char[] Around(string[] template, int column, int row)
+        {
+            char At(int dx, int dy)
+            {
+                int x = column + dx, y = row + dy;
+                if (y < 0 || y >= template.Length || x < 0 || x >= template[y].Length) return '.';
+                char c = template[y][x];
+                return c == '#' ? 'F' : c;
+            }
+            return new[] { At(-1, -1), At(0, -1), At(1, -1), At(-1, 0), At(1, 0), At(-1, 1), At(0, 1), At(1, 1) };
+        }
+
+        /// <summary>
+        /// Path quarters of a tile and its eight neighbours, as a 6 by 6 grid (row 0 at the top; the tile's own
+        /// quarters at rows and columns 2 and 3). Tiles past the neighbours count as neither, which only changes
+        /// quarters away from the tile.
+        /// </summary>
+        static bool[,] QuarterGrid(char tile, char[] around)
+        {
+            var t = new char[5, 5];
+            for (int y = 0; y < 5; y++) for (int x = 0; x < 5; x++) t[y, x] = '.';
+            t[1, 1] = around[0]; t[1, 2] = around[1]; t[1, 3] = around[2];
+            t[2, 1] = around[3]; t[2, 2] = tile; t[2, 3] = around[4];
+            t[3, 1] = around[5]; t[3, 2] = around[6]; t[3, 3] = around[7];
+            var q = new bool[6, 6];
+            for (int y = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 3; x++)
+                {
+                    int cy = y + 1, cx = x + 1;
+                    int bits = Quarters(t[cy, cx], t[cy - 1, cx], t[cy + 1, cx], t[cy, cx - 1], t[cy, cx + 1]);
+                    q[2 * y, 2 * x] = (bits & TL) != 0; q[2 * y, 2 * x + 1] = (bits & TR) != 0;
+                    q[2 * y + 1, 2 * x] = (bits & BL) != 0; q[2 * y + 1, 2 * x + 1] = (bits & BR) != 0;
+                }
+            }
+            return q;
+        }
+
+        /// <summary>
+        /// The layout (bits as for <see cref="LayoutOf"/>) of a full path tile among full and half path. A half tile
+        /// beside it always turns toward it, so a side with either kind is painted. An inner corner is closed when the
+        /// quarter in that corner is path. A slope carries on only through full tiles. Among full tiles alone this is
+        /// the same as <see cref="LayoutOf"/>.
+        /// </summary>
+        internal static uint FullLayout(char[] around)
+        {
+            bool Path(char c) => c == 'F' || c == 'H';
+            char nw = around[0], n = around[1], ne = around[2], w = around[3], e = around[4], sw = around[5], s = around[6], se = around[7];
+            bool pn = Path(n), ps = Path(s), pw = Path(w), pe = Path(e);
+            uint layout = 16;
+            if (pn) layout |= N;
+            if (ps) layout |= S;
+            if (pw) layout |= W;
+            if (pe) layout |= E;
+            uint relevant = RelevantCorners(pn, ps, pw, pe);
+            var q = QuarterGrid('F', around);
+            (uint bit, char diagonal, char vertical, char horizontal, bool a, bool b, bool cornerQuarter)[] corners =
+            {
+                (NW, nw, n, w, pn, pw, q[1, 1]), (NE, ne, n, e, pn, pe, q[1, 4]),
+                (SW, sw, s, w, ps, pw, q[4, 1]), (SE, se, s, e, ps, pe, q[4, 4]),
+            };
+            foreach (var c in corners)
+            {
+                if ((relevant & c.bit) == 0) continue;
+                bool on;
+                if (c.a && c.b) on = c.cornerQuarter;
+                else on = c.diagonal == 'F' && (c.a ? c.vertical : c.horizontal) == 'F';
+                if (on) layout |= c.bit;
+            }
+            return layout;
+        }
+
+        /// <summary>
+        /// What a half path tile's piece looks like, as a key: the quarters it fills and, around each of them, the
+        /// quarters that can change it (the four beside it, and a diagonal one only where both quarters between are
+        /// path, as that closes an inner corner). "lone" when it fills none. <see cref="HalfLookCount"/> looks in all.
+        /// </summary>
+        internal static string HalfLook(char[] around)
+        {
+            var q = QuarterGrid('H', around);
+            bool P(int qy, int qx) => q[2 + qy, 2 + qx];
+            int own = 0;
+            var mine = new List<(int y, int x)>();
+            for (int qy = 0; qy < 2; qy++)
+                for (int qx = 0; qx < 2; qx++)
+                    if (P(qy, qx)) { own |= 1 << (qy * 2 + qx); mine.Add((qy, qx)); }
+            if (own == 0) return "lone";
+            var seen = new SortedDictionary<int, bool>();
+            foreach (var (y, x) in mine)
+            {
+                foreach (var (dy, dx) in new[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
+                    seen[(y + dy + 1) * 4 + (x + dx + 1)] = P(y + dy, x + dx);
+                foreach (var (dy, dx) in new[] { (-1, -1), (-1, 1), (1, -1), (1, 1) })
+                    if (P(y + dy, x) && P(y, x + dx)) seen[(y + dy + 1) * 4 + (x + dx + 1)] = P(y + dy, x + dx);
+            }
+            return own + ":" + string.Join(",", seen.Select(kv => kv.Key + (kv.Value ? "+" : "-")));
+        }
+
+        // Neighbour conditions of a Path Rule Tile, and the types each one lets through.
+        static readonly (int code, string types)[] Conditions =
+        {
+            (0, "FH."), (PathRuleTile.Neighbor.AnyPath, "FH"), (PathRuleTile.Neighbor.NotFull, "H."), (PathRuleTile.Neighbor.NotHalf, "F."),
+            (PathRuleTile.Neighbor.Full, "F"), (PathRuleTile.Neighbor.Half, "H"), (PathRuleTile.Neighbor.NoPath, "."),
+        };
+
+        internal static string TypesOf(int condition) => Conditions.First(c => c.code == condition).types;
+
+        /// <summary>
+        /// Rule Tile rules for a tile whose piece is keyOf(neighbourhood): for each key, neighbour conditions that
+        /// together let through exactly the neighbourhoods with that key. A neighbourhood may match more than one rule,
+        /// but only rules for its own piece, so the order of the rules doesn't matter.
+        /// </summary>
+        internal static List<(T key, int[] conditions)> PathRules<T>(Func<char[], T> keyOf)
+        {
+            var keys = new T[Neighbourhoods];
+            for (int i = 0; i < Neighbourhoods; i++) keys[i] = keyOf(NeighbourhoodOf(i));
+            var covered = new bool[Neighbourhoods];
+            var rules = new List<(T, int[])>();
+            int[] pow = { 1, 3, 9, 27, 81, 243, 729, 2187 };
+
+            bool AllSame(string[] types, T key)
+            {
+                // every neighbourhood the conditions let through has this key
+                var digits = new int[8];
+                while (true)
+                {
+                    int number = 0;
+                    for (int i = 0; i < 8; i++) number += Types.IndexOf(types[i][digits[i]]) * pow[i];
+                    if (!EqualityComparer<T>.Default.Equals(keys[number], key)) return false;
+                    int d = 0;
+                    while (d < 8 && ++digits[d] == types[d].Length) { digits[d] = 0; d++; }
+                    if (d == 8) return true;
+                }
+            }
+
+            for (int start = 0; start < Neighbourhoods; start++)
+            {
+                if (covered[start]) continue;
+                T key = keys[start];
+                var around = NeighbourhoodOf(start);
+                var types = around.Select(c => c.ToString()).ToArray();
+                for (int i = 0; i < 8; i++)
+                {
+                    foreach (var (_, wider) in Conditions)
+                    {
+                        if (wider.Length <= types[i].Length || wider.IndexOf(around[i]) < 0) continue;
+                        var trial = (string[])types.Clone();
+                        trial[i] = wider;
+                        if (AllSame(trial, key)) { types = trial; break; }
+                    }
+                }
+                var conditions = types.Select(t => Conditions.First(c => c.types == t).code).ToArray();
+                rules.Add((key, conditions));
+                // mark what these conditions let through
+                var digits = new int[8];
+                while (true)
+                {
+                    int number = 0;
+                    for (int i = 0; i < 8; i++) number += Types.IndexOf(types[i][digits[i]]) * pow[i];
+                    covered[number] = true;
+                    int d = 0;
+                    while (d < 8 && ++digits[d] == types[d].Length) { digits[d] = 0; d++; }
+                    if (d == 8) break;
+                }
+            }
+            return rules;
+        }
+
+        static RuleTile.TilingRule PathRule(int[] conditions, List<Sprite> pieces) => new RuleTile.TilingRule
+        {
+            m_Neighbors = new List<int>(conditions),
+            m_NeighborPositions = new List<Vector3Int>(RulePositions),
+            m_Sprites = pieces.ToArray(),
+            m_Output = pieces.Count > 1 ? RuleTile.TilingRuleOutput.OutputSprite.Random : RuleTile.TilingRuleOutput.OutputSprite.Single,
+            m_PerlinScale = 0.5f,
+            m_ColliderType = Tile.ColliderType.None,
+            m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
+        };
+
+        /// <summary>Makes Forest Path from path_set (and the full tiles of path_half_set), and Forest Path Half from path_half_set.</summary>
+        static bool MakePathTiles(Dictionary<string, Sprite> sprites, string pathPath, string halfPath)
+        {
+            var full = new Dictionary<uint, List<Sprite>>();
+            var half = new Dictionary<string, List<Sprite>>();
+            int missing = 0;
+            void AddFull(uint layout, Sprite piece) { if (!full.TryGetValue(layout, out var l)) full[layout] = l = new List<Sprite>(); l.Add(piece); }
+            for (int row = 0; row < Template.Length; row++)
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (sprites.TryGetValue(PieceName(PathSlice, column, row, Template), out var piece)) AddFull(Layout(Template, column, row), piece);
+                    else missing++;
+                }
+            for (int row = 0; row < HalfTemplate.Length; row++)
+                for (int column = 0; column < HalfTemplate[row].Length; column++)
+                {
+                    char type = HalfTemplate[row][column];
+                    if (type == '.') continue;
+                    if (!sprites.TryGetValue(PieceName(HalfPathSlice, column, row, HalfTemplate), out var piece)) { missing++; continue; }
+                    var around = Around(HalfTemplate, column, row);
+                    if (type == 'F') AddFull(FullLayout(around), piece);
+                    else
+                    {
+                        string look = HalfLook(around);
+                        if (!half.TryGetValue(look, out var l)) half[look] = l = new List<Sprite>();
+                        l.Add(piece);
+                    }
+                }
+            if (!full.ContainsKey(Full))
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {PathAsset}; {SheetName} has no {PathSlice} slice painted from the template.");
+                return false;
+            }
+            foreach (var name in PathFills)
+                if (sprites.TryGetValue(name, out var fill)) full[Full].Add(fill);
+            if (missing > 0)
+                Debug.LogWarning($"Bellwort Burrow: {missing} path tiles of the templates have no piece in {PathSlice} or {HalfPathSlice}. " +
+                                 "Are the slices the size of GroundAutoTiles.Template and HalfTemplate, and painted from them?");
+
+            var pathTile = ScriptableObject.CreateInstance<PathRuleTile>();
+            pathTile.name = PathAsset;
+            pathTile.m_DefaultSprite = full[Full][0];
+            pathTile.m_DefaultColliderType = Tile.ColliderType.None;
+            pathTile.m_TilingRules = new List<RuleTile.TilingRule>();
+            foreach (var (layout, conditions) in PathRules<uint>(FullLayout))
+                if (full.TryGetValue(layout, out var pieces)) pathTile.m_TilingRules.Add(PathRule(conditions, pieces));
+            if (full.Count < LayoutCount)
+                Debug.LogWarning($"Bellwort Burrow: {PathAsset} has {full.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
+
+            var halfTile = ScriptableObject.CreateInstance<PathRuleTile>();
+            halfTile.name = HalfPathAsset;
+            var facingWest = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
+            halfTile.m_DefaultSprite = half.TryGetValue(HalfLook(facingWest), out var west) ? west[0] : full[Full][0];
+            halfTile.m_DefaultColliderType = Tile.ColliderType.None;
+            halfTile.m_TilingRules = new List<RuleTile.TilingRule>();
+            foreach (var (look, conditions) in PathRules<string>(HalfLook))
+                if (half.TryGetValue(look, out var pieces)) halfTile.m_TilingRules.Add(PathRule(conditions, pieces));
+            if (half.Count < HalfLookCount)
+                Debug.LogWarning($"Bellwort Burrow: {HalfPathAsset} has {half.Count} of the {HalfLookCount} looks; half tiles with a missing look show its first piece.");
+
+            SaveKeepingId(pathTile, pathPath);
+            SaveKeepingId(halfTile, halfPath);
+            // Each names the other, so their rules can tell full and half path apart.
+            var savedPath = AssetDatabase.LoadAssetAtPath<PathRuleTile>(pathPath);
+            var savedHalf = AssetDatabase.LoadAssetAtPath<PathRuleTile>(halfPath);
+            if (savedPath == null || savedHalf == null)
+            {
+                Debug.LogWarning($"Bellwort Burrow: couldn't load {pathPath} and {halfPath} back as Path Rule Tiles; run Make Ground Auto Tiles again after scripts reload.");
+                return true;
+            }
+            foreach (var tile in new[] { savedPath, savedHalf })
+            {
+                tile.fullPath = savedPath;
+                tile.halfPath = savedHalf;
+                EditorUtility.SetDirty(tile);
+            }
+            return true;
         }
 
         static bool MakeSetTile(GroundSet set, Dictionary<string, Sprite> sprites, string path)
