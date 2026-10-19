@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BellwortBurrow.Systems.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,7 +10,9 @@ namespace BellwortBurrow.EditorTools
     /// Stacks the tall tree pieces (base, middles, crown) into whole-tree prefabs in Assets/Art/Prefabs/forest_trees_stacked/.
     /// The number in each name is how many middle pieces the trunk has, so vine_tree_2 is a base, two middles and a crown.
     /// Each tree is a nested prefab of the piece prefabs, so redrawing a piece updates every tree.
-    /// The root has a Sorting Group at the trunk's foot, so the whole tree, crown included, sorts by where it stands.
+    /// The root has a Sorting Group at the trunk's foot, so the whole tree, crown included, sorts by where it stands,
+    /// and a <see cref="GridFootprint"/> of 2 base tiles. The giant trees also get a <see cref="GiantTree"/> with the
+    /// height of every join between trunk pieces, where tree houses go (see <see cref="TreeHouse"/>).
     /// </summary>
     public static class TallTreeBuilder
     {
@@ -20,6 +23,8 @@ namespace BellwortBurrow.EditorTools
         {
             public string Name, Base, Middle, KnotMiddle, Crown;
             public int MostMiddles;
+            public bool Giant;
+            public TreeFit Fit;
         }
 
         static readonly Kind[] Kinds =
@@ -28,8 +33,10 @@ namespace BellwortBurrow.EditorTools
             new Kind { Name = "brown_tree", Base = "brown_base", Middle = "brown_middle", KnotMiddle = "brown_middle_knot", Crown = "brown_crown", MostMiddles = 3 },
             new Kind { Name = "wiggle_tree", Base = "wiggle_base", Middle = "wiggle_middle", KnotMiddle = "wiggle_middle_knot", Crown = "wiggle_crown", MostMiddles = 3 },
             new Kind { Name = "stout_tree", Base = "stout_base", Middle = "stout_middle", KnotMiddle = "stout_middle_knot", Crown = "stout_crown", MostMiddles = 3 },
-            new Kind { Name = "giant_vine_home", Base = "giant_vine_home_base", Middle = "giant_vine_middle", Crown = "giant_vine_crown", MostMiddles = 2 },
-            new Kind { Name = "giant_brown_home", Base = "giant_brown_home_base", Middle = "giant_brown_middle", Crown = "giant_brown_crown", MostMiddles = 3 },
+            new Kind { Name = "giant_brown_tree", Base = "giant_brown_base", Middle = "giant_brown_middle", Crown = "giant_brown_crown", MostMiddles = 4, Giant = true },
+            new Kind { Name = "giant_wiggle_tree", Base = "giant_wiggle_base", Middle = "giant_wiggle_middle", KnotMiddle = "giant_wiggle_middle_knot", Crown = "giant_wiggle_crown", MostMiddles = 2, Giant = true },
+            new Kind { Name = "giant_stout_tree", Base = "giant_stout_base", Middle = "giant_stout_middle", KnotMiddle = "giant_stout_middle_knot", Crown = "giant_stout_crown", MostMiddles = 3, Giant = true },
+            new Kind { Name = "giant_vine_tree", Base = "giant_vine_base", Middle = "giant_vine_middle", Crown = "giant_vine_crown", MostMiddles = 2, Giant = true, Fit = TreeFit.Vine },
         };
 
         [MenuItem("Bellwort Burrow/Setup/Forest Steps/3. Stack Tall Trees", false, 203)]
@@ -65,14 +72,24 @@ namespace BellwortBurrow.EditorTools
                     var root = new GameObject($"{kind.Name}_{middles}");
                     root.AddComponent<SortingGroup>();
                     int order = 0;
+                    var joins = new List<float>();
                     float top = AddPiece(root, basePiece, 0f, order++);
+                    joins.Add(top);
                     for (int i = 0; i < middles; i++)
                     {
                         // Trunks with a knot show it second from the bottom (or alone on a one-middle tree).
                         bool useKnot = knot != null && (middles == 1 || i % 2 == 1);
                         top = AddPiece(root, useKnot ? knot : middle, top, order++);
+                        joins.Add(top);
                     }
                     AddPiece(root, crown, top, order);
+                    root.AddComponent<GridFootprint>().tilesWide = 2;
+                    if (kind.Giant)
+                    {
+                        var giant = root.AddComponent<GiantTree>();
+                        giant.fit = kind.Fit;
+                        giant.joins = joins.ToArray();
+                    }
 
                     PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                     Object.DestroyImmediate(root);

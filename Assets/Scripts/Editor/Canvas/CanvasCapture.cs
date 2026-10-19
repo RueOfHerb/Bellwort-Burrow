@@ -119,17 +119,18 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        /// <summary>The stacked tree home prefabs placed in the open scene (not the base pieces inside them).</summary>
+        /// <summary>The giant trees in the open scene that have a ground tree house on them.</summary>
         static List<(string name, Vector3 position)> TreeHomes()
         {
             var homes = new List<(string, Vector3)>();
-            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>())
+            foreach (var tree in UnityEngine.Object.FindObjectsByType<BellwortBurrow.Systems.World.GiantTree>())
             {
-                if (!PrefabUtility.IsOutermostPrefabInstanceRoot(t.gameObject)) continue;
-                var source = PrefabUtility.GetCorrespondingObjectFromSource(t.gameObject);
-                if (source == null) continue;
-                string n = source.name;
-                if (n.StartsWith("giant_") && n.Contains("_home_") && !n.EndsWith("_base")) homes.Add((n, t.position));
+                bool hasHouse = false;
+                foreach (var house in tree.GetComponentsInChildren<BellwortBurrow.Systems.World.TreeHouse>())
+                    if (house.part == BellwortBurrow.Systems.World.TreeHouse.Part.House) hasHouse = true;
+                if (!hasHouse) continue;
+                var source = PrefabUtility.GetCorrespondingObjectFromSource(tree.gameObject);
+                homes.Add((source != null ? source.name : tree.name, tree.transform.position));
             }
             homes.Sort((a, b) => a.Item2.x.CompareTo(b.Item2.x));
             return homes;

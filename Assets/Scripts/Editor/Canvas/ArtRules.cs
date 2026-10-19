@@ -34,9 +34,17 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        /// <summary>Cottages and the tree homes' lower house: every one has the sigil and sits on a contact shadow.</summary>
-        public static bool IsHome(string sliceName) =>
-            sliceName.Contains("_cottage_") || (sliceName.StartsWith("giant_") && sliceName.EndsWith("_home_base"));
+        /// <summary>Cottages and tree house upper rooms carry the sigil.</summary>
+        public static bool NeedsSigil(string sliceName) =>
+            sliceName.Contains("_cottage_") || sliceName.Contains("tree_room_");
+
+        /// <summary>Cottages and ground tree houses sit on a contact shadow.</summary>
+        public static bool NeedsShadow(string sliceName) =>
+            sliceName.Contains("_cottage_") || sliceName.Contains("tree_house_");
+
+        /// <summary>Upper rooms and stairs hang on a giant tree's trunk, so their pivot is at the join they sit on, not at feet.</summary>
+        public static bool OnTrunk(string sliceName) =>
+            sliceName.Contains("tree_room_") || sliceName.Contains("tree_stairs_");
 
         /// <summary>The pivot sits at the bottom middle, where the thing meets the ground (a base may reach a few pixels lower).</summary>
         public static bool PivotAtFeet(SheetSlice slice) =>
@@ -89,13 +97,12 @@ namespace BellwortBurrow.EditorTools
 
             foreach (var slice in slices)
             {
-                if (!tileSheet && !Floating.Contains(slice.Name) && !PivotAtFeet(slice))
+                if (!tileSheet && !Floating.Contains(slice.Name) && !OnTrunk(slice.Name) && !PivotAtFeet(slice))
                     problems.Add($"{sheetName}: {slice.Name} has its pivot away from its feet (set it to the bottom middle)");
 
-                if (!IsHome(slice.Name)) continue;
-                if (CountColor(glow, width, height, slice, SigilRed, false) < MinSigilPixels)
+                if (NeedsSigil(slice.Name) && CountColor(glow, width, height, slice, SigilRed, false) < MinSigilPixels)
                     problems.Add($"{sheetName}: {slice.Name} has no sigil on its Glow layer");
-                if (CountColor(art, width, height, slice, ShadowNavy, true) < MinShadowPixels)
+                if (NeedsShadow(slice.Name) && CountColor(art, width, height, slice, ShadowNavy, true) < MinShadowPixels)
                     problems.Add($"{sheetName}: {slice.Name} has no contact shadow at its base, so it will look like it hovers");
             }
             return problems;
