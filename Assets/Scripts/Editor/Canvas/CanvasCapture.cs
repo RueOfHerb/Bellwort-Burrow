@@ -14,18 +14,20 @@ namespace BellwortBurrow.EditorTools
     /// <summary>
     /// Bellwort Burrow > Canvas > Capture Shots: saves the images for the Bellwort Biome Palettes canvas into Captures/
     /// (next to Assets, ignored by git), straight from Unity and the sheets, so the canvas never shows redrawn art.
-    /// - Scene shots of the Forlorn Forest, rendered by a camera to a texture with Unity's own lighting and sorting:
-    ///   the opening screen (what the Main Camera sees), the whole hamlet, and two screens stacked above each tree home.
+    /// - Scene shots of every zone scene in Assets/Scenes/Zones, rendered by a camera to a texture with Unity's own lighting
+    ///   and sorting: the opening screen (what the Main Camera sees), the whole scene, and two screens stacked above each
+    ///   tree home when the scene has any. Each image starts with the scene's name, for example forlorn-forest-opening-screen.
     /// - Every sheet and character exactly as drawn: the Art layer, pixel for pixel.
     /// - captures.json: when, and the fingerprint of every source file the images came from, for the Sync Ledger.
     /// - art-rules.txt: what Check Art Rules found.
     /// Images are saved at 1 pixel per art pixel; the canvas scales them up with pixelated rendering.
-    /// It opens the forest scene to render it and puts your open scenes back afterwards. It never saves a scene.
+    /// It opens each zone scene to render it and puts your open scenes back afterwards. It never saves a scene.
+    /// A new zone scene is picked up on its own: save it in Assets/Scenes/Zones.
     /// </summary>
     public static class CanvasCapture
     {
         public const string Folder = "Captures";
-        const string ScenePath = "Assets/Scenes/Zones/ForlornForest.unity";
+        const string ZoneFolder = "Assets/Scenes/Zones";
         const int ScreenWidth = 480, ScreenHeight = 270;
         const int FeetAboveBottom = 60; // tree home frames: pixels of ground below the home's feet
         static readonly Color NightColor = new Color32(34, 23, 25, 255);
@@ -41,9 +43,10 @@ namespace BellwortBurrow.EditorTools
         {
             count = 0;
             if (!ArtLibrary.CheckArtInstalled()) return false;
-            if (!File.Exists(ScenePath))
+            var scenes = ZoneScenes();
+            if (scenes.Count == 0)
             {
-                Debug.LogError($"Bellwort Burrow: can't capture, {ScenePath} is missing.");
+                Debug.LogError($"Bellwort Burrow: can't capture, there are no scenes in {ZoneFolder}.");
                 return false;
             }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
@@ -57,9 +60,13 @@ namespace BellwortBurrow.EditorTools
                 EditorUtility.DisplayProgressBar("Bellwort Burrow", "Checking the art rules", 0.1f);
                 ArtRuleChecks.WriteReport(Path.Combine(Folder, "art-rules.txt"));
 
-                EditorUtility.DisplayProgressBar("Bellwort Burrow", "Rendering the Forlorn Forest", 0.3f);
-                EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-                CaptureScene(images);
+                for (int i = 0; i < scenes.Count; i++)
+                {
+                    string name = Path.GetFileNameWithoutExtension(scenes[i]);
+                    EditorUtility.DisplayProgressBar("Bellwort Burrow", $"Rendering {name}", 0.2f + 0.6f * i / scenes.Count);
+                    EditorSceneManager.OpenScene(scenes[i], OpenSceneMode.Single);
+                    CaptureScene(images, Slug(name));
+                }
 
                 EditorUtility.DisplayProgressBar("Bellwort Burrow", "Saving the sheets", 0.8f);
                 CaptureSheets(images);
@@ -77,7 +84,16 @@ namespace BellwortBurrow.EditorTools
 
         // ---------- Scene shots ----------
 
-        static void CaptureScene(List<string> images)
+        /// <summary>Every zone scene, in name order.</summary>
+        static List<string> ZoneScenes() => Directory.Exists(ZoneFolder)
+            ? Directory.GetFiles(ZoneFolder, "*.unity").Select(p => p.Replace('\\', '/')).OrderBy(p => p, StringComparer.Ordinal).ToList()
+            : new List<string>();
+
+        /// <summary>"ForlornForest" becomes "forlorn-forest", for the image names.</summary>
+        static string Slug(string sceneName) =>
+            System.Text.RegularExpressions.Regex.Replace(sceneName, "(?<=[a-z0-9])(?=[A-Z])", "-").ToLowerInvariant();
+
+        static void CaptureScene(List<string> images, string prefix)
         {
             var main = Camera.main;
             Color background = main != null ? main.backgroundColor : NightColor;
@@ -86,10 +102,10 @@ namespace BellwortBurrow.EditorTools
             float ppu = ArtLibrary.PixelsPerUnit;
 
             Vector2 start = main != null ? (Vector2)main.transform.position : ground.center;
-            images.Add(Shot("opening-screen", Snap(start - new Vector2(ScreenWidth, ScreenHeight) / (2 * ppu)), ScreenWidth, ScreenHeight, background, mask));
+            images.Add(Shot($"{prefix}-opening-screen", Snap(start - new Vector2(ScreenWidth, ScreenHeight) / (2 * ppu)), ScreenWidth, ScreenHeight, background, mask));
 
             int width = Mathf.RoundToInt(ground.width * ppu), height = Mathf.RoundToInt(ground.height * ppu);
-            images.Add(Shot("hamlet", Snap(ground.min), width, height, background, mask));
+            images.Add(Shot($"{prefix}-whole", Snap(ground.min), width, height, background, mask));
 
             var used = new HashSet<string>();
             foreach (var home in TreeHomes())
@@ -97,23 +113,24 @@ namespace BellwortBurrow.EditorTools
                 float w = ScreenWidth / ppu, h = 2 * ScreenHeight / ppu;
                 float x = Mathf.Clamp(home.position.x - w / 2, ground.xMin, Mathf.Max(ground.xMin, ground.xMax - w));
                 float y = Mathf.Clamp(home.position.y - FeetAboveBottom / ppu, ground.yMin, Mathf.Max(ground.yMin, ground.yMax - h));
-                string name = $"walking-north-{home.name}";
-                for (int i = 2; !used.Add(name); i++) name = $"walking-north-{home.name}-{i}";
+                string name = $"{prefix}-walking-north-{home.name}";
+                for (int i = 2; !used.Add(name); i++) name = $"{prefix}-walking-north-{home.name}-{i}";
                 images.Add(Shot(name, Snap(new Vector2(x, y)), ScreenWidth, 2 * ScreenHeight, background, mask));
             }
         }
 
-        /// <summary>The stacked tree home prefabs placed in the open scene (not the base pieces inside them).</summary>
+        /// <summary>The giant trees in the open scene that have a ground tree house on them.</summary>
         static List<(string name, Vector3 position)> TreeHomes()
         {
             var homes = new List<(string, Vector3)>();
-            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>())
+            foreach (var tree in UnityEngine.Object.FindObjectsByType<BellwortBurrow.Systems.World.GiantTree>())
             {
-                if (!PrefabUtility.IsOutermostPrefabInstanceRoot(t.gameObject)) continue;
-                var source = PrefabUtility.GetCorrespondingObjectFromSource(t.gameObject);
-                if (source == null) continue;
-                string n = source.name;
-                if (n.StartsWith("giant_") && n.Contains("_home_") && !n.EndsWith("_base")) homes.Add((n, t.position));
+                bool hasHouse = false;
+                foreach (var house in tree.GetComponentsInChildren<BellwortBurrow.Systems.World.TreeHouse>())
+                    if (house.part == BellwortBurrow.Systems.World.TreeHouse.Part.House) hasHouse = true;
+                if (!hasHouse) continue;
+                var source = PrefabUtility.GetCorrespondingObjectFromSource(tree.gameObject);
+                homes.Add((source != null ? source.name : tree.name, tree.transform.position));
             }
             homes.Sort((a, b) => a.Item2.x.CompareTo(b.Item2.x));
             return homes;
@@ -257,7 +274,7 @@ namespace BellwortBurrow.EditorTools
             Add(ArtLibrary.ArtRoot + "/Backdrops", "*.aseprite");
             Add(ArtLibrary.CharacterFolder, "*.aseprite");
             Add(ArtLibrary.ArtRoot + "/Palettes", "*.gpl");
-            Add("Assets/Scenes/Zones", "*.unity");
+            Add(ZoneFolder, "*.unity");
             sources.Sort(StringComparer.Ordinal);
             return sources;
         }

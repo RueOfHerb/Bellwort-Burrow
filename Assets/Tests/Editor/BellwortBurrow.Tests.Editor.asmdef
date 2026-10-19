@@ -3,6 +3,7 @@
     "rootNamespace": "BellwortBurrow.Tests.Editor",
     "references": [
         "BellwortBurrow.Editor",
+        "BellwortBurrow.Systems",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

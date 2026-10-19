@@ -10,7 +10,7 @@ namespace BellwortBurrow.Player
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerController : MonoBehaviour
     {
-        [SerializeField] float moveSpeed = 4f;
+        [SerializeField] float moveSpeed = 5f;
 
         Rigidbody2D body;
         InputAction move;

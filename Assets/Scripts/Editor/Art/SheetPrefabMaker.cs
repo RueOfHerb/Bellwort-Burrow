@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using BellwortBurrow.Systems.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -13,6 +14,10 @@ namespace BellwortBurrow.EditorTools
     /// - The sprite sits on a lit material, with its feet on the prefab's origin.
     /// - A matching "_glow" sprite becomes a Glow child on an unlit material, so windows, wisps and gem glints stay bright at night.
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
+    /// - Where it meets the map: a <see cref="GridFootprint"/> with the base tiles it is rooted on, so it snaps to the
+    ///   grid (see <see cref="Footprints"/>), or, for a tree house piece, a <see cref="TreeHouse"/> that puts it on a giant tree.
+    /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
+    ///   every scene it draws behind the characters and props and in front of the ground tiles, with nothing to set per scene.
     /// Run it from Bellwort Burrow > Setup, or right-click sheets and choose Bellwort Burrow > Make Prefabs From Sheet.
     /// Running it again rebuilds the prefabs in place, so scenes keep their links. A prefab you changed by hand is left
     /// alone (see <see cref="GeneratedAssets"/>).
@@ -20,6 +25,10 @@ namespace BellwortBurrow.EditorTools
     public static class SheetPrefabMaker
     {
         const string AssetsMenuPath = "Assets/Bellwort Burrow/Make Prefabs From Sheet";
+
+        /// <summary>Behind everything that stands in the world (order 0), in front of the ground tilemaps (-30 to -10).</summary>
+        public const int BackdropSortingOrder = -5;
+        const string BackdropFolder = ArtLibrary.ArtRoot + "/Backdrops/";
 
         [MenuItem(AssetsMenuPath)]
         static void MakeFromSelection()
@@ -72,6 +81,7 @@ namespace BellwortBurrow.EditorTools
         public static int Make(string sheetPath, List<string> kept)
         {
             var sprites = ArtLibrary.LoadSubAssets<Sprite>(sheetPath);
+            bool backdrop = sheetPath.Replace('\\', '/').StartsWith(BackdropFolder);
 
             // The sheet itself tells us where the glow sits, for the lights.
             AsepriteSheet sheet = null;
@@ -121,6 +131,35 @@ namespace BellwortBurrow.EditorTools
 
                     if (sheet != null && slices.TryGetValue(pair.Key, out var slice))
                         GlowLights.AddLights(root, GlowLights.Find(sheet, slice));
+                }
+
+                // Where it meets the map: whole base tiles it snaps to, or a tree house piece that goes on a giant tree.
+                if (Footprints.IsTreeHousePiece(pair.Key, out var part, out var fit))
+                {
+                    var house = root.AddComponent<TreeHouse>();
+                    house.part = part;
+                    house.fit = fit;
+                    // It sorts inside its tree's sorting group by plain renderer orders (see TreeHouse.SortingOrderFor).
+                    var houseGroup = root.GetComponent<SortingGroup>();
+                    if (houseGroup != null) Object.DestroyImmediate(houseGroup);
+                    int order = TreeHouse.SortingOrderFor(part);
+                    renderer.sortingOrder = order;
+                    foreach (Transform child in root.transform)
+                        if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = order + 1;
+                }
+                else
+                {
+                    SheetSlice? footSlice = slices.TryGetValue(pair.Key, out var found) ? found : (SheetSlice?)null;
+                    int tiles = Footprints.TilesWide(pair.Key, backdrop, sheet?.Art, sheet?.Width ?? 0, sheet?.Height ?? 0, footSlice);
+                    if (tiles > 0) root.AddComponent<GridFootprint>().tilesWide = tiles;
+                }
+
+                if (backdrop)
+                {
+                    // A flat painting far behind the walkable band: it never sorts by height against what stands in front of it.
+                    var group = root.GetComponent<SortingGroup>();
+                    if (group == null) group = root.AddComponent<SortingGroup>();
+                    group.sortingOrder = BackdropSortingOrder;
                 }
 
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);

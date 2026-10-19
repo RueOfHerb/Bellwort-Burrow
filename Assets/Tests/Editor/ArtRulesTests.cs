@@ -35,6 +35,32 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void PiecesThatGoTogetherStandStackedOnOneCenterLine()
+        {
+            var tree = new List<SheetSlice>
+            {
+                Slice("giant_oak_crown", 0, 0, 40, 30, 20, 30),
+                Slice("giant_oak_middle", 14, 30, 12, 10, 6, 10),
+                Slice("giant_oak_base", 10, 40, 20, 10, 10, 10),
+            };
+            Assert.IsEmpty(ArtRules.StandTogether(tree));
+            tree[1] = Slice("giant_oak_middle", 15, 30, 12, 10, 6, 10);
+            Assert.AreEqual(2, ArtRules.StandTogether(tree).Count, "off the center line, so off its base and under its crown");
+            tree[1] = Slice("giant_oak_middle", 14, 28, 12, 10, 6, 10);
+            Assert.AreEqual(2, ArtRules.StandTogether(tree).Count, "a gap below the crown and the middle not on the base");
+
+            var house = new List<SheetSlice>
+            {
+                Slice("tree_room_red", 0, 0, 20, 6, 10, 6),
+                Slice("tree_stairs_red", 0, 6, 20, 8, 10, 1),
+                Slice("tree_house_red", 0, 14, 20, 12, 10, 11),
+            };
+            Assert.IsEmpty(ArtRules.StandTogether(house));
+            house[0] = Slice("tree_room_red", 30, 0, 20, 6, 10, 6);
+            Assert.AreEqual(1, ArtRules.StandTogether(house).Count, "the room isn't on its stairs");
+        }
+
+        [Test]
         public void TouchingSlicesDontOverlapButCrossingOnesDo()
         {
             var touching = new List<SheetSlice> { Slice("a", 0, 0, 10, 10, 5, 10), Slice("b", 10, 0, 10, 10, 5, 10) };
