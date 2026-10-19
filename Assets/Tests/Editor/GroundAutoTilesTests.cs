@@ -1,67 +1,87 @@
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 using BellwortBurrow.EditorTools;
 
 namespace BellwortBurrow.Tests.Editor
 {
     public class GroundAutoTilesTests
     {
-        // Unity's 3x3 Auto Tile bits (y up): top row 64 128 256, middle 8 16 32, bottom 1 2 4.
+        // Neighbour bits, y up: top row 64 128 256, middle 8 16 32, bottom 1 2 4.
+        static readonly uint[] Around = { 1, 2, 4, 8, 32, 64, 128, 256 };
+        static readonly uint[] RuleOrder = { 64, 128, 256, 8, 32, 1, 2, 4 }; // NW, N, NE, W, E, SW, S, SE
+
+        static IEnumerable<uint> EveryNeighbourhood()
+        {
+            for (int i = 0; i < 256; i++)
+            {
+                uint around = 16;
+                for (int b = 0; b < 8; b++) if ((i & (1 << b)) != 0) around |= Around[b];
+                yield return around;
+            }
+        }
+
+        static HashSet<uint> TemplateLayouts()
+        {
+            var t = GroundAutoTiles.Template;
+            var have = new HashSet<uint>();
+            for (int row = 0; row < t.Length; row++)
+                for (int column = 0; column < t[row].Length; column++)
+                    if (t[row][column] == '#') have.Add(GroundAutoTiles.Layout(t, column, row));
+            return have;
+        }
+
         [TestCase(new[] { "...", ".#.", "..." }, 16u)]                        // on its own
         [TestCase(new[] { "###", "###", "###" }, 511u)]                       // surrounded
         [TestCase(new[] { "...", "###", "..." }, 8u + 16 + 32)]               // the middle of a one tile path
         [TestCase(new[] { "#.#", ".#.", "#.#" }, 16u)]                        // corners alone don't count
         [TestCase(new[] { "##.", "##.", "..." }, 64u + 128 + 8 + 16)]         // bottom right of a block
         [TestCase(new[] { ".#.", "###", ".#." }, 2u + 8 + 16 + 32 + 128)]    // a crossroads
-        public void Layout_ReadsNeighboursLikeUnity(string[] grid, uint expected)
+        [TestCase(new[] { "#..", "##.", ".##" }, 64u + 8 + 16 + 2 + 4)]      // a stair step: the corners past each end carry on
+        [TestCase(new[] { "...", "##.", ".##" }, 8u + 16 + 2 + 4)]           // the top of a staircase: it carries on only down
+        public void Layout_ReadsNeighbours(string[] grid, uint expected)
         {
             Assert.AreEqual(expected, GroundAutoTiles.Layout(grid, 1, 1));
         }
 
         [Test]
-        public void Template_HoldsAll47Layouts()
+        public void Template_HoldsEveryLayout()
         {
             var t = GroundAutoTiles.Template;
-            var seen = new HashSet<uint>();
             for (int row = 0; row < t.Length; row++)
-            {
                 Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == '#') seen.Add(GroundAutoTiles.Layout(t, column, row));
-            }
-            Assert.AreEqual(47, seen.Count);
-            Assert.IsTrue(seen.Contains(GroundAutoTiles.Full));
+
+            var every = new HashSet<uint>();
+            foreach (var around in EveryNeighbourhood()) every.Add(GroundAutoTiles.LayoutOf(around));
+            Assert.AreEqual(GroundAutoTiles.LayoutCount, every.Count);
+            var have = TemplateLayouts();
+            foreach (var layout in every) Assert.IsTrue(have.Contains(layout), $"the template lacks layout {layout}");
+            Assert.IsTrue(have.Contains(GroundAutoTiles.Full));
         }
 
         [Test]
-        public void Template_HasAPieceForEveryNeighbourhoodUnityCanSee()
+        public void RuleNeighbours_EveryNeighbourhoodMatchesOnlyItsOwnRule()
         {
-            // Unity folds the 256 ways a tile's neighbours can be painted into a layout with a private method;
-            // every one of those layouts must be in the template, or that spot would show the default piece.
-            var convert = typeof(AutoTile).GetMethod("Convert3x3Mask", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (convert == null) Assert.Ignore("Tilemap Extras no longer has Convert3x3Mask; check the layouts by hand.");
-            var tile = ScriptableObject.CreateInstance<AutoTile>();
-            try
-            {
-                var t = GroundAutoTiles.Template;
-                var have = new HashSet<uint>();
-                for (int row = 0; row < t.Length; row++)
-                    for (int column = 0; column < t[row].Length; column++)
-                        if (t[row][column] == '#') have.Add(GroundAutoTiles.Layout(t, column, row));
+            var rules = new List<(uint layout, int[] conditions)>();
+            foreach (var layout in TemplateLayouts()) rules.Add((layout, GroundAutoTiles.RuleNeighbours(layout)));
 
-                uint[] around = { 1, 2, 4, 8, 32, 64, 128, 256 };
-                for (int i = 0; i < 256; i++)
+            foreach (var around in EveryNeighbourhood())
+            {
+                var matched = new List<uint>();
+                foreach (var (layout, conditions) in rules)
                 {
-                    uint mask = 16;
-                    for (int b = 0; b < 8; b++) if ((i & (1 << b)) != 0) mask |= around[b];
-                    uint layout = (uint)convert.Invoke(tile, new object[] { mask });
-                    Assert.IsTrue(have.Contains(layout), $"neighbourhood {mask} becomes layout {layout}, which the template lacks");
+                    bool ok = true;
+                    for (int i = 0; i < 8 && ok; i++)
+                    {
+                        bool painted = (around & RuleOrder[i]) != 0;
+                        if (conditions[i] == RuleTile.TilingRuleOutput.Neighbor.This) ok = painted;
+                        else if (conditions[i] == RuleTile.TilingRuleOutput.Neighbor.NotThis) ok = !painted;
+                    }
+                    if (ok) matched.Add(layout);
                 }
+                Assert.AreEqual(1, matched.Count, $"neighbourhood {around} matches {matched.Count} rules");
+                Assert.AreEqual(GroundAutoTiles.LayoutOf(around), matched[0]);
             }
-            finally { Object.DestroyImmediate(tile); }
         }
 
         [Test]
