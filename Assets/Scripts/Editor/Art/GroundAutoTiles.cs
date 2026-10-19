@@ -7,32 +7,52 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// Makes the ground tiles you paint with, in Assets/Art/Tiles/, from forest_ground.aseprite:
-    /// - Forest Path and Forest Deer Trail: Unity Auto Tiles with a 2x2 mask. Paint where the path goes (at least two
-    ///   tiles wide) and Unity picks the edge pieces; the edges fall halfway into the outer tiles, so three painted rows
-    ///   make a path two tiles wide.
+    /// - Forest Path and Forest Deer Trail: Unity Auto Tiles with a 3x3 mask. Paint where the path goes, any width
+    ///   down to one tile, and Unity picks the piece for each tile from which of its eight neighbours are painted.
+    ///   The edge sits a couple of pixels inside the painted tiles, so a path painted one tile wide is a narrow
+    ///   footpath and every tile you paint shows.
     /// - Forest Grass: a Rule Tile that picks one of the grass variations at random.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change which piece goes with which
     /// layout. Running this again refreshes them in place, so scenes painted with them keep working; a tile you changed
     /// by hand is left alone (see <see cref="GeneratedAssets"/>).
     ///
-    /// A 2x2 sheet slice holds 16 pieces named "slice_00" to "slice_15", numbered by which corners of the piece are
-    /// filled: top left 1, top right 2, bottom left 4, bottom right 8 (00 is empty, 15 is full).
+    /// Every ground set is painted together on the sheet as one patch, from <see cref="Template"/>: each painted ('#')
+    /// cell of the slice is a piece, and its layout is read from its neighbours in the template, exactly as Unity
+    /// reads them in a scene. The template holds all 47 layouts; a layout that comes up more than once gives Unity
+    /// several pieces to pick from at random. tools/ground_sets.py reads this template too when it draws a set.
     /// </summary>
     public static class GroundAutoTiles
     {
         public const string Folder = ArtLibrary.ArtRoot + "/Tiles";
         const string SheetName = "forest_ground";
 
-        sealed class CornerSet
+        /// <summary>
+        /// The patch every 3x3 ground set is painted from, top row first: '#' is a painted tile, '.' is not. Outside
+        /// it counts as not painted. Change it only together with the sheet's slices (and run ground_sets.py again).
+        /// </summary>
+        public static readonly string[] Template =
         {
-            public string Asset, Pieces;
-            public string[] Fills; // extra full pieces, picked at random with piece 15
+            ".#..#.#.##.#.###.",
+            "##.######.###.###",
+            ".####.########.#.",
+            "#########.##.####",
+            ".#.####.######.#.",
+            "####.#...#.##...#",
+        };
+
+        /// <summary>The layout every tile surrounded by painted tiles has (all nine bits).</summary>
+        public const uint Full = 511;
+
+        sealed class GroundSet
+        {
+            public string Asset, Slice;
+            public string[] Fills; // extra full pieces, picked at random alongside the template's full piece
         }
 
-        static readonly CornerSet[] CornerSets =
+        static readonly GroundSet[] Sets =
         {
-            new CornerSet { Asset = "Forest Path", Pieces = "path_edge", Fills = new[] { "path_fill_00", "path_fill_01" } },
-            new CornerSet { Asset = "Forest Deer Trail", Pieces = "trail_edge", Fills = new[] { "trail_00", "trail_01" } },
+            new GroundSet { Asset = "Forest Path", Slice = "path_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
+            new GroundSet { Asset = "Forest Deer Trail", Slice = "trail_set", Fills = new[] { "trail_00", "trail_01" } },
         };
 
         // Perlin noise favors the middle of the list, so the plainest grass goes in the middle.
@@ -59,11 +79,11 @@ namespace BellwortBurrow.EditorTools
 
             var written = new List<string>();
             var kept = new List<string>();
-            foreach (var set in CornerSets)
+            foreach (var set in Sets)
             {
                 string path = $"{Folder}/{set.Asset}.asset";
                 if (!GeneratedAssets.CanOverwrite(path)) kept.Add(path);
-                else if (MakeCornerTile(set, sprites, path)) written.Add(path);
+                else if (MakeSetTile(set, sprites, path)) written.Add(path);
             }
             string grassPath = $"{Folder}/Forest Grass.asset";
             if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
@@ -79,46 +99,87 @@ namespace BellwortBurrow.EditorTools
         public static IEnumerable<string> TilePaths()
         {
             yield return $"{Folder}/Forest Grass.asset";
-            foreach (var set in CornerSets) yield return $"{Folder}/{set.Asset}.asset";
+            foreach (var set in Sets) yield return $"{Folder}/{set.Asset}.asset";
         }
 
-        static bool MakeCornerTile(CornerSet set, Dictionary<string, Sprite> sprites, string path)
+        /// <summary>
+        /// The 3x3 layout of a painted template cell, as Unity's Auto Tile counts it (y up): top row 64 128 256,
+        /// middle 8 16 32, bottom 1 2 4, with 16 the tile itself. A corner counts only when both sides next to it
+        /// are painted, the same way Unity folds the 256 possible neighbourhoods down to 47 layouts.
+        /// </summary>
+        internal static uint Layout(string[] template, int column, int row)
         {
-            var fills = new List<Sprite>();
-            foreach (var name in set.Fills)
-                if (sprites.TryGetValue(name, out var fill)) fills.Add(fill);
-            if (sprites.TryGetValue($"{set.Pieces}_15", out var full)) fills.Insert(0, full);
-            if (fills.Count == 0)
+            bool Painted(int dx, int dy)
             {
-                Debug.LogWarning($"Bellwort Burrow: skipped {set.Asset}; {SheetName} has no {set.Pieces}_15 or fill pieces.");
+                int x = column + dx, y = row + dy;
+                return y >= 0 && y < template.Length && x >= 0 && x < template[y].Length && template[y][x] == '#';
+            }
+            bool n = Painted(0, -1), s = Painted(0, 1), w = Painted(-1, 0), e = Painted(1, 0);
+            uint mask = 16;
+            if (n) mask |= 128;
+            if (s) mask |= 2;
+            if (w) mask |= 8;
+            if (e) mask |= 32;
+            if (n && w && Painted(-1, -1)) mask |= 64;
+            if (n && e && Painted(1, -1)) mask |= 256;
+            if (s && w && Painted(-1, 1)) mask |= 1;
+            if (s && e && Painted(1, 1)) mask |= 4;
+            return mask;
+        }
+
+        /// <summary>Sprite name of a template cell: the importer numbers a slice's tiles row by row from the top left.</summary>
+        internal static string PieceName(string slice, int column, int row, string[] template)
+        {
+            int columns = template[0].Length, count = columns * template.Length;
+            string digits = new string('0', Mathf.Max(2, count.ToString().Length));
+            return slice + "_" + (row * columns + column).ToString(digits);
+        }
+
+        static bool MakeSetTile(GroundSet set, Dictionary<string, Sprite> sprites, string path)
+        {
+            // Which pieces go with which layout, in template order.
+            var masks = new List<uint>();
+            var choices = new List<List<Sprite>>();
+            int missing = 0;
+            for (int row = 0; row < Template.Length; row++)
+            {
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName(set.Slice, column, row, Template), out var piece)) { missing++; continue; }
+                    uint mask = Layout(Template, column, row);
+                    int at = masks.IndexOf(mask);
+                    if (at < 0) { masks.Add(mask); choices.Add(new List<Sprite>()); at = masks.Count - 1; }
+                    choices[at].Add(piece);
+                }
+            }
+            int full = masks.IndexOf(Full);
+            if (full < 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {set.Asset}; {SheetName} has no {set.Slice} slice painted from the template.");
                 return false;
             }
+            foreach (var name in set.Fills)
+                if (sprites.TryGetValue(name, out var fill)) choices[full].Add(fill);
+            if (missing > 0)
+                Debug.LogWarning($"Bellwort Burrow: {set.Asset}: {missing} painted cells of the template have no piece in {set.Slice}. " +
+                                 "Is the slice 17 by 6 tiles and painted from GroundAutoTiles.Template?");
+            if (masks.Count < 47)
+                Debug.LogWarning($"Bellwort Burrow: {set.Asset} has {masks.Count} of the 47 layouts; tiles with a missing layout show the full piece.");
 
             var tile = AssetDatabase.LoadAssetAtPath<AutoTile>(path);
             bool isNew = tile == null;
             if (isNew) tile = ScriptableObject.CreateInstance<AutoTile>();
 
-            tile.m_DefaultSprite = fills[0];
+            tile.m_DefaultSprite = choices[full][0];
             tile.m_DefaultColliderType = Tile.ColliderType.None;
-            tile.m_MaskType = AutoTile.AutoTileMaskType.Mask_2x2;
+            tile.m_MaskType = AutoTile.AutoTileMaskType.Mask_3x3;
             tile.random = true;
-            tile.m_TextureList = new List<Texture2D> { fills[0].texture };
+            tile.m_TextureList = new List<Texture2D> { choices[full][0].texture };
             tile.m_TextureScaleList = new List<float> { 1f };
             if (isNew) AssetDatabase.CreateAsset(tile, path);
 
-            // Which pieces go with which layout. This is what clicking the masks in the Auto Tile inspector stores.
-            var masks = new List<uint>();
-            var choices = new List<List<Sprite>>();
-            for (int corners = 1; corners <= 15; corners++)
-            {
-                var pieces = new List<Sprite>();
-                if (corners == 15) pieces.AddRange(fills);
-                else if (sprites.TryGetValue($"{set.Pieces}_{corners:00}", out var piece)) pieces.Add(piece);
-                if (pieces.Count == 0) continue;
-                masks.Add(ToAutoTileMask(corners));
-                choices.Add(pieces);
-            }
-
+            // This is what clicking the masks in the Auto Tile inspector stores.
             var serialized = new SerializedObject(tile);
             var keys = serialized.FindProperty("m_AutoTileDictionary.keyData");
             var values = serialized.FindProperty("m_AutoTileDictionary.valueData");
@@ -147,20 +208,6 @@ namespace BellwortBurrow.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(tile);
             return true;
-        }
-
-        /// <summary>
-        /// Sheet corners (top left 1, top right 2, bottom left 4, bottom right 8) to the Auto Tile's 2x2 mask
-        /// (bottom left 1, bottom right 2, top left 4, top right 8).
-        /// </summary>
-        internal static uint ToAutoTileMask(int corners)
-        {
-            uint mask = 0;
-            if ((corners & 1) != 0) mask |= 4;
-            if ((corners & 2) != 0) mask |= 8;
-            if ((corners & 4) != 0) mask |= 1;
-            if ((corners & 8) != 0) mask |= 2;
-            return mask;
         }
 
         static bool MakeGrassTile(Dictionary<string, Sprite> sprites, string path)
