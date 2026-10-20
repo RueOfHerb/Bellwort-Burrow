@@ -60,15 +60,15 @@ namespace BellwortBurrow.Tests.EditMode
         {
             var appearance = MakePlayer(out var body, out _, out _);
             var palette = ScriptableObject.CreateInstance<RampPalette>();
-            palette.SetRamps(RampPalette.Parse("Columns: 2\n10 10 10\tFox fur Shadow\n20 20 20\tFox fur Base\n200 200 200\tWhite fur Shadow\n250 250 250\tWhite fur Base\n"));
+            palette.SetRamps(RampPalette.Parse("Columns: 2\n10 10 10\tOrange Shadow\n20 20 20\tOrange Base\n200 200 200\tWhite Shadow\n250 250 250\tWhite Base\n"));
             var fox = ScriptableObject.CreateInstance<CritterKind>();
-            fox.ConfigureForTesting("fox", "Fox", body.sprite, "Fox fur", "", "");
+            fox.ConfigureForTesting("fox", "Fox", body.sprite, "Orange", "", "");
             var material = new Material(Shader.Find("Sprites/Default"));
             var catalog = ScriptableObject.CreateInstance<CritterCatalog>();
             catalog.ConfigureForTesting(new[] { fox }, palette, material);
             appearance.ConfigureForTesting(catalog, body);
 
-            appearance.Apply(new PlayerProfile { critterKind = "fox", furColor = "white-fur" });
+            appearance.Apply(new PlayerProfile { critterKind = "fox", furColor = "white" });
 
             Assert.AreSame(material, body.sharedMaterial);
             Assert.AreEqual(2, appearance.SwappedColors);

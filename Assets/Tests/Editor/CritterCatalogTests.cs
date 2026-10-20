@@ -1,7 +1,10 @@
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 using BellwortBurrow.Data;
+using BellwortBurrow.EditorTools;
 
 namespace BellwortBurrow.Tests.Editor
 {
@@ -43,6 +46,54 @@ namespace BellwortBurrow.Tests.Editor
                 Assert.IsNotNull(catalog.Palette.Find(kind.MarkingsRamp), $"{kind.Id}'s markings ramp '{kind.MarkingsRamp}' isn't in the characters palette.");
                 Assert.IsNotNull(catalog.Palette.Find(kind.EyeRamp), $"{kind.Id}'s eye ramp '{kind.EyeRamp}' isn't in the characters palette.");
             }
+        }
+
+        /// <summary>
+        /// Every coat sits on the same steps of its fur ramp: Base is the main color and Shadow the outline, so a color
+        /// picked in the creator looks the same on every critter (Jocelyn, Oct 19).
+        /// </summary>
+        [Test]
+        public void EveryCoat_SitsOnTheSameSteps()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CatalogPath);
+            Assert.IsNotNull(catalog, $"{CatalogPath} is missing.");
+            if (catalog.Palette == null) Assert.Ignore("No characters palette here. Install the art package to check it.");
+
+            int checkedKinds = 0;
+            foreach (var kind in catalog.Kinds.Where(kind => kind != null && kind.Sprite != null))
+            {
+                string file = AssetDatabase.GetAssetPath(kind.Sprite);
+                var fur = catalog.Palette.Find(kind.FurRamp);
+                if (!file.EndsWith(".aseprite") || fur == null) continue;
+                var sheet = AsepriteSheet.Read(File.ReadAllBytes(file));
+
+                var inside = new int[fur.colors.Length];
+                var edge = new int[fur.colors.Length];
+                for (int y = 0; y < sheet.Height; y++)
+                for (int x = 0; x < sheet.Width; x++)
+                {
+                    if (!Opaque(sheet, x, y)) continue;
+                    int i = (y * sheet.Width + x) * 4;
+                    int step = System.Array.IndexOf(fur.colors, new Color32(sheet.Art[i], sheet.Art[i + 1], sheet.Art[i + 2], 255));
+                    if (step < 0) continue;
+                    bool onEdge = !Opaque(sheet, x - 1, y) || !Opaque(sheet, x + 1, y) || !Opaque(sheet, x, y - 1) || !Opaque(sheet, x, y + 1);
+                    if (onEdge) edge[step]++; else inside[step]++;
+                }
+                Assert.AreEqual(2, MostUsed(inside), $"{kind.Id}'s coat should be mostly {fur.name} Base inside its outline, the main color of every coat.");
+                Assert.AreEqual(0, MostUsed(edge), $"{kind.Id}'s outline should be {fur.name} Shadow, like every coat.");
+                checkedKinds++;
+            }
+            if (checkedKinds == 0) Assert.Ignore("No player files here. Install the art package to check them.");
+        }
+
+        static bool Opaque(AsepriteSheet sheet, int x, int y) =>
+            x >= 0 && y >= 0 && x < sheet.Width && y < sheet.Height && sheet.Art[(y * sheet.Width + x) * 4 + 3] > 0;
+
+        static int MostUsed(int[] counts)
+        {
+            int best = 0;
+            for (int i = 1; i < counts.Length; i++) if (counts[i] > counts[best]) best = i;
+            return best;
         }
 
         [Test]

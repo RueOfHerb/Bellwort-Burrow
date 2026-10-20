@@ -17,7 +17,7 @@ namespace BellwortBurrow.Data
 
     /// <summary>
     /// A palette of ramps, read from a .gpl file: one ramp per row of Columns colors, named by what its colors' names
-    /// share ("Fox fur Shadow" to "Fox fur Highlight" make "Fox fur"). Unity imports every .gpl as one of these, so a
+    /// share ("Blue grey Shadow" to "Blue grey Highlight" make "Blue grey"). Unity imports every .gpl as one of these, so a
     /// palette saved from Aseprite reaches the game on its own. The characters palette drives player recoloring (sys-6).
     /// </summary>
     public class RampPalette : ScriptableObject
@@ -28,7 +28,7 @@ namespace BellwortBurrow.Data
 
         public IReadOnlyList<Ramp> Ramps => ramps;
 
-        /// <summary>The ramp with this name ("Fox fur") or id ("fox-fur"). Null for Natural, empty or unknown.</summary>
+        /// <summary>The ramp with this name ("Blue grey") or id ("blue-grey"). Null for Natural, empty or unknown.</summary>
         public Ramp Find(string nameOrId)
         {
             string id = Slug(nameOrId);

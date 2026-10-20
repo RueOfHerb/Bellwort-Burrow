@@ -15,6 +15,6 @@ MonoBehaviour:
   id: mouse
   displayName: Mouse
   sprite: {fileID: -4262046722880800367, guid: f5fdc122f0b5dff4ab8938938411fceb, type: 3}
-  furRamp: Mouse fur
-  markingsRamp: Mouse markings
+  furRamp: Blue grey
+  markingsRamp: Light grey
   eyeRamp: Eyes

@@ -26,7 +26,7 @@ namespace BellwortBurrow.Tests.EditMode
             var options = ScriptableObject.CreateInstance<CharacterOptions>();
             options.ConfigureForTesting(new[]
             {
-                new AppearanceOptionList { part = AppearancePart.FurColor, options = { new AppearanceOption("fox-fur", "Fox fur"), new AppearanceOption("white-fur", "White fur") } },
+                new AppearanceOptionList { part = AppearancePart.FurColor, options = { new AppearanceOption("orange", "Orange"), new AppearanceOption("white", "White") } },
                 new AppearanceOptionList { part = AppearancePart.Face, options = { new AppearanceOption("default", "Default") } }
             });
             return options;
@@ -87,7 +87,7 @@ namespace BellwortBurrow.Tests.EditMode
             var profile = AppearanceChoices.Defaults(MakeCatalog("mouse", "fox"), MakeOptions());
 
             Assert.AreEqual("mouse", profile.critterKind);
-            Assert.AreEqual("fox-fur", profile.furColor);
+            Assert.AreEqual("orange", profile.furColor);
             Assert.AreEqual("default", profile.face);
             Assert.AreEqual("", profile.belt);
             Assert.AreEqual("", profile.name);
@@ -97,7 +97,7 @@ namespace BellwortBurrow.Tests.EditMode
         public void ProfileService_SavesAndLoadsTheProfileAsJson()
         {
             var saved = new PlayerProfileService();
-            saved.Set(new PlayerProfile { name = "Bryn", critterKind = "raccoon", furColor = "black-fur", shirt = "tunic" });
+            saved.Set(new PlayerProfile { name = "Bryn", critterKind = "raccoon", furColor = "black", shirt = "tunic" });
 
             var loaded = new PlayerProfileService();
             PlayerProfile announced = null;
@@ -107,7 +107,7 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.IsTrue(loaded.HasProfile);
             Assert.AreEqual("Bryn", loaded.Profile.name);
             Assert.AreEqual("raccoon", loaded.Profile.critterKind);
-            Assert.AreEqual("black-fur", loaded.Profile.furColor);
+            Assert.AreEqual("black", loaded.Profile.furColor);
             Assert.AreEqual("tunic", announced.shirt);
         }
 

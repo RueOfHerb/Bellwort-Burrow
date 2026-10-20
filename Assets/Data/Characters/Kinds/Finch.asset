@@ -15,6 +15,6 @@ MonoBehaviour:
   id: finch
   displayName: Finch
   sprite: {fileID: 3069053655962640461, guid: a0fbb39051a5445a9fc36303a88d87c2, type: 3}
-  furRamp: Finch feathers
-  markingsRamp: Black fur
+  furRamp: Yellow
+  markingsRamp: Black
   eyeRamp: Eyes

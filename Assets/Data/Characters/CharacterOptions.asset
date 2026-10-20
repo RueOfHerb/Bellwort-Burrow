@@ -17,50 +17,54 @@ MonoBehaviour:
     options:
     - id: natural
       displayName: Natural
-    - id: mouse-fur
-      displayName: Mouse fur
-    - id: rabbit-fur
-      displayName: Rabbit fur
-    - id: fox-fur
-      displayName: Fox fur
-    - id: raccoon-fur
-      displayName: Raccoon fur
-    - id: finch-feathers
-      displayName: Finch feathers
-    - id: white-fur
-      displayName: White fur
-    - id: black-fur
-      displayName: Black fur
-    - id: mouse-markings
-      displayName: Mouse markings
-    - id: rabbit-markings
-      displayName: Rabbit markings
-    - id: raccoon-markings
-      displayName: Raccoon markings
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: yellow
+      displayName: Yellow
+    - id: orange
+      displayName: Orange
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
   - part: 2
     options:
     - id: natural
       displayName: Natural
-    - id: white-fur
-      displayName: White fur
-    - id: black-fur
-      displayName: Black fur
-    - id: mouse-markings
-      displayName: Mouse markings
-    - id: rabbit-markings
-      displayName: Rabbit markings
-    - id: raccoon-markings
-      displayName: Raccoon markings
-    - id: mouse-fur
-      displayName: Mouse fur
-    - id: rabbit-fur
-      displayName: Rabbit fur
-    - id: fox-fur
-      displayName: Fox fur
-    - id: raccoon-fur
-      displayName: Raccoon fur
-    - id: finch-feathers
-      displayName: Finch feathers
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: yellow
+      displayName: Yellow
+    - id: orange
+      displayName: Orange
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
   - part: 3
     options:
     - id: natural

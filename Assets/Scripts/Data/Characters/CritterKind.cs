@@ -16,7 +16,7 @@ namespace BellwortBurrow.Data
         [SerializeField] Sprite sprite;
 
         [Header("Recoloring (sys-6)")]
-        [Tooltip("The ramp in characters.gpl this kind's fur is drawn in. The Fur color row swaps it.")]
+        [Tooltip("The color ramp in characters.gpl this kind's fur is drawn in, on the same steps as every coat: Shadow outline, Dark shading, Base main color, Light lit side. The Fur color row swaps it.")]
         [SerializeField] string furRamp;
         [Tooltip("The ramp its markings are drawn in. Nothing else in the file may use it. The Markings color row swaps it.")]
         [SerializeField] string markingsRamp;

@@ -15,6 +15,6 @@ MonoBehaviour:
   id: raccoon
   displayName: Raccoon
   sprite: {fileID: 8394445628322377104, guid: 60ae1122ef124cfbb4f348ccc296c145, type: 3}
-  furRamp: Raccoon fur
-  markingsRamp: Raccoon markings
+  furRamp: Grey
+  markingsRamp: Dark grey
   eyeRamp: Eyes
