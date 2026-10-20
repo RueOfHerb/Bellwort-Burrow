@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Zones/ThicketPath.unity
     guid: cadf4e4083821354db9317d7be43e7ca
   - enabled: 1
+    path: Assets/Scenes/Zones/BellwortApproach.unity
+    guid: e9fe9a1a1e456ba4aa6e6d4dd9996dc0
+  - enabled: 1
     path: Assets/Scenes/Zones/BellwortBurrow.unity
     guid: a23515bb8c5273b4ca404882f6a949c9
   m_configObjects:
