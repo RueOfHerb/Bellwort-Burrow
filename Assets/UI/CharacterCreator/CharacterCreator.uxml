@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:bb="BellwortBurrow.UI" editor-extension-mode="False">
+    <Style src="../Bellwort.uss" />
+    <Style src="CharacterCreator.uss" />
+    <ui:VisualElement name="creator" class="creator">
+        <ui:VisualElement name="stage" picking-mode="Ignore" class="creator__stage" />
+        <ui:VisualElement name="panel" class="creator__panel">
+            <ui:Label text="Create your critter" name="title" class="creator__title" />
+            <ui:VisualElement name="name-row" class="creator__name-row">
+                <ui:Label text="Name" class="option-stepper__label" />
+                <ui:TextField name="name" max-length="20" class="creator__name" />
+            </ui:VisualElement>
+            <bb:OptionStepper name="critter-kind" part="CritterKind" label="Critter Type" />
+            <bb:OptionStepper name="fur-color" part="FurColor" label="Fur color" />
+            <bb:OptionStepper name="markings-color" part="MarkingsColor" label="Markings color" />
+            <bb:OptionStepper name="eye-color" part="EyeColor" label="Eye color" />
+            <bb:OptionStepper name="face" part="Face" label="Face" />
+            <bb:OptionStepper name="shirt" part="Shirt" label="Shirt" />
+            <bb:OptionStepper name="trousers" part="Trousers" label="Trousers" />
+            <bb:OptionStepper name="belt" part="Belt" label="Belt" />
+            <ui:Label text="Only Critter Type changes your look for now." name="hint" class="creator__hint" />
+            <ui:Button text="Begin" name="begin" class="creator__begin" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
