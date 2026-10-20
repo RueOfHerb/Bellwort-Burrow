@@ -54,13 +54,15 @@ Everything in a scene is placed by hand; only backgrounds and skyboxes are excep
 - **Objects:** drag prefabs from `Assets/Art/Prefabs` into the scene. Their pivot is at their feet, so they sort correctly as you move them up and down.
 - **Ground:** open **Window > 2D > Tile Palette**, pick the **Forest Ground** palette, choose the layer you want in the **Active Target** dropdown (the layers icon at the top of the Tile Palette window; clicking the layer under Ground in the Hierarchy does the same), and paint. The top row of the palette holds the tiles you paint with:
   - **Forest Grass** on the **Grass** layer picks a random grass variation for each tile.
-  - **Forest Deer Trail** on the **Deer Trails** layer and **Forest Path** on the **Paths** layer are Unity Auto Tiles (2x2 mask). Paint where the trail or path goes and Unity picks the edge pieces. Paint them at least two tiles wide: the edges land halfway into the outer tiles, so three painted rows make a path two tiles wide.
+  - **Forest Deer Trail** on the **Deer Trails** layer and **Forest Path** on the **Paths** layer are Rule Tiles. Paint where the trail or path goes and Unity picks the edge pieces, one tile wide or wider, and a painted staircase reads as a diagonal.
+  - **Forest Path Half**, also on the **Paths** layer, is half a tile of path that turns toward the full path beside it, so a path can end half way into a tile or be half a tile wider.
+  - To paint pieces by hand, use the shapes under the top row: Forest Path on the left and the deer trail beside it, each laid out as ready-made shapes (a wide path, one tile wide paths, a wide path narrowing, diagonals, inner corners, bends into slopes), with the other looks of each piece in runs under them. Drag a box around a shape, or any part of one, to stamp it. Grass, tufts, crop circles and the half path pieces sit to the right.
   - Tufts and crop circles go on the **Tufts and Crop Circles** layer. Drag a box around a whole crop circle in the palette to stamp it in one click.
 - Save the scene, and it's in git.
 
 No tool in the project rebuilds a scene. The one-off script that first laid out the Forlorn Forest is kept in `tmp/`, and it checks the scene's fingerprint before doing anything: if the scene changed since that script built it, it refuses (the Forlorn Forest has changed, so it will never be rebuilt). The setup tools also never write over a prefab, tile or palette you changed by hand: each thing they make is stamped with a fingerprint, and if it changed since, they leave it alone and list it in the console. To let setup rebuild something you changed (throwing your changes away), select it or its folder and choose **Assets > Bellwort Burrow > Let Setup Rebuild Selected**.
 
-For future tilesets, use Unity's own tiles from 2D Tilemap Extras: a 2x2 Auto Tile (16 pieces) for organic areas painted two or more tiles wide, like paths, water or meadows, and a 3x3 Auto Tile (47 pieces) for anything that has to work one tile at a time, like farmland or fences.
+For future tilesets, use Unity's own tiles from 2D Tilemap Extras: every ground set is a 3x3 Rule Tile with 83 layouts (the 47 of a 3x3 Auto Tile plus 36 slope pieces), painted on the sheet from `GroundAutoTiles.Template`, for paths and trails as much as farmland or fences.
 
 ## Working on art
 
