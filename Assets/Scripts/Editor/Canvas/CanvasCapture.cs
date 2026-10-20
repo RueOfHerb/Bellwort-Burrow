@@ -99,6 +99,9 @@ namespace BellwortBurrow.EditorTools
 
         static void CaptureScene(List<string> images, string prefix)
         {
+            // Sorting groups only take their order when the player loop runs, which it doesn't in the editor while Unity
+            // is in the background: without this, a scene opened just now renders as if it had none (backdrops sort by height).
+            SortingGroup.UpdateAllSortingGroups();
             var main = Camera.main;
             Color background = main != null ? main.backgroundColor : NightColor;
             int mask = main != null ? main.cullingMask : ~0;
