@@ -18,6 +18,7 @@ namespace BellwortBurrow.EditorTools
     ///   grid (see <see cref="Footprints"/>), or, for a tree house piece, a <see cref="TreeHouse"/> that puts it on a giant tree.
     /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
     ///   every scene it draws behind the characters and props and in front of the ground tiles, with nothing to set per scene.
+    ///   Its glow stays bright but casts no lights: a far painting should not light the ground you walk on.
     /// Run it from Bellwort Burrow > Setup, or right-click sheets and choose Bellwort Burrow > Make Prefabs From Sheet.
     /// Running it again rebuilds the prefabs in place, so scenes keep their links. A prefab you changed by hand is left
     /// alone (see <see cref="GeneratedAssets"/>).
@@ -129,7 +130,8 @@ namespace BellwortBurrow.EditorTools
                     // Keeps the glow drawn with its art when sprites sort by height.
                     root.AddComponent<SortingGroup>();
 
-                    if (sheet != null && slices.TryGetValue(pair.Key, out var slice))
+                    // A backdrop is a painting far off: its windows and moon glow, but light nothing in the walkable band.
+                    if (!backdrop && sheet != null && slices.TryGetValue(pair.Key, out var slice))
                         GlowLights.AddLights(root, GlowLights.Find(sheet, slice));
                 }
 
