@@ -240,6 +240,9 @@ namespace BellwortBurrow.EditorTools
         const string CritterCatalogPath = "Assets/Data/Characters/CritterCatalog.asset";
         const int CellGap = 4;
 
+        // The kind the wardrobe picture is dressed on (Jocelyn, Oct 20).
+        const string WardrobeKindId = "fox";
+
         /// <summary>
         /// The critters put together the way Player Appearance does in the game, in natural colors: the player file, then
         /// the bottom (unless the top covers it), top, waist, neck, the face (no mouth for a kind with a beak) and the ears
@@ -248,7 +251,8 @@ namespace BellwortBurrow.EditorTools
         /// - player-&lt;kind&gt;.png: each kind as a new character (the first face and the first piece of every slot);
         /// - players-outfits.png: a row per kind, and columns that step through every slot's pieces together, so each
         ///   piece shows on every kind;
-        /// - wardrobe.png: a row per slot, every piece on the first kind, with the first piece of every other slot.
+        /// - wardrobe.png: a row per slot, every piece on the fox (Jocelyn, Oct 20; the first kind if there's no fox), with
+        ///   the first piece of every other slot.
         /// </summary>
         static void CapturePlayerFaces(List<string> images)
         {
@@ -302,14 +306,15 @@ namespace BellwortBurrow.EditorTools
                 outfitCells.Add(Enumerable.Range(0, columns).Select(i => Cell(k, faceList[0], Outfit(list => list.Count == 0 ? null : list[i % list.Count]))).ToList());
             SaveGrid(images, "players-outfits.png", outfitCells, width, height);
 
-            // Every piece on the first kind, one slot to a row.
+            // Every piece on the fox, one slot to a row.
+            int model = Math.Max(0, kinds.FindIndex(kind => kind.Id == WardrobeKindId));
             var wardrobeCells = new List<List<byte[]>>();
             foreach (var slot in slots)
             {
                 wardrobeCells.Add(wardrobe.For(slot).Select(piece =>
                 {
                     var outfit = new Dictionary<ClothingSlot, ClothingPiece>(firsts) { [slot] = piece };
-                    return Cell(0, faceList[0], outfit);
+                    return Cell(model, faceList[0], outfit);
                 }).ToList());
             }
             SaveGrid(images, "wardrobe.png", wardrobeCells, width, height);
