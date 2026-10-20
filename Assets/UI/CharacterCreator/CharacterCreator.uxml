@@ -1,33 +1,32 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:bb="BellwortBurrow.UI" editor-extension-mode="False">
-    <Style src="../Bellwort.uss" />
-    <Style src="CharacterCreator.uss" />
+    <Style src="project://database/Assets/UI/Bellwort.uss?fileID=7433441132597879392&amp;guid=ae573b2ef7677e84f8c3fe914c3d18ad&amp;type=3#Bellwort"/>
+    <Style src="project://database/Assets/UI/CharacterCreator/CharacterCreator.uss?fileID=7433441132597879392&amp;guid=e97f3ec3ff010ba4aabf8d59869b0c96&amp;type=3#CharacterCreator"/>
     <ui:VisualElement name="creator" class="creator">
-        <ui:VisualElement name="stage" picking-mode="Ignore" class="creator__stage" />
+        <ui:VisualElement name="stage" picking-mode="Ignore" class="creator__stage"/>
         <ui:VisualElement name="panel" class="creator__panel">
-            <ui:Label text="Create your critter" name="title" class="creator__title" />
+            <ui:Label text="Create your critter" name="title" class="creator__title"/>
             <ui:VisualElement name="name-row" class="creator__name-row">
-                <ui:Label text="Name" class="option-stepper__label" />
-                <ui:TextField name="name" max-length="20" class="creator__name" />
+                <ui:Label text="Name" class="option-stepper__label"/>
+                <ui:TextField name="name" max-length="20" class="creator__name"/>
             </ui:VisualElement>
             <ui:ScrollView name="rows" mode="Vertical" horizontal-scroller-visibility="Hidden" class="creator__rows">
-                <ui:Label text="Critter" class="creator__section" />
-                <bb:OptionStepper name="critter-kind" part="CritterKind" label="Critter Type" />
-                <bb:OptionStepper name="fur-color" part="FurColor" label="Fur color" />
-                <bb:OptionStepper name="markings-color" part="MarkingsColor" label="Markings color" />
-                <bb:OptionStepper name="eye-color" part="EyeColor" label="Eye color" />
-                <bb:OptionStepper name="face" part="Face" label="Face" />
-                <ui:Label text="Clothes" class="creator__section" />
-                <bb:OptionStepper name="top" part="Top" label="Top" />
-                <bb:OptionStepper name="top-color" part="TopColor" label="Top color" />
-                <bb:OptionStepper name="bottom" part="Bottom" label="Bottom" />
-                <bb:OptionStepper name="bottom-color" part="BottomColor" label="Bottom color" />
-                <ui:Label text="Accessories" class="creator__section" />
-                <bb:OptionStepper name="neck" part="Neck" label="Neck" />
-                <bb:OptionStepper name="waist" part="Waist" label="Waist" />
-                <bb:OptionStepper name="ears" part="Ears" label="Ears" />
+                <ui:Label text="Critter" class="creator__section"/>
+                <bb:OptionStepper name="critter-kind" part="CritterKind" label="Critter Type"/>
+                <bb:OptionStepper name="fur-color" part="FurColor" label="Fur color"/>
+                <bb:OptionStepper name="markings-color" part="MarkingsColor" label="Markings color"/>
+                <bb:OptionStepper name="eye-color" part="EyeColor" label="Eye color"/>
+                <bb:OptionStepper name="face" part="Face" label="Face"/>
+                <ui:Label text="Clothes" class="creator__section"/>
+                <bb:OptionStepper name="top" part="Top" label="Top"/>
+                <bb:OptionStepper name="top-color" part="TopColor" label="Top color"/>
+                <bb:OptionStepper name="bottom" part="Bottom" label="Bottom"/>
+                <bb:OptionStepper name="bottom-color" part="BottomColor" label="Bottom color"/>
+                <ui:Label text="Accessories" class="creator__section"/>
+                <bb:OptionStepper name="neck" part="Neck" label="Neck"/>
+                <bb:OptionStepper name="waist" part="Waist" label="Waist"/>
+                <bb:OptionStepper name="ears" part="Ears" label="Ears"/>
             </ui:ScrollView>
-            <ui:Label text="Anyone can wear anything." name="hint" class="creator__hint" />
-            <ui:Button text="Begin" name="begin" class="creator__begin" />
+            <ui:Button text="Begin" name="begin" class="creator__begin"/>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
