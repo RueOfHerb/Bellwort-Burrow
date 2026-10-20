@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -122,7 +123,7 @@ namespace BellwortBurrow.Tests.Editor
             Assert.IsNotNull(options, "CharacterOptions.asset is missing.");
             if (catalog == null || catalog.Palette == null) Assert.Ignore("No characters palette here. Install the art package to check it.");
 
-            foreach (var part in new[] { AppearancePart.FurColor, AppearancePart.MarkingsColor, AppearancePart.EyeColor })
+            foreach (var part in new[] { AppearancePart.FurColor, AppearancePart.MarkingsColor, AppearancePart.EyeColor, AppearancePart.TopColor, AppearancePart.BottomColor })
             {
                 var choices = options.For(part);
                 Assert.AreEqual(RampSwap.Natural, choices[0].id, $"{part} should start on Natural.");
@@ -148,6 +149,40 @@ namespace BellwortBurrow.Tests.Editor
                 Assert.IsNotNull(face.eyes, $"Face {face.id} has no eyes sprite.");
                 Assert.IsNotNull(face.mouth, $"Face {face.id} has no mouth sprite.");
                 Assert.AreEqual(face.eyes.name + "_mouth", face.mouth.name, $"Face {face.id}'s mouth should be its own face_<name>_mouth slice.");
+            }
+        }
+
+        [Test]
+        public void TheWardrobe_StartsInTodaysClothes_AndEveryPieceIsDrawn()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CatalogPath);
+            Assert.IsNotNull(catalog, $"{CatalogPath} is missing.");
+            var wardrobe = catalog.Wardrobe;
+            Assert.IsNotNull(wardrobe, "The Critter Catalog has no Wardrobe.");
+            if (wardrobe.Pieces.All(piece => piece == null || piece.sprite == null)) Assert.Ignore("No clothes here. Install the art package to check them.");
+
+            var firsts = new Dictionary<ClothingSlot, string>
+            {
+                [ClothingSlot.Top] = "tunic", [ClothingSlot.Bottom] = "trousers", [ClothingSlot.Waist] = "belt",
+                [ClothingSlot.Neck] = Wardrobe.NoneId, [ClothingSlot.Ears] = Wardrobe.NoneId,
+            };
+            foreach (var pair in firsts)
+                Assert.AreEqual(pair.Value, wardrobe.For(pair.Key).FirstOrDefault()?.id, $"A new character wears {pair.Value} in {pair.Key}, so it comes first.");
+
+            foreach (ClothingSlot slot in System.Enum.GetValues(typeof(ClothingSlot)))
+            {
+                var pieces = wardrobe.For(slot);
+                Assert.AreEqual(pieces.Count, pieces.Select(piece => piece.id).Distinct().Count(), $"Two {slot} pieces share an id.");
+                foreach (var piece in pieces)
+                {
+                    if (piece.id == Wardrobe.NoneId) { Assert.IsNull(piece.sprite, "None draws nothing."); continue; }
+                    Assert.IsNotNull(piece.sprite, $"{slot} {piece.id} has no sprite.");
+                    Assert.IsTrue(piece.sprite.name.StartsWith(slot.ToString().ToLowerInvariant() + "_"), $"{slot} {piece.id} shows {piece.sprite.name}, a slice from another row.");
+                    if (slot is ClothingSlot.Top or ClothingSlot.Bottom)
+                        Assert.IsNotNull(catalog.Palette != null ? catalog.Palette.Find(piece.ramp) : null, $"{slot} {piece.id} has to name the ramp it's drawn in, so its color row can swap it.");
+                    else
+                        Assert.IsTrue(string.IsNullOrEmpty(piece.ramp), $"{slot} {piece.id}: accessories keep their colors.");
+                }
             }
         }
 

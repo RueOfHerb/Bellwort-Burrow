@@ -75,7 +75,7 @@ namespace BellwortBurrow.Tests.EditMode
         [Test]
         public void Step_WithNoChoices_KeepsTheId()
         {
-            var choices = AppearanceChoices.For(AppearancePart.Belt, null, MakeOptions());
+            var choices = AppearanceChoices.For(AppearancePart.Waist, null, MakeOptions());
 
             Assert.AreEqual("", AppearanceChoices.Step(choices, "", 1));
             Assert.AreEqual(AppearanceChoices.NoChoice, AppearanceChoices.DisplayName(choices, ""));
@@ -89,8 +89,44 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.AreEqual("mouse", profile.critterKind);
             Assert.AreEqual("orange", profile.furColor);
             Assert.AreEqual("default", profile.face);
-            Assert.AreEqual("", profile.belt);
+            Assert.AreEqual("", profile.waist);
             Assert.AreEqual("", profile.name);
+        }
+
+        [Test]
+        public void ClothingChoices_ComeFromTheWardrobe_ASlotAtATime()
+        {
+            var wardrobe = ScriptableObject.CreateInstance<Wardrobe>();
+            wardrobe.ConfigureForTesting(new[]
+            {
+                new ClothingPiece("tunic", "Tunic", ClothingSlot.Top, null, "Blue"),
+                new ClothingPiece("dress", "Dress", ClothingSlot.Top, null, "Purple", coversBottom: true),
+                new ClothingPiece("trousers", "Trousers", ClothingSlot.Bottom, null, "Taupe"),
+                new ClothingPiece("none", "None", ClothingSlot.Ears, null),
+                new ClothingPiece("studs", "Studs", ClothingSlot.Ears, null, paired: true),
+            }, new Vector2Int(5, 9));
+            var catalog = MakeCatalog("mouse");
+            catalog.ConfigureForTesting(catalog.Kinds, wardrobe: wardrobe);
+
+            var tops = AppearanceChoices.For(AppearancePart.Top, catalog, MakeOptions());
+            var defaults = AppearanceChoices.Defaults(catalog, MakeOptions());
+
+            Assert.AreEqual(new[] { "tunic", "dress" }, new[] { tops[0].id, tops[1].id });
+            Assert.AreEqual("Dress", tops[1].displayName);
+            Assert.AreEqual("tunic", defaults.top, "a new character wears each slot's first piece");
+            Assert.AreEqual("none", defaults.ears);
+            Assert.AreEqual("studs", wardrobe.Find(ClothingSlot.Ears, "studs").id);
+            Assert.AreEqual("tunic", wardrobe.Find(ClothingSlot.Top, "tie").id, "an id from another slot gets the slot's first piece");
+        }
+
+        [Test]
+        public void OldSaves_KeepTheirShirtTrousersAndBeltAsTopBottomAndWaist()
+        {
+            var loaded = JsonUtility.FromJson<PlayerProfile>("{\"shirt\":\"tunic\",\"trousers\":\"trousers\",\"belt\":\"belt\"}");
+
+            Assert.AreEqual("tunic", loaded.top);
+            Assert.AreEqual("trousers", loaded.bottom);
+            Assert.AreEqual("belt", loaded.waist);
         }
 
         [Test]
@@ -115,7 +151,7 @@ namespace BellwortBurrow.Tests.EditMode
         public void ProfileService_SavesAndLoadsTheProfileAsJson()
         {
             var saved = new PlayerProfileService();
-            saved.Set(new PlayerProfile { name = "Bryn", critterKind = "raccoon", furColor = "black", shirt = "tunic" });
+            saved.Set(new PlayerProfile { name = "Bryn", critterKind = "raccoon", furColor = "black", top = "tunic" });
 
             var loaded = new PlayerProfileService();
             PlayerProfile announced = null;
@@ -126,7 +162,7 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.AreEqual("Bryn", loaded.Profile.name);
             Assert.AreEqual("raccoon", loaded.Profile.critterKind);
             Assert.AreEqual("black", loaded.Profile.furColor);
-            Assert.AreEqual("tunic", announced.shirt);
+            Assert.AreEqual("tunic", announced.top);
         }
 
         [Test]

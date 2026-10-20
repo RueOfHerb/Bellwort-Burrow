@@ -24,12 +24,17 @@ namespace BellwortBurrow.Data
         [Tooltip("The ramp the faces' eyes are drawn in. On a Player they take its eye color, or the kind's own.")]
         [SerializeField] string faceEyeRamp = "Eyes";
 
+        [Header("Clothes")]
+        [Tooltip("Every top, bottom and accessory, in the creator's order (Wardrobe.asset).")]
+        [SerializeField] Wardrobe wardrobe;
+
         public IReadOnlyList<CritterKind> Kinds => kinds;
         public RampPalette Palette => palette;
         public Material RecolorMaterial => recolorMaterial;
         public IReadOnlyList<FaceStyle> Faces => faces;
         public string FaceFurRamp => faceFurRamp;
         public string FaceEyeRamp => faceEyeRamp;
+        public Wardrobe Wardrobe => wardrobe;
 
         public CritterKind Find(string id)
         {
@@ -55,7 +60,7 @@ namespace BellwortBurrow.Data
         }
 
         internal void ConfigureForTesting(IEnumerable<CritterKind> kinds, RampPalette palette = null, Material recolorMaterial = null,
-            IEnumerable<FaceStyle> faces = null, string faceFurRamp = "Grey", string faceEyeRamp = "Eyes")
+            IEnumerable<FaceStyle> faces = null, string faceFurRamp = "Grey", string faceEyeRamp = "Eyes", Wardrobe wardrobe = null)
         {
             this.kinds = new List<CritterKind>(kinds);
             this.palette = palette;
@@ -63,6 +68,7 @@ namespace BellwortBurrow.Data
             this.faces = faces != null ? new List<FaceStyle>(faces) : new List<FaceStyle>();
             this.faceFurRamp = faceFurRamp;
             this.faceEyeRamp = faceEyeRamp;
+            this.wardrobe = wardrobe;
         }
     }
 }

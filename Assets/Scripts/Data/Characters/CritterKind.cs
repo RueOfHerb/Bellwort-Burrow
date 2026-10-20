@@ -25,6 +25,13 @@ namespace BellwortBurrow.Data
         [Tooltip("Off for a kind whose beak sits where a mouth would be, like the finch.")]
         [SerializeField] bool showsMouth = true;
 
+        [Header("Clothes")]
+        [Tooltip("Off for a kind with no ears to wear earrings on, like the finch: the Ears row has nothing to show.")]
+        [SerializeField] bool hasEars = true;
+        [Tooltip("The pixel (from the top left of the player frame) on its left ear's outer edge where earrings sit. The " +
+                 "Wardrobe's Ear Anchor is where they're drawn; the difference moves them here, mirrored for the right ear.")]
+        [SerializeField] Vector2Int earAnchor = new(5, 9);
+
         public string Id => id;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? id : displayName;
         public Sprite Sprite => sprite;
@@ -32,8 +39,11 @@ namespace BellwortBurrow.Data
         public string MarkingsRamp => markingsRamp;
         public string EyeRamp => eyeRamp;
         public bool ShowsMouth => showsMouth;
+        public bool HasEars => hasEars;
+        public Vector2Int EarAnchor => earAnchor;
 
-        internal void ConfigureForTesting(string id, string displayName, Sprite sprite, string furRamp = "", string markingsRamp = "", string eyeRamp = "", bool showsMouth = true)
+        internal void ConfigureForTesting(string id, string displayName, Sprite sprite, string furRamp = "", string markingsRamp = "", string eyeRamp = "", bool showsMouth = true,
+            bool hasEars = true, Vector2Int? earAnchor = null)
         {
             this.id = id;
             this.displayName = displayName;
@@ -42,6 +52,8 @@ namespace BellwortBurrow.Data
             this.markingsRamp = markingsRamp;
             this.eyeRamp = eyeRamp;
             this.showsMouth = showsMouth;
+            this.hasEars = hasEars;
+            this.earAnchor = earAnchor ?? new Vector2Int(5, 9);
         }
     }
 }

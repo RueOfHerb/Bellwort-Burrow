@@ -9,24 +9,34 @@ namespace BellwortBurrow.Player
 {
     /// <summary>
     /// Dresses the Player from the player profile (sys-6): when the scene starts, and again whenever the profile changes.
-    /// The critter kind picks the body sprite, and the face puts its eyes and brows and its mouth on top (a kind with a
-    /// beak shows no mouth). Fur, markings and eye colors recolor them in engine: every part wears the catalog's ramp swap
-    /// material, and ramps are swapped shade for shade for the ones the profile picked (Natural keeps the kind's own).
-    /// The face's brows take the fur color and its eyes the eye color. The parts sit in a Sorting Group, so the Player
-    /// sorts as one picture. With no profile yet (pressing Play right in a zone) the Player stays as placed.
-    /// Outfits come with the new character art.
+    /// The critter kind picks the body sprite. Over it, back to front: the bottom (unless the top is a full outfit that
+    /// covers it), the top, the waist and neck accessories, the face (eyes and brows, and the mouth unless the kind has a
+    /// beak), then the earrings, moved to the kind's ears (none on a kind without ears). Each part is its own renderer under
+    /// the body, all in a Sorting Group, so the Player sorts as one picture.
+    /// Every part wears the catalog's ramp swap material. The body swaps fur and markings, the face takes the fur color
+    /// on its brows and the eye color on its eyes, and the top and bottom take their own color rows; Natural keeps what's
+    /// drawn. With no profile yet (pressing Play right in a zone) the Player stays as placed.
     /// </summary>
     public class PlayerAppearance : MonoBehaviour
     {
         [SerializeField] CritterCatalog catalog;
         [Tooltip("The SpriteRenderer that shows the critter: the player file's prefab under the Player.")]
         [SerializeField] SpriteRenderer body;
-        [Tooltip("Shows the face's eyes and brows over the body. One is made under the body when this is empty.")]
+        [Header("Parts over the body (made under it when empty)")]
         [SerializeField] SpriteRenderer face;
-        [Tooltip("Shows the face's mouth over the body. One is made under the body when this is empty.")]
         [SerializeField] SpriteRenderer mouth;
+        [SerializeField] SpriteRenderer bottom;
+        [SerializeField] SpriteRenderer top;
+        [SerializeField] SpriteRenderer waist;
+        [SerializeField] SpriteRenderer neck;
+        [SerializeField] SpriteRenderer earLeft;
+        [SerializeField] SpriteRenderer earRight;
         [Tooltip("Off for a preview that something else dresses, like the character creator's.")]
         [SerializeField] bool followProfile = true;
+
+        // Sorting order of each part above the body, inside the Player's Sorting Group.
+        const int BottomOrder = 1, TopOrder = 2, WaistOrder = 3, NeckOrder = 4, FaceOrder = 5, EarOrder = 6;
+        const float PixelsPerUnit = 16f;
 
         static readonly int SwapFromId = Shader.PropertyToID("_SwapFrom");
         static readonly int SwapToId = Shader.PropertyToID("_SwapTo");
@@ -45,14 +55,29 @@ namespace BellwortBurrow.Player
         /// <summary>The face showing now, or null if nothing has been applied yet or the catalog has no faces.</summary>
         public FaceStyle Face { get; private set; }
 
+        /// <summary>The pieces showing now in each slot; null for none, or a bottom under a full outfit.</summary>
+        public ClothingPiece Top { get; private set; }
+        public ClothingPiece Bottom { get; private set; }
+        public ClothingPiece Neck { get; private set; }
+        public ClothingPiece Waist { get; private set; }
+        public ClothingPiece Ears { get; private set; }
+
         /// <summary>How many colors the last Apply swapped on the body (five per recolored part).</summary>
         public int SwappedColors { get; private set; }
 
         /// <summary>How many colors the last Apply swapped on the face (its brows and its eyes).</summary>
         public int FaceSwappedColors { get; private set; }
 
+        /// <summary>How many colors the last Apply swapped on the top and on the bottom.</summary>
+        public int TopSwappedColors { get; private set; }
+        public int BottomSwappedColors { get; private set; }
+
         internal SpriteRenderer FaceRenderer => face;
         internal SpriteRenderer MouthRenderer => mouth;
+        internal SpriteRenderer TopRenderer => top;
+        internal SpriteRenderer BottomRenderer => bottom;
+        internal SpriteRenderer EarLeftRenderer => earLeft;
+        internal SpriteRenderer EarRightRenderer => earRight;
 
         void Start()
         {
@@ -81,53 +106,103 @@ namespace BellwortBurrow.Player
             Face = catalog.FindFace(profile.face);
             if (Face != null)
             {
-                MakeParts();
+                face = Part(face, "Face", FaceOrder);
+                mouth = Part(mouth, "Mouth", FaceOrder);
                 face.sprite = Face.eyes;
                 mouth.sprite = kind.ShowsMouth ? Face.mouth : null;
             }
+
+            var wardrobe = catalog.Wardrobe;
+            if (wardrobe != null) Dress(wardrobe, kind, profile);
+
+            MakeSortingGroup();
             Recolor(kind, profile);
         }
 
-        void MakeParts()
+        void Dress(Wardrobe wardrobe, CritterKind kind, PlayerProfile profile)
         {
-            if (face == null) face = MakePart("Face");
-            if (mouth == null) mouth = MakePart("Mouth");
-            if (!TryGetComponent<SortingGroup>(out _))
-            {
-                var group = gameObject.AddComponent<SortingGroup>();
-                group.sortingLayerID = body.sortingLayerID;
-                group.sortingOrder = body.sortingOrder;
-            }
+            Top = Piece(wardrobe.Find(ClothingSlot.Top, profile.top));
+            Bottom = Top != null && Top.coversBottom ? null : Piece(wardrobe.Find(ClothingSlot.Bottom, profile.bottom));
+            Waist = Piece(wardrobe.Find(ClothingSlot.Waist, profile.waist));
+            Neck = Piece(wardrobe.Find(ClothingSlot.Neck, profile.neck));
+            Ears = kind.HasEars ? Piece(wardrobe.Find(ClothingSlot.Ears, profile.ears)) : null;
+
+            bottom = Show(bottom, "Bottom", BottomOrder, Bottom);
+            top = Show(top, "Top", TopOrder, Top);
+            waist = Show(waist, "Waist", WaistOrder, Waist);
+            neck = Show(neck, "Neck", NeckOrder, Neck);
+
+            // Earrings are drawn on the left ear at the wardrobe's anchor; move them to this kind's, and mirror a pair.
+            var shift = kind.EarAnchor - wardrobe.EarAnchor;
+            earLeft = Show(earLeft, "Ear Left", EarOrder, Ears);
+            earLeft.flipX = false;
+            earLeft.transform.localPosition = new Vector3(shift.x, -shift.y, 0f) / PixelsPerUnit;
+            earRight = Show(earRight, "Ear Right", EarOrder, Ears != null && Ears.paired ? Ears : null);
+            earRight.flipX = true;
+            earRight.transform.localPosition = new Vector3(-shift.x, -shift.y, 0f) / PixelsPerUnit;
         }
 
-        SpriteRenderer MakePart(string partName)
+        /// <summary>A piece to draw, or null for None (no sprite).</summary>
+        static ClothingPiece Piece(ClothingPiece piece) => piece != null && piece.sprite != null ? piece : null;
+
+        SpriteRenderer Show(SpriteRenderer renderer, string partName, int order, ClothingPiece piece)
         {
-            var part = new GameObject(partName).AddComponent<SpriteRenderer>();
-            part.transform.SetParent(body.transform, false);
-            part.sortingLayerID = body.sortingLayerID;
-            part.sortingOrder = body.sortingOrder + 1;
-            part.sharedMaterial = body.sharedMaterial;
-            return part;
+            renderer = Part(renderer, partName, order);
+            renderer.sprite = piece?.sprite;
+            return renderer;
+        }
+
+        SpriteRenderer Part(SpriteRenderer renderer, string partName, int order)
+        {
+            if (renderer == null)
+            {
+                renderer = new GameObject(partName).AddComponent<SpriteRenderer>();
+                renderer.transform.SetParent(body.transform, false);
+                renderer.sharedMaterial = body.sharedMaterial;
+            }
+            renderer.sortingLayerID = body.sortingLayerID;
+            renderer.sortingOrder = body.sortingOrder + order;
+            return renderer;
+        }
+
+        void MakeSortingGroup()
+        {
+            if (TryGetComponent<SortingGroup>(out _)) return;
+            var group = gameObject.AddComponent<SortingGroup>();
+            group.sortingLayerID = body.sortingLayerID;
+            group.sortingOrder = body.sortingOrder;
         }
 
         void Recolor(CritterKind kind, PlayerProfile profile)
         {
             var material = catalog.RecolorMaterial;
             if (material == null) return;
+            var palette = catalog.Palette;
 
-            SwappedColors = RampSwap.Build(kind, profile, catalog.Palette, swapFrom, swapTo);
+            SwappedColors = RampSwap.Build(kind, profile, palette, swapFrom, swapTo);
             SetSwaps(body, material);
 
             if (face != null)
             {
-                FaceSwappedColors = RampSwap.BuildFace(kind, profile, catalog.Palette, catalog.FaceFurRamp, catalog.FaceEyeRamp, swapFrom, swapTo);
+                FaceSwappedColors = RampSwap.BuildFace(kind, profile, palette, catalog.FaceFurRamp, catalog.FaceEyeRamp, swapFrom, swapTo);
                 SetSwaps(face, material);
             }
-            if (mouth != null)
+            if (top != null)
             {
-                swapFrom.Clear();
-                swapTo.Clear();
-                SetSwaps(mouth, material);
+                TopSwappedColors = RampSwap.BuildCloth(Top, profile.topColor, palette, swapFrom, swapTo);
+                SetSwaps(top, material);
+            }
+            if (bottom != null)
+            {
+                BottomSwappedColors = RampSwap.BuildCloth(Bottom, profile.bottomColor, palette, swapFrom, swapTo);
+                SetSwaps(bottom, material);
+            }
+
+            swapFrom.Clear();
+            swapTo.Clear();
+            foreach (var part in new[] { mouth, waist, neck, earLeft, earRight })
+            {
+                if (part != null) SetSwaps(part, material);
             }
         }
 

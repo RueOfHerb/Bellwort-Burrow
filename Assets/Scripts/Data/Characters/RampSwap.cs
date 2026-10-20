@@ -46,6 +46,20 @@ namespace BellwortBurrow.Data
             return from.Count;
         }
 
+        /// <summary>
+        /// A top's or bottom's swaps: the ramp it's drawn in to the color picked for it. Natural, an empty or unknown pick,
+        /// or a piece that keeps its colors swaps nothing. Fills from and to, and returns how many.
+        /// </summary>
+        public static int BuildCloth(ClothingPiece piece, string chosen, RampPalette palette, List<Color32> from, List<Color32> to)
+        {
+            from.Clear();
+            to.Clear();
+            if (piece == null || palette == null || string.IsNullOrEmpty(piece.ramp)) return 0;
+
+            Pair(palette, piece.ramp, chosen, from, to);
+            return from.Count;
+        }
+
         /// <summary>The ramp a part shows: the one picked, or the kind's own for Natural, empty or unknown.</summary>
         static string Showing(RampPalette palette, string chosen, string own) => palette.Find(chosen) != null ? chosen : own;
 

@@ -11,7 +11,9 @@ namespace BellwortBurrow.UI
 {
     /// <summary>
     /// The character creator (ui-2). Fills every Option Stepper in the creator's UXML from the catalogs, keeps a draft
-    /// profile, shows it on the preview critter, and on Begin starts a new game and loads the first scene.
+    /// profile, shows it on the preview critter, and on Begin starts a new game and loads the first scene. The rows sit in
+    /// a scroll view in sections (Critter, Clothes, Accessories), and the focused row scrolls into view. A row with
+    /// nothing to change rests: the bottom under a full outfit, and earrings on a kind without ears.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class CharacterCreatorView : MonoBehaviour
@@ -27,6 +29,7 @@ namespace BellwortBurrow.UI
         PlayerProfile draft;
         TextField nameField;
         Button beginButton;
+        ScrollView scroll;
 
         void OnEnable()
         {
@@ -35,13 +38,12 @@ namespace BellwortBurrow.UI
 
             nameField = root.Q<TextField>("name");
             beginButton = root.Q<Button>("begin");
+            scroll = root.Q<ScrollView>("rows");
+            scroll?.RegisterCallback<FocusInEvent>(ScrollToFocused);
             root.Query<OptionStepper>().ToList(rows);
 
-            foreach (var row in rows)
-            {
-                row.Stepped += OnStepped;
-                ShowValue(row);
-            }
+            foreach (var row in rows) row.Stepped += OnStepped;
+            ShowValues();
 
             if (nameField != null)
             {
@@ -60,23 +62,61 @@ namespace BellwortBurrow.UI
         {
             foreach (var row in rows) row.Stepped -= OnStepped;
             rows.Clear();
+            scroll?.UnregisterCallback<FocusInEvent>(ScrollToFocused);
             nameField?.UnregisterValueChangedCallback(OnNameChanged);
             if (beginButton != null) beginButton.clicked -= Begin;
         }
 
         void OnStepped(OptionStepper row, int steps)
         {
+            if (Resting(row.Part) != null) return;
+
             var choices = AppearanceChoices.For(row.Part, critterCatalog, characterOptions);
             draft.Set(row.Part, AppearanceChoices.Step(choices, draft.Get(row.Part), steps));
-            ShowValue(row);
+            ShowValues();
             if (preview != null) preview.Apply(draft);
+        }
+
+        void ShowValues()
+        {
+            foreach (var row in rows) ShowValue(row);
         }
 
         void ShowValue(OptionStepper row)
         {
+            string resting = Resting(row.Part);
+            if (resting != null)
+            {
+                row.ValueText = resting;
+                row.SetSingleChoice(true);
+                return;
+            }
             var choices = AppearanceChoices.For(row.Part, critterCatalog, characterOptions);
             row.ValueText = AppearanceChoices.DisplayName(choices, draft.Get(row.Part));
             row.SetSingleChoice(choices.Count <= 1);
+        }
+
+        /// <summary>What a row shows while there's nothing for it to change, or null when it can change.</summary>
+        string Resting(AppearancePart part)
+        {
+            var wardrobe = critterCatalog != null ? critterCatalog.Wardrobe : null;
+            if (wardrobe == null) return null;
+            if (part is AppearancePart.Bottom or AppearancePart.BottomColor)
+            {
+                var top = wardrobe.Find(ClothingSlot.Top, draft.top);
+                if (top != null && top.coversBottom) return "Under the " + top.DisplayName.ToLowerInvariant();
+            }
+            if (part == AppearancePart.Ears)
+            {
+                var kind = critterCatalog.Find(draft.critterKind);
+                if (kind != null && !kind.HasEars) return "No ears";
+            }
+            return null;
+        }
+
+        void ScrollToFocused(FocusInEvent evt)
+        {
+            if (evt.target is VisualElement element && scroll.contentContainer.Contains(element)) scroll.ScrollTo(element);
         }
 
         void OnNameChanged(ChangeEvent<string> evt)

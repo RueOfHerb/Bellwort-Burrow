@@ -19,3 +19,5 @@ MonoBehaviour:
   markingsRamp: Cream
   eyeRamp: Eyes
   showsMouth: 1
+  hasEars: 1
+  earAnchor: {x: 8, y: 9}

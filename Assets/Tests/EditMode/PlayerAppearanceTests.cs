@@ -114,6 +114,52 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void Apply_DressesThePlayer_AFullOutfitCoversTheBottom_AndEarringsFindTheEars()
+        {
+            var appearance = MakePlayer(out var body, out var foxSprite, out _);
+            var fox = ScriptableObject.CreateInstance<CritterKind>();
+            fox.ConfigureForTesting("fox", "Fox", foxSprite, earAnchor: new Vector2Int(5, 9));
+            var mouse = ScriptableObject.CreateInstance<CritterKind>();
+            mouse.ConfigureForTesting("mouse", "Mouse", MakeSprite("mouse"), earAnchor: new Vector2Int(3, 11));
+            var finch = ScriptableObject.CreateInstance<CritterKind>();
+            finch.ConfigureForTesting("finch", "Finch", MakeSprite("finch"), hasEars: false);
+            var tunic = new ClothingPiece("tunic", "Tunic", ClothingSlot.Top, MakeSprite("top_tunic"), "Blue");
+            var dress = new ClothingPiece("dress", "Dress", ClothingSlot.Top, MakeSprite("top_dress"), "Purple", coversBottom: true);
+            var trousers = new ClothingPiece("trousers", "Trousers", ClothingSlot.Bottom, MakeSprite("bottom_trousers"), "Taupe");
+            var studs = new ClothingPiece("studs", "Studs", ClothingSlot.Ears, MakeSprite("ears_studs"), paired: true);
+            var flower = new ClothingPiece("flower", "Flower", ClothingSlot.Ears, MakeSprite("ears_flower"));
+            var noEars = new ClothingPiece("none", "None", ClothingSlot.Ears, null);
+            var wardrobe = ScriptableObject.CreateInstance<Wardrobe>();
+            wardrobe.ConfigureForTesting(new[] { tunic, dress, trousers, noEars, studs, flower }, new Vector2Int(5, 9));
+            var catalog = ScriptableObject.CreateInstance<CritterCatalog>();
+            catalog.ConfigureForTesting(new[] { fox, mouse, finch }, wardrobe: wardrobe);
+            appearance.ConfigureForTesting(catalog, body);
+
+            appearance.Apply(new PlayerProfile { critterKind = "fox" });
+            Assert.AreSame(tunic.sprite, appearance.TopRenderer.sprite, "a new character wears the first top");
+            Assert.AreSame(trousers.sprite, appearance.BottomRenderer.sprite);
+            Assert.IsNull(appearance.EarLeftRenderer.sprite, "and nothing on its ears");
+            Assert.Greater(appearance.TopRenderer.sortingOrder, appearance.BottomRenderer.sortingOrder, "the top goes over the bottom");
+
+            appearance.Apply(new PlayerProfile { critterKind = "mouse", top = "dress", bottom = "trousers", ears = "studs" });
+            Assert.AreSame(dress.sprite, appearance.TopRenderer.sprite);
+            Assert.IsNull(appearance.BottomRenderer.sprite, "the dress covers the bottom");
+            Assert.AreSame(studs.sprite, appearance.EarLeftRenderer.sprite);
+            Assert.AreSame(studs.sprite, appearance.EarRightRenderer.sprite, "studs come in a pair");
+            Assert.IsTrue(appearance.EarRightRenderer.flipX);
+            Assert.AreEqual(new Vector3(-2f, -2f, 0f) / 16f, appearance.EarLeftRenderer.transform.localPosition, "moved to the mouse's lower, wider ears");
+            Assert.AreEqual(new Vector3(2f, -2f, 0f) / 16f, appearance.EarRightRenderer.transform.localPosition, "and mirrored for the right one");
+
+            appearance.Apply(new PlayerProfile { critterKind = "mouse", ears = "flower" });
+            Assert.AreSame(flower.sprite, appearance.EarLeftRenderer.sprite);
+            Assert.IsNull(appearance.EarRightRenderer.sprite, "a flower goes on one ear");
+
+            appearance.Apply(new PlayerProfile { critterKind = "finch", ears = "studs" });
+            Assert.IsNull(appearance.EarLeftRenderer.sprite, "the finch has no ears for earrings");
+            Assert.IsNull(appearance.EarRightRenderer.sprite);
+        }
+
+        [Test]
         public void Apply_AnUnknownKind_LeavesThePlayerAsPlaced()
         {
             var appearance = MakePlayer(out var body, out var foxSprite, out _);

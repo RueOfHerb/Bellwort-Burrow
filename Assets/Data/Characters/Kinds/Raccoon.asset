@@ -19,3 +19,5 @@ MonoBehaviour:
   markingsRamp: Dark grey
   eyeRamp: Eyes
   showsMouth: 1
+  hasEars: 1
+  earAnchor: {x: 5, y: 9}

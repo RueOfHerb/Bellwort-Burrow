@@ -37,6 +37,36 @@
     padding-right: 2px;
 }
 
+/* The rows scroll, a section at a time, and the focused row scrolls into view. */
+.creator__rows {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.creator__rows .unity-scroller--vertical {
+    width: 3px;
+}
+
+.creator__rows .unity-scroller--vertical .unity-base-slider__dragger {
+    width: 3px;
+    background-color: var(--bb-edge);
+    border-width: 0;
+}
+
+.creator__rows .unity-scroller--vertical .unity-base-slider__tracker,
+.creator__rows .unity-scroller--vertical .unity-repeat-button {
+    display: none;
+}
+
+.creator__section {
+    margin: 4px 0 1px 4px;
+    padding: 0;
+    font-size: 7px;
+    -unity-font-style: bold;
+    color: var(--bb-ink-muted);
+}
+
 .creator__name {
     width: 96px;
     margin: 0;

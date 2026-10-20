@@ -144,6 +144,22 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void Cloth_SwapsItsRampForThePickedColor_AndNaturalKeepsIt()
+        {
+            var palette = MakePalette();
+            var from = new List<Color32>();
+            var to = new List<Color32>();
+            var skirt = new ClothingPiece("skirt", "Skirt", ClothingSlot.Bottom, null, "Orange");
+            var tie = new ClothingPiece("tie", "Tie", ClothingSlot.Neck, null);
+
+            Assert.AreEqual(5, RampSwap.BuildCloth(skirt, "white", palette, from, to));
+            Assert.AreEqual(new Color32(74, 40, 22, 255), from[0]);
+            Assert.AreEqual(new Color32(58, 63, 78, 255), to[0]);
+            Assert.AreEqual(0, RampSwap.BuildCloth(skirt, RampSwap.Natural, palette, from, to));
+            Assert.AreEqual(0, RampSwap.BuildCloth(tie, "white", palette, from, to), "accessories keep their colors");
+        }
+
+        [Test]
         public void Face_DrawnInTheKindsOwnColors_SwapsNothing()
         {
             var brown = ScriptableObject.CreateInstance<CritterKind>();

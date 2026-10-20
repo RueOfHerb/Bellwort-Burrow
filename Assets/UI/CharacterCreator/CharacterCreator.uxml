@@ -9,15 +9,24 @@
                 <ui:Label text="Name" class="option-stepper__label" />
                 <ui:TextField name="name" max-length="20" class="creator__name" />
             </ui:VisualElement>
-            <bb:OptionStepper name="critter-kind" part="CritterKind" label="Critter Type" />
-            <bb:OptionStepper name="fur-color" part="FurColor" label="Fur color" />
-            <bb:OptionStepper name="markings-color" part="MarkingsColor" label="Markings color" />
-            <bb:OptionStepper name="eye-color" part="EyeColor" label="Eye color" />
-            <bb:OptionStepper name="face" part="Face" label="Face" />
-            <bb:OptionStepper name="shirt" part="Shirt" label="Shirt" />
-            <bb:OptionStepper name="trousers" part="Trousers" label="Trousers" />
-            <bb:OptionStepper name="belt" part="Belt" label="Belt" />
-            <ui:Label text="Outfits don't change your look yet." name="hint" class="creator__hint" />
+            <ui:ScrollView name="rows" mode="Vertical" horizontal-scroller-visibility="Hidden" class="creator__rows">
+                <ui:Label text="Critter" class="creator__section" />
+                <bb:OptionStepper name="critter-kind" part="CritterKind" label="Critter Type" />
+                <bb:OptionStepper name="fur-color" part="FurColor" label="Fur color" />
+                <bb:OptionStepper name="markings-color" part="MarkingsColor" label="Markings color" />
+                <bb:OptionStepper name="eye-color" part="EyeColor" label="Eye color" />
+                <bb:OptionStepper name="face" part="Face" label="Face" />
+                <ui:Label text="Clothes" class="creator__section" />
+                <bb:OptionStepper name="top" part="Top" label="Top" />
+                <bb:OptionStepper name="top-color" part="TopColor" label="Top color" />
+                <bb:OptionStepper name="bottom" part="Bottom" label="Bottom" />
+                <bb:OptionStepper name="bottom-color" part="BottomColor" label="Bottom color" />
+                <ui:Label text="Accessories" class="creator__section" />
+                <bb:OptionStepper name="neck" part="Neck" label="Neck" />
+                <bb:OptionStepper name="waist" part="Waist" label="Waist" />
+                <bb:OptionStepper name="ears" part="Ears" label="Ears" />
+            </ui:ScrollView>
+            <ui:Label text="Anyone can wear anything." name="hint" class="creator__hint" />
             <ui:Button text="Begin" name="begin" class="creator__begin" />
         </ui:VisualElement>
     </ui:VisualElement>
