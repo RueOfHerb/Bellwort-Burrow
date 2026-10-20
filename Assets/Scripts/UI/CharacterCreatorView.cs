@@ -14,8 +14,10 @@ namespace BellwortBurrow.UI
     /// profile, shows it on the preview critter, and on Begin starts a new game and loads the first scene. The rows sit in
     /// a scroll view in sections (Critter, Clothes, Accessories), and the focused row scrolls into view. A row with
     /// nothing to change rests: the bottom under a full outfit, and earrings on a kind without ears.
+    /// The UI comes from a Panel Renderer (UI Document is obsolete in Unity 6.5): it calls back with the root element once
+    /// the UXML is built, and again whenever it's rebuilt, and that's when the rows are found and filled.
     /// </summary>
-    [RequireComponent(typeof(UIDocument))]
+    [RequireComponent(typeof(PanelRenderer))]
     public class CharacterCreatorView : MonoBehaviour
     {
         [SerializeField] CritterCatalog critterCatalog;
@@ -27,15 +29,34 @@ namespace BellwortBurrow.UI
 
         readonly List<OptionStepper> rows = new();
         PlayerProfile draft;
+        PanelRenderer panel;
         TextField nameField;
         Button beginButton;
         ScrollView scroll;
 
         void OnEnable()
         {
-            var root = GetComponent<UIDocument>().rootVisualElement;
             draft ??= AppearanceChoices.Defaults(critterCatalog, characterOptions);
+            panel = GetComponent<PanelRenderer>();
+            panel.RegisterUIReloadCallback(OnUIReload);
+            if (preview != null) preview.Apply(draft);
+        }
 
+        void OnDisable()
+        {
+            if (panel != null) panel.UnregisterUIReloadCallback(OnUIReload);
+            Unbind();
+        }
+
+        // The panel's visual tree is ready, built for the first time or rebuilt (the UXML changed).
+        void OnUIReload(PanelRenderer renderer, VisualElement root)
+        {
+            Unbind();
+            Bind(root);
+        }
+
+        void Bind(VisualElement root)
+        {
             nameField = root.Q<TextField>("name");
             beginButton = root.Q<Button>("begin");
             scroll = root.Q<ScrollView>("rows");
@@ -49,22 +70,24 @@ namespace BellwortBurrow.UI
             {
                 nameField.SetValueWithoutNotify(draft.name);
                 nameField.RegisterValueChangedCallback(OnNameChanged);
-                root.schedule.Execute(() => nameField.Focus());
+                var field = nameField;
+                root.schedule.Execute(() => field.Focus());
             }
 
             if (beginButton != null) beginButton.clicked += Begin;
             RefreshBegin();
-
-            if (preview != null) preview.Apply(draft);
         }
 
-        void OnDisable()
+        void Unbind()
         {
             foreach (var row in rows) row.Stepped -= OnStepped;
             rows.Clear();
             scroll?.UnregisterCallback<FocusInEvent>(ScrollToFocused);
             nameField?.UnregisterValueChangedCallback(OnNameChanged);
             if (beginButton != null) beginButton.clicked -= Begin;
+            scroll = null;
+            nameField = null;
+            beginButton = null;
         }
 
         void OnStepped(OptionStepper row, int steps)
