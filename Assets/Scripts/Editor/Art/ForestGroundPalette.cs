@@ -61,6 +61,32 @@ namespace BellwortBurrow.EditorTools
                     GridPalette.CellSizing.Automatic, Vector3.one, GridLayout.CellSwizzle.XYZ);
             }
 
+            // An open Tile Palette window showing this palette writes its own copy back over the file when the file
+            // is reimported, so while it's rebuilt the window shows a stand-in palette, and this one again after.
+            GameObject standIn = null;
+            if (GridPaintingState.palette != null && AssetDatabase.GetAssetPath(GridPaintingState.palette) == PalettePath)
+            {
+                standIn = GridPaletteUtility.CreateNewPalette(Folder, PaletteName + " (rebuilding)", GridLayout.CellLayout.Rectangle,
+                    GridPalette.CellSizing.Automatic, Vector3.one, GridLayout.CellSwizzle.XYZ);
+                GridPaintingState.palette = standIn;
+            }
+            try
+            {
+                Fill(palette, sheet, tiles, tileSize);
+            }
+            finally
+            {
+                if (standIn != null)
+                {
+                    GridPaintingState.palette = AssetDatabase.LoadAssetAtPath<GameObject>(PalettePath);
+                    AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(standIn));
+                }
+            }
+            return true;
+        }
+
+        static void Fill(GameObject palette, AsepriteSheet sheet, System.Collections.Generic.Dictionary<string, TileBase> tiles, int tileSize)
+        {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(palette);
             var tilemap = instance.GetComponentInChildren<Tilemap>();
             tilemap.ClearAllTiles();
@@ -96,7 +122,6 @@ namespace BellwortBurrow.EditorTools
             Object.DestroyImmediate(instance);
             AssetDatabase.SaveAssets();
             GeneratedAssets.Stamp(PalettePath);
-            return true;
         }
     }
 }
