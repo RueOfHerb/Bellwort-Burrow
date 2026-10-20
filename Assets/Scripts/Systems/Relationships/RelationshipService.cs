@@ -1,11 +1,25 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using BellwortBurrow.Core;
 
 namespace BellwortBurrow.Systems.Relationships
 {
     public class RelationshipService : IRelationshipService, ISaveable
     {
+        [Serializable]
+        class Friendship
+        {
+            public string npc;
+            public int points;
+        }
+
+        [Serializable]
+        class RelationshipsState
+        {
+            public List<Friendship> friendships = new();
+        }
+
         readonly Dictionary<string, int> friendshipByNpcId = new();
 
         public string SaveKey => "Relationships";
@@ -22,15 +36,23 @@ namespace BellwortBurrow.Systems.Relationships
             OnFriendshipChanged?.Invoke(npcId, updated);
         }
 
-        public object CaptureState() => new Dictionary<string, int>(friendshipByNpcId);
+        public string CaptureState()
+        {
+            var state = new RelationshipsState();
+            foreach (var pair in friendshipByNpcId)
+                state.friendships.Add(new Friendship { npc = pair.Key, points = pair.Value });
+            state.friendships.Sort((a, b) => string.CompareOrdinal(a.npc, b.npc));
+            return JsonUtility.ToJson(state);
+        }
 
-        public void RestoreState(object state)
+        public void RestoreState(string json)
         {
             friendshipByNpcId.Clear();
-            if (state is Dictionary<string, int> saved)
+            var state = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<RelationshipsState>(json);
+            foreach (var friendship in state?.friendships ?? new List<Friendship>())
             {
-                foreach (var kvp in saved)
-                    friendshipByNpcId[kvp.Key] = kvp.Value;
+                if (!string.IsNullOrEmpty(friendship.npc))
+                    friendshipByNpcId[friendship.npc] = friendship.points;
             }
         }
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using BellwortBurrow.Core;
 using BellwortBurrow.Data;
 
@@ -7,12 +8,28 @@ namespace BellwortBurrow.Systems.Inventory
 {
     public class InventoryService : IInventoryService, ISaveable
     {
+        [Serializable]
+        class SlotState
+        {
+            public string item;
+            public int quantity;
+        }
+
+        [Serializable]
+        class InventoryState
+        {
+            public List<SlotState> slots = new();
+        }
+
         readonly List<InventorySlot> slots = new();
         readonly int capacity;
+        readonly Func<string, ItemDefinition> findItem;
 
-        public InventoryService(int capacity = 24)
+        /// <param name="findItem">Finds an item by id when a save is loaded (the Item Catalog's Find).</param>
+        public InventoryService(int capacity = 24, Func<string, ItemDefinition> findItem = null)
         {
             this.capacity = capacity;
+            this.findItem = findItem;
         }
 
         public string SaveKey => "Inventory";
@@ -72,13 +89,33 @@ namespace BellwortBurrow.Systems.Inventory
             return true;
         }
 
-        public object CaptureState() => slots.ToArray();
+        // Saves item ids, never the Item Definitions themselves (sys-3).
+        public string CaptureState()
+        {
+            var state = new InventoryState();
+            foreach (var slot in slots)
+                state.slots.Add(new SlotState { item = slot.Item != null ? slot.Item.Id : "", quantity = slot.Quantity });
+            return JsonUtility.ToJson(state);
+        }
 
-        public void RestoreState(object state)
+        public void RestoreState(string json)
         {
             slots.Clear();
-            if (state is InventorySlot[] savedSlots)
-                slots.AddRange(savedSlots);
+            var state = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<InventoryState>(json);
+
+            foreach (var saved in state?.slots ?? new List<SlotState>())
+            {
+                if (saved.quantity <= 0 || slots.Count >= capacity) continue;
+
+                var item = findItem?.Invoke(saved.item);
+                if (item == null)
+                {
+                    Debug.LogWarning($"[Inventory] No item '{saved.item}' in the Item Catalog, so a stack of {saved.quantity} was left out of the loaded save.");
+                    continue;
+                }
+                slots.Add(new InventorySlot(item, Math.Min(saved.quantity, item.MaxStackSize)));
+            }
+
             OnInventoryChanged?.Invoke();
         }
     }

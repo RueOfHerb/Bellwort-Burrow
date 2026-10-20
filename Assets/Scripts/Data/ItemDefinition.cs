@@ -25,5 +25,12 @@ namespace BellwortBurrow.Data
         public Sprite Icon => icon;
         public ItemCategory Category => category;
         public int MaxStackSize => maxStackSize;
+
+        internal void ConfigureForTesting(string id, int maxStackSize = 99)
+        {
+            this.id = id;
+            displayName = id;
+            this.maxStackSize = maxStackSize;
+        }
     }
 }
