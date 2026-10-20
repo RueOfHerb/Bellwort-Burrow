@@ -214,11 +214,12 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// The ground sets painted from <see cref="Template"/>, in the order the tile palette lays them out: each one's
-        /// slice and the extra full pieces it picks from (see <see cref="GroundPalette"/>). Every ground sheet has them.
+        /// slice, its half set's slice (painted from <see cref="HalfTemplate"/>) and the extra full pieces it picks from
+        /// (see <see cref="GroundPalette"/>). Every ground sheet has them.
         /// </summary>
-        internal static IEnumerable<(string slice, string[] fills)> TemplateSets()
+        internal static IEnumerable<(string slice, string halfSlice, string[] fills)> TemplateSets()
         {
-            foreach (var pair in Pairs) yield return (pair.Slice, pair.Fills);
+            foreach (var pair in Pairs) yield return (pair.Slice, pair.HalfSlice, pair.Fills);
         }
 
         /// <summary>
