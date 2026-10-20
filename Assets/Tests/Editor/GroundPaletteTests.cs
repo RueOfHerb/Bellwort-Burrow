@@ -5,7 +5,7 @@ using BellwortBurrow.EditorTools;
 
 namespace BellwortBurrow.Tests.Editor
 {
-    public class ForestGroundPaletteTests
+    public class GroundPaletteTests
     {
         // Neighbour bits, y up (top row 64 128 256, middle 8 16 32, bottom 1 2 4), by step in the palette, rows down.
         static readonly (int dx, int dy, uint bit)[] Neighbours =
@@ -29,7 +29,7 @@ namespace BellwortBurrow.Tests.Editor
         public void Shapes_HoldEveryLayout()
         {
             var want = new HashSet<uint>(TemplatePieces("path_set").Values);
-            var have = new HashSet<uint>(ForestGroundPalette.ShapeSpots().Select(s => s.layout));
+            var have = new HashSet<uint>(GroundPalette.ShapeSpots().Select(s => s.layout));
             Assert.AreEqual(GroundAutoTiles.LayoutCount, have.Count);
             CollectionAssert.AreEquivalent(want, have);
         }
@@ -38,7 +38,7 @@ namespace BellwortBurrow.Tests.Editor
         public void Shapes_OnlyJoinTheirOwnPieces()
         {
             // Every piece's layout, read from all the shapes together, is the one its own shape gives it.
-            var spots = ForestGroundPalette.ShapeSpots();
+            var spots = GroundPalette.ShapeSpots();
             var cells = new HashSet<(int, int)>(spots.Select(s => (s.column, s.row)));
             Assert.AreEqual(spots.Count, cells.Count, "two shapes share a cell");
             foreach (var (column, row, layout) in spots)
@@ -55,20 +55,20 @@ namespace BellwortBurrow.Tests.Editor
         {
             var pieces = TemplatePieces("path_set");
             foreach (var fill in PathFills) pieces[fill] = GroundAutoTiles.Full;
-            var spots = ForestGroundPalette.SetSpots("path_set", PathFills);
+            var spots = GroundPalette.SetSpots("path_set", PathFills);
 
             CollectionAssert.AreEquivalent(pieces.Keys, spots.Select(s => s.piece).Distinct());
             Assert.AreEqual(spots.Count, spots.Select(s => (s.column, s.row)).Distinct().Count(), "two pieces share a cell");
-            Assert.IsTrue(spots.All(s => s.column >= 0 && s.column < ForestGroundPalette.SetWidth && s.row >= 0),
+            Assert.IsTrue(spots.All(s => s.column >= 0 && s.column < GroundPalette.SetWidth && s.row >= 0),
                 "a piece sits outside its set's columns");
 
             // Each shape cell holds a piece of the layout the shape needs there.
             var at = spots.ToDictionary(s => (s.column, s.row), s => s.piece);
-            foreach (var (column, row, layout) in ForestGroundPalette.ShapeSpots())
+            foreach (var (column, row, layout) in GroundPalette.ShapeSpots())
                 Assert.AreEqual(layout, pieces[at[(column, row)]], at[(column, row)]);
 
             // Besides the shapes, each piece comes up once.
-            int shapeCount = ForestGroundPalette.ShapeSpots().Count;
+            int shapeCount = GroundPalette.ShapeSpots().Count;
             Assert.AreEqual(shapeCount + pieces.Count - GroundAutoTiles.LayoutCount, spots.Count);
         }
     }

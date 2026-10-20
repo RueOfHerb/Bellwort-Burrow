@@ -11,22 +11,23 @@ using Object = UnityEngine.Object;
 namespace BellwortBurrow.EditorTools
 {
     /// <summary>
-    /// Builds the "Forest Ground" Tile Palette (Window > 2D > Tile Palette) from forest_ground.aseprite.
-    /// The top row holds the tiles you paint with (grass, path, half path, deer trail; see <see cref="GroundAutoTiles"/>).
-    /// Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/> (Forest Path, then the deer trail
-    /// beside it) is laid out as ready-made shapes (<see cref="Groups"/>) for painting by hand: every piece sits beside
-    /// the pieces it joins, and every layout comes up at least once. Under the shapes wait the set's other pieces (the
-    /// repeats and fills the tile picks from at random), in a run per layout. Every other slice (grass, tufts, crops,
-    /// the half path set) goes to the right, as it sits on the sheet. The sheet itself keeps its patches, because the
-    /// tiles read each piece's layout from its spot there.
-    /// If you rearranged the palette by hand, it is left alone (see <see cref="GeneratedAssets"/>).
+    /// Builds each zone's ground Tile Palette (Window > 2D > Tile Palette) from its ground sheet: "Forest Ground" from
+    /// forest_ground.aseprite, "Burrow Ground" from burrow_ground.aseprite (see <see cref="GroundAutoTiles.Sheets"/>).
+    /// The top row holds the tiles you paint with (grass, path, half path, deer trail, half deer trail; see
+    /// <see cref="GroundAutoTiles"/>). Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/>
+    /// (the path, then the deer trail beside it) is laid out as ready-made shapes (<see cref="Groups"/>) for painting by
+    /// hand: every piece sits beside the pieces it joins, and every layout comes up at least once. Under the shapes wait
+    /// the set's other pieces (the repeats and fills the tile picks from at random), in a run per layout. Every other
+    /// slice (grass, tufts, crops, the half sets) goes to the right, as it sits on the sheet. The sheet itself keeps its
+    /// patches, because the tiles read each piece's layout from its spot there.
+    /// If you rearranged a palette by hand, it is left alone (see <see cref="GeneratedAssets"/>).
     /// </summary>
-    public static class ForestGroundPalette
+    public static class GroundPalette
     {
-        const string SheetName = "forest_ground";
         const string Folder = ArtLibrary.ArtRoot + "/Tile Palettes";
-        const string PaletteName = "Forest Ground";
-        public const string PalettePath = Folder + "/" + PaletteName + ".prefab";
+
+        /// <summary>Where a ground sheet's tile palette is saved.</summary>
+        public static string PalettePath(GroundAutoTiles.GroundSheet ground) => Folder + "/" + ground.Palette + ".prefab";
 
         /// <summary>How many columns a set's shapes take before wrapping to the next row.</summary>
         internal const int SetWidth = 24;
@@ -156,21 +157,39 @@ namespace BellwortBurrow.EditorTools
             return spots;
         }
 
-        [MenuItem("Bellwort Burrow/Setup/Forest Steps/5. Make Ground Tile Palette", false, 205)]
+        [MenuItem("Bellwort Burrow/Setup/Forest Steps/5. Make Ground Tile Palettes", false, 205)]
         static void MakeFromMenu()
         {
             if (!ArtLibrary.CheckArtInstalled()) return;
-            if (Make()) Debug.Log($"Bellwort Burrow: painted the {PaletteName} tile palette at {PalettePath}.");
+            var made = MakeAll();
+            if (made.Count > 0) Debug.Log($"Bellwort Burrow: painted the {string.Join(" and ", made)} tile palette(s) in {Folder}.");
         }
 
-        public static bool Make()
+        /// <summary>
+        /// Builds the tile palette of every installed ground sheet. Returns the names of the palettes made, or null
+        /// when one couldn't be made.
+        /// </summary>
+        public static List<string> MakeAll()
         {
-            string sheetPath = ArtLibrary.FindSheet(SheetName);
-            if (sheetPath == null)
+            var made = new List<string>();
+            foreach (var ground in GroundAutoTiles.Sheets)
             {
-                Debug.LogError($"Bellwort Burrow: couldn't find {SheetName}.aseprite under {ArtLibrary.ArtRoot}.");
-                return false;
+                string sheetPath = ArtLibrary.FindSheet(ground.Sheet);
+                if (sheetPath == null) continue; // GroundAutoTiles.MakeAll says which sheets are missing
+                if (!Make(ground, sheetPath)) return null;
+                made.Add(ground.Palette);
             }
+            if (made.Count == 0)
+            {
+                Debug.LogError($"Bellwort Burrow: couldn't find any ground sheet under {ArtLibrary.ArtRoot}.");
+                return null;
+            }
+            return made;
+        }
+
+        static bool Make(GroundAutoTiles.GroundSheet ground, string sheetPath)
+        {
+            string palettePath = PalettePath(ground), paletteName = ground.Palette;
             var importer = (BellwortSheetImporter)AssetImporter.GetAtPath(sheetPath);
             int tileSize = Mathf.Max(1, importer.tileSize);
 
@@ -184,36 +203,36 @@ namespace BellwortBurrow.EditorTools
             var tiles = ArtLibrary.LoadSubAssets<TileBase>(sheetPath);
 
             ArtLibrary.EnsureFolder(Folder);
-            if (!GeneratedAssets.CanOverwrite(PalettePath))
+            if (!GeneratedAssets.CanOverwrite(palettePath))
             {
-                GeneratedAssets.ReportKept("Make Ground Tile Palette", new List<string> { PalettePath });
+                GeneratedAssets.ReportKept("Make Ground Tile Palettes", new List<string> { palettePath });
                 return true;
             }
-            var palette = AssetDatabase.LoadAssetAtPath<GameObject>(PalettePath);
+            var palette = AssetDatabase.LoadAssetAtPath<GameObject>(palettePath);
             if (palette == null)
             {
-                palette = GridPaletteUtility.CreateNewPalette(Folder, PaletteName, GridLayout.CellLayout.Rectangle,
+                palette = GridPaletteUtility.CreateNewPalette(Folder, paletteName, GridLayout.CellLayout.Rectangle,
                     GridPalette.CellSizing.Automatic, Vector3.one, GridLayout.CellSwizzle.XYZ);
             }
 
             // An open Tile Palette window showing this palette writes its own copy back over the file when the file
             // is reimported, so while it's rebuilt the window shows a stand-in palette, and this one again after.
             GameObject standIn = null;
-            if (GridPaintingState.palette != null && AssetDatabase.GetAssetPath(GridPaintingState.palette) == PalettePath)
+            if (GridPaintingState.palette != null && AssetDatabase.GetAssetPath(GridPaintingState.palette) == palettePath)
             {
-                standIn = GridPaletteUtility.CreateNewPalette(Folder, PaletteName + " (rebuilding)", GridLayout.CellLayout.Rectangle,
+                standIn = GridPaletteUtility.CreateNewPalette(Folder, paletteName + " (rebuilding)", GridLayout.CellLayout.Rectangle,
                     GridPalette.CellSizing.Automatic, Vector3.one, GridLayout.CellSwizzle.XYZ);
                 GridPaintingState.palette = standIn;
             }
             try
             {
-                Fill(palette, sheet, tiles, tileSize);
+                Fill(ground, palette, palettePath, sheet, tiles, tileSize);
             }
             finally
             {
                 if (standIn != null)
                 {
-                    GridPaintingState.palette = AssetDatabase.LoadAssetAtPath<GameObject>(PalettePath);
+                    GridPaintingState.palette = AssetDatabase.LoadAssetAtPath<GameObject>(palettePath);
                     AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(standIn));
                 }
             }
@@ -230,7 +249,7 @@ namespace BellwortBurrow.EditorTools
                     yield return (column, row, columns * rows == 1 ? slice.Name : slice.Name + "_" + (row * columns + column).ToString(digits));
         }
 
-        static void Fill(GameObject palette, AsepriteSheet sheet, Dictionary<string, TileBase> tiles, int tileSize)
+        static void Fill(GroundAutoTiles.GroundSheet ground, GameObject palette, string palettePath, AsepriteSheet sheet, Dictionary<string, TileBase> tiles, int tileSize)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(palette);
             var tilemap = instance.GetComponentInChildren<Tilemap>();
@@ -276,7 +295,7 @@ namespace BellwortBurrow.EditorTools
 
             // The painting tiles, in a row above.
             int paintColumn = 1;
-            foreach (var path in GroundAutoTiles.TilePaths())
+            foreach (var path in GroundAutoTiles.TilePaths(ground))
             {
                 var paintTile = AssetDatabase.LoadAssetAtPath<TileBase>(path);
                 if (paintTile == null) continue;
@@ -285,10 +304,10 @@ namespace BellwortBurrow.EditorTools
             }
             tilemap.CompressBounds();
 
-            PrefabUtility.SaveAsPrefabAssetAndConnect(instance, PalettePath, InteractionMode.AutomatedAction);
+            PrefabUtility.SaveAsPrefabAssetAndConnect(instance, palettePath, InteractionMode.AutomatedAction);
             Object.DestroyImmediate(instance);
             AssetDatabase.SaveAssets();
-            GeneratedAssets.Stamp(PalettePath);
+            GeneratedAssets.Stamp(palettePath);
         }
     }
 }

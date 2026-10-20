@@ -447,6 +447,7 @@ namespace BellwortBurrow.EditorTools
                     sources.Add(path.Replace('\\', '/'));
             }
             Add(ArtLibrary.ArtRoot + "/Forest", "*.aseprite");
+            Add(ArtLibrary.ArtRoot + "/Burrow", "*.aseprite");
             Add(ArtLibrary.ArtRoot + "/Backdrops", "*.aseprite");
             Add(ArtLibrary.CharacterFolder, "*.aseprite");
             Add(ArtLibrary.ArtRoot + "/Palettes", "*.gpl");

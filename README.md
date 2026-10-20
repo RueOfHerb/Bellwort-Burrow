@@ -52,11 +52,11 @@ Scenes point at the art by the GUIDs in its `.meta` files, which is why the `.me
 Everything in a scene is placed by hand; only backgrounds and skyboxes are exceptions.
 
 - **Objects:** drag prefabs from `Assets/Art/Prefabs` into the scene. Their pivot is at their feet, so they sort correctly as you move them up and down.
-- **Ground:** open **Window > 2D > Tile Palette**, pick the **Forest Ground** palette, choose the layer you want in the **Active Target** dropdown (the layers icon at the top of the Tile Palette window; clicking the layer under Ground in the Hierarchy does the same), and paint. The top row of the palette holds the tiles you paint with:
+- **Ground:** open **Window > 2D > Tile Palette**, pick the zone's palette (**Forest Ground** for the Forlorn Forest, **Burrow Ground** for Bellwort Burrow, with the same tiles named Burrow instead of Forest), choose the layer you want in the **Active Target** dropdown (the layers icon at the top of the Tile Palette window; clicking the layer under Ground in the Hierarchy does the same), and paint. The top row of the palette holds the tiles you paint with:
   - **Forest Grass** on the **Grass** layer picks a random grass variation for each tile.
   - **Forest Deer Trail** on the **Deer Trails** layer and **Forest Path** on the **Paths** layer are Rule Tiles. Paint where the trail or path goes and Unity picks the edge pieces, one tile wide or wider, and a painted staircase reads as a diagonal.
-  - **Forest Path Half**, also on the **Paths** layer, is half a tile of path that turns toward the full path beside it, so a path can end half way into a tile or be half a tile wider.
-  - To paint pieces by hand, use the shapes under the top row: Forest Path on the left and the deer trail beside it, each laid out as ready-made shapes (a wide path, one tile wide paths, a wide path narrowing, diagonals, inner corners, bends into slopes), with the other looks of each piece in runs under them. Drag a box around a shape, or any part of one, to stamp it. Grass, tufts, crop circles and the half path pieces sit to the right.
+  - **Forest Path Half**, also on the **Paths** layer, is half a tile of path that turns toward the full path beside it, so a path can end half way into a tile or be half a tile wider. **Forest Deer Trail Half**, on the **Deer Trails** layer, does the same for a deer trail.
+  - To paint pieces by hand, use the shapes under the top row: Forest Path on the left and the deer trail beside it, each laid out as ready-made shapes (a wide path, one tile wide paths, a wide path narrowing, diagonals, inner corners, bends into slopes), with the other looks of each piece in runs under them. Drag a box around a shape, or any part of one, to stamp it. Grass, tufts, crop circles and the half path and half deer trail pieces sit to the right.
   - Tufts and crop circles go on the **Tufts and Crop Circles** layer. Drag a box around a whole crop circle in the palette to stamp it in one click.
 - Save the scene, and it's in git.
 
@@ -69,7 +69,7 @@ For future tilesets, use Unity's own tiles from 2D Tilemap Extras: every ground 
 The art notes are in `Assets/Art/README.md` once the package is installed. In short:
 
 - Edit the sheets in Aseprite and save. Unity reimports them on its own through the Bellwort Sheet Importer (`Assets/Scripts/Editor/Art`), which turns every Aseprite slice into a named sprite, plus a `_glow` sprite for anything on the Glow layer.
-- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, refreshes the ground tiles and repaints the Forest Ground tile palette, skipping anything changed by hand. Each step is also under **Setup > Forest Steps**.
+- After adding or renaming slices, run **Bellwort Burrow > Setup > Set Up Forest Art (All Steps)**. It applies the pixel art settings, rebuilds the prefabs (with their glow and lights), stacks the tall trees, refreshes the ground tiles and repaints the Forest Ground and Burrow Ground tile palettes, skipping anything changed by hand. Each step is also under **Setup > Forest Steps**.
 - When the round is finished, share it (see Sharing art changes).
 
 ## Pixel art setup
