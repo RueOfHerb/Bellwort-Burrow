@@ -611,6 +611,7 @@ GameObject:
   - component: {fileID: 126378849}
   - component: {fileID: 126378848}
   - component: {fileID: 126378847}
+  - component: {fileID: 126378851}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -741,6 +742,21 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 4
+--- !u!114 &126378851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 126378845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f42a693c0e357d438c92b6715d2e7c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.PlayerAppearance
+  catalog: {fileID: 11400000, guid: 9094f6f0ab415b549a703bfe11998036, type: 2}
+  body: {fileID: 2058373194}
+  followProfile: 1
 --- !u!1001 &159170267
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -57547,6 +57563,11 @@ PrefabInstance:
 --- !u!4 &2058373193 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7878350319992209165, guid: 80071748fad53a4408485c426fff3d9f, type: 3}
+  m_PrefabInstance: {fileID: 2058373192}
+  m_PrefabAsset: {fileID: 0}
+--- !u!212 &2058373194 stripped
+SpriteRenderer:
+  m_CorrespondingSourceObject: {fileID: 3626916397498700004, guid: 80071748fad53a4408485c426fff3d9f, type: 3}
   m_PrefabInstance: {fileID: 2058373192}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &2092333700

@@ -1,0 +1,29 @@
+using UnityEngine;
+
+namespace BellwortBurrow.Data
+{
+    /// <summary>
+    /// One kind of Critterfolk the player can be, made from one player file in Assets/Art/Characters/Player (sys-6).
+    /// List it in the Critter Catalog to show it in the character creator.
+    /// </summary>
+    [CreateAssetMenu(menuName = "Bellwort Burrow/Characters/Critter Kind", fileName = "NewCritterKind")]
+    public class CritterKind : ScriptableObject
+    {
+        [Tooltip("Saved in the player profile. Never change it once saves exist.")]
+        [SerializeField] string id;
+        [SerializeField] string displayName;
+        [Tooltip("The player file's sprite, standing and facing front. Walk frames and the other views come later.")]
+        [SerializeField] Sprite sprite;
+
+        public string Id => id;
+        public string DisplayName => string.IsNullOrEmpty(displayName) ? id : displayName;
+        public Sprite Sprite => sprite;
+
+        internal void ConfigureForTesting(string id, string displayName, Sprite sprite)
+        {
+            this.id = id;
+            this.displayName = displayName;
+            this.sprite = sprite;
+        }
+    }
+}

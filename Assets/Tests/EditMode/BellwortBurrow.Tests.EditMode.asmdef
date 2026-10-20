@@ -6,7 +6,8 @@
         "BellwortBurrow.Data",
         "BellwortBurrow.Systems",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "BellwortBurrow.Player"
     ],
     "includePlatforms": [
         "Editor"

@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc60fcb065bdc874fa72dcf15996b1f9, type: 3}
+  m_Name: CharacterOptions
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.CharacterOptions
+  parts:
+  - part: 1
+    options:
+    - id: mouse-fur
+      displayName: Mouse fur
+    - id: rabbit-fur
+      displayName: Rabbit fur
+    - id: fox-fur
+      displayName: Fox fur
+    - id: raccoon-fur
+      displayName: Raccoon fur
+    - id: finch-feathers
+      displayName: Finch feathers
+    - id: white-fur
+      displayName: White fur
+    - id: black-fur
+      displayName: Black fur
+  - part: 2
+    options:
+    - id: white-fur
+      displayName: White fur
+    - id: black-fur
+      displayName: Black fur
+    - id: mouse-fur
+      displayName: Mouse fur
+    - id: rabbit-fur
+      displayName: Rabbit fur
+    - id: fox-fur
+      displayName: Fox fur
+    - id: raccoon-fur
+      displayName: Raccoon fur
+    - id: finch-feathers
+      displayName: Finch feathers
+  - part: 3
+    options:
+    - id: eyes
+      displayName: Default
+  - part: 4
+    options:
+    - id: default
+      displayName: Default
+  - part: 5
+    options:
+    - id: default
+      displayName: Default
+  - part: 6
+    options:
+    - id: default
+      displayName: Default
+  - part: 7
+    options:
+    - id: default
+      displayName: Default
