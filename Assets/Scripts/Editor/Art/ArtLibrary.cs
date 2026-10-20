@@ -14,6 +14,13 @@ namespace BellwortBurrow.EditorTools
         public const string ArtRoot = "Assets/Art";
         public const string PrefabRoot = ArtRoot + "/Prefabs";
         public const string CharacterFolder = ArtRoot + "/Characters";
+        /// <summary>The player faces: one sheet of slices that fits every critter kind (sys-6).</summary>
+        public const string FaceFolder = CharacterFolder + "/Faces";
+        /// <summary>The player clothes and accessories: one sheet of slices that fits every critter kind (sys-6).</summary>
+        public const string ClothesFolder = CharacterFolder + "/Clothes";
+
+        /// <summary>Sheets of player parts that fit every kind: they're cut by slices, so they use the sheet importer.</summary>
+        public static bool IsSharedPlayerParts(string path) => path.StartsWith(FaceFolder + "/") || path.StartsWith(ClothesFolder + "/");
         public const float PixelsPerUnit = 16f;
 
         const string LitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Lit-Default.mat";
@@ -36,7 +43,9 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// Makes every Aseprite file under Assets/Art use the Bellwort Sheet Importer, except characters, which keep
-        /// Unity's Aseprite importer for their animations. Sheets named "..._ground" are cut into 16 px tiles.
+        /// Unity's Aseprite importer for their animations. The player faces and clothes (Characters/Faces and
+        /// Characters/Clothes) are sheets of slices, so they use the sheet importer too. Sheets named "..._ground" are cut
+        /// into 16 px tiles.
         /// Unity falls back to its own importer when a sheet arrives before this code has compiled, so this puts it back.
         /// Returns how many sheets were switched.
         /// </summary>
@@ -45,7 +54,8 @@ namespace BellwortBurrow.EditorTools
             int switched = 0;
             foreach (var path in AssetDatabase.GetAllAssetPaths())
             {
-                if (!path.StartsWith(ArtRoot + "/") || path.StartsWith(CharacterFolder + "/")) continue;
+                if (!path.StartsWith(ArtRoot + "/")) continue;
+                if (path.StartsWith(CharacterFolder + "/") && !IsSharedPlayerParts(path)) continue;
                 if (!path.EndsWith(".aseprite") && !path.EndsWith(".ase")) continue;
                 if (AssetImporter.GetAtPath(path) is BellwortSheetImporter) continue;
 
@@ -91,13 +101,16 @@ namespace BellwortBurrow.EditorTools
             return changed;
         }
 
-        /// <summary>Sheets under Assets/Art that use the Bellwort Sheet Importer: sprite sheets, or tile sheets.</summary>
+        /// <summary>
+        /// Sheets under Assets/Art that use the Bellwort Sheet Importer: sprite sheets, or tile sheets. The player faces
+        /// and clothes aren't among them: setup makes no prefabs from them and the art rules for placed pieces don't apply.
+        /// </summary>
         public static List<string> SheetPaths(bool tileSheets)
         {
             var paths = new List<string>();
             foreach (var path in AssetDatabase.GetAllAssetPaths())
             {
-                if (!path.StartsWith(ArtRoot + "/")) continue;
+                if (!path.StartsWith(ArtRoot + "/") || path.StartsWith(CharacterFolder + "/")) continue;
                 if (!path.EndsWith(".aseprite") && !path.EndsWith(".ase")) continue;
                 if (AssetImporter.GetAtPath(path) is BellwortSheetImporter importer && (importer.tileSize > 0) == tileSheets)
                     paths.Add(path);

@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc60fcb065bdc874fa72dcf15996b1f9, type: 3}
+  m_Name: CharacterOptions
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.CharacterOptions
+  parts:
+  - part: 1
+    options:
+    - id: natural
+      displayName: Natural
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: yellow
+      displayName: Yellow
+    - id: orange
+      displayName: Orange
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
+  - part: 2
+    options:
+    - id: natural
+      displayName: Natural
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: yellow
+      displayName: Yellow
+    - id: orange
+      displayName: Orange
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
+  - part: 3
+    options:
+    - id: natural
+      displayName: Natural
+    - id: eyes
+      displayName: Dark
+    - id: gold-eyes
+      displayName: Gold
+  - part: 8
+    options:
+    - id: natural
+      displayName: Natural
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: red
+      displayName: Red
+    - id: pink
+      displayName: Pink
+    - id: orange
+      displayName: Orange
+    - id: yellow
+      displayName: Yellow
+    - id: green
+      displayName: Green
+    - id: blue
+      displayName: Blue
+    - id: purple
+      displayName: Purple
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
+    - id: taupe
+      displayName: Taupe
+  - part: 9
+    options:
+    - id: natural
+      displayName: Natural
+    - id: white
+      displayName: White
+    - id: cream
+      displayName: Cream
+    - id: light-grey
+      displayName: Light grey
+    - id: grey
+      displayName: Grey
+    - id: blue-grey
+      displayName: Blue grey
+    - id: dark-grey
+      displayName: Dark grey
+    - id: black
+      displayName: Black
+    - id: red
+      displayName: Red
+    - id: pink
+      displayName: Pink
+    - id: orange
+      displayName: Orange
+    - id: yellow
+      displayName: Yellow
+    - id: green
+      displayName: Green
+    - id: blue
+      displayName: Blue
+    - id: purple
+      displayName: Purple
+    - id: brown
+      displayName: Brown
+    - id: dark-brown
+      displayName: Dark brown
+    - id: taupe
+      displayName: Taupe

@@ -7,7 +7,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Unity.2D.Tilemap.Extras",
-        "BellwortBurrow.Tiles"
+        "BellwortBurrow.Tiles",
+        "BellwortBurrow.Data"
     ],
     "includePlatforms": [
         "Editor"

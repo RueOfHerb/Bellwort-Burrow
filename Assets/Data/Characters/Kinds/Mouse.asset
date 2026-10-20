@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 579c376c0a6543847a692dd4a681beec, type: 3}
+  m_Name: Mouse
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.CritterKind
+  id: mouse
+  displayName: Mouse
+  sprite: {fileID: -4262046722880800367, guid: f5fdc122f0b5dff4ab8938938411fceb, type: 3}
+  furRamp: Blue grey
+  markingsRamp: Light grey
+  eyeRamp: Eyes
+  showsMouth: 1
+  hasEars: 1
+  earAnchor: {x: 3, y: 11}

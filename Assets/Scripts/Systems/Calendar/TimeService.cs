@@ -1,11 +1,20 @@
 using System;
+using UnityEngine;
 using BellwortBurrow.Core;
 using BellwortBurrow.Data;
 
 namespace BellwortBurrow.Systems.Calendar
 {
-    public class TimeService : ITimeService
+    public class TimeService : ITimeService, ISaveable
     {
+        [Serializable]
+        class CalendarState
+        {
+            public int day;
+            public string season;
+            public int minutesSinceMidnight;
+        }
+
         readonly CalendarConfig calendar;
         readonly VoidEventChannel dayChangedChannel;
 
@@ -24,6 +33,27 @@ namespace BellwortBurrow.Systems.Calendar
         {
             this.calendar = calendar;
             this.dayChangedChannel = dayChangedChannel;
+        }
+
+        public string SaveKey => "Calendar";
+
+        public string CaptureState() => JsonUtility.ToJson(new CalendarState
+        {
+            day = CurrentDay,
+            season = CurrentSeason.ToString(),
+            minutesSinceMidnight = MinutesSinceMidnight
+        });
+
+        public void RestoreState(string json)
+        {
+            var state = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<CalendarState>(json);
+            if (state == null) return;
+
+            CurrentDay = Math.Max(1, state.day);
+            CurrentSeason = Enum.TryParse(state.season, out Season season) ? season : Season.Spring;
+            MinutesSinceMidnight = Math.Max(0, state.minutesSinceMidnight);
+            lastHour = calendar != null ? MinutesSinceMidnight / calendar.MinutesPerHour : 0;
+            minuteAccumulator = 0f;
         }
 
         public void Tick(float deltaTime)

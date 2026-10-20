@@ -38,5 +38,9 @@ namespace BellwortBurrow.Core
         [UnityEditor.InitializeOnLoadMethod]
         static void ClearOnDomainReload() => Clear();
 #endif
+
+        // Domain reload is off when entering Play mode, so statics survive from the last run. Every run starts empty (arc-9).
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ClearOnEnterPlayMode() => Clear();
     }
 }

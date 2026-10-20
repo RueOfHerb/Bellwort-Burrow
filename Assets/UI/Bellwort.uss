@@ -1,0 +1,78 @@
+/* The shared look for Bellwort Burrow's screens, in Forlorn Forest palette colors.
+   Sizes are in panel pixels: the panel is 480 by 270, the same as the game camera, so 1px here is one game pixel. */
+
+:root {
+    --bb-ink: rgb(236, 232, 220);          /* Birch heartwood Light */
+    --bb-ink-muted: rgb(155, 166, 178);    /* Birch heartwood Dark */
+    --bb-panel: rgba(34, 23, 25, 0.92);    /* Forest floor Shadow */
+    --bb-edge: rgb(92, 61, 36);            /* Brown trees Base */
+    --bb-button: rgb(71, 41, 25);          /* Brown trees Dark */
+    --bb-button-hover: rgb(92, 61, 36);    /* Brown trees Base */
+    --bb-focus: rgb(228, 198, 79);         /* Gold Light */
+    --bb-go: rgb(58, 103, 60);             /* Long grass Base */
+    --bb-go-hover: rgb(97, 131, 83);       /* Long grass Light */
+    --bb-off: rgb(80, 65, 62);             /* Forest floor Light */
+}
+
+/* Option Stepper: one row of the character creator, a label then ‹ value › */
+.option-stepper {
+    flex-direction: row;
+    align-items: center;
+    height: 14px;
+    margin-bottom: 2px;
+    padding-left: 4px;
+    padding-right: 2px;
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: 2px;
+}
+
+.option-stepper:focus {
+    border-color: var(--bb-focus);
+    background-color: rgba(228, 198, 79, 0.08);
+}
+
+.option-stepper__label {
+    flex-grow: 1;
+    margin: 0;
+    padding: 0;
+    font-size: 8px;
+    color: var(--bb-ink-muted);
+    -unity-text-align: middle-left;
+}
+
+.option-stepper__value {
+    width: 72px;
+    margin: 0;
+    padding: 0;
+    font-size: 8px;
+    color: var(--bb-ink);
+    -unity-text-align: middle-center;
+}
+
+.option-stepper__arrow {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    padding: 0;
+    font-size: 9px;
+    color: var(--bb-ink);
+    background-color: var(--bb-button);
+    border-width: 1px;
+    border-color: var(--bb-edge);
+    border-radius: 2px;
+    -unity-text-align: middle-center;
+}
+
+.option-stepper__arrow:hover {
+    background-color: var(--bb-button-hover);
+}
+
+/* A row with only one choice so far: the arrows rest. */
+.option-stepper--single .option-stepper__arrow {
+    opacity: 0.35;
+}
+
+.option-stepper--single .option-stepper__value {
+    color: var(--bb-ink-muted);
+}

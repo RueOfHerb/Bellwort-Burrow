@@ -4,7 +4,9 @@
     "references": [
         "BellwortBurrow.Core",
         "BellwortBurrow.Data",
-        "BellwortBurrow.Systems"
+        "BellwortBurrow.Systems",
+        "BellwortBurrow.Player",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

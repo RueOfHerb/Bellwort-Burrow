@@ -8,6 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
+using BellwortBurrow.Data;
 
 namespace BellwortBurrow.EditorTools
 {
@@ -18,6 +19,8 @@ namespace BellwortBurrow.EditorTools
     ///   and sorting: the opening screen (what the Main Camera sees), the whole scene, and two screens stacked above each
     ///   tree home when the scene has any. Each image starts with the scene's name, for example forlorn-forest-opening-screen.
     /// - Every sheet and character exactly as drawn: the Art layer, pixel for pixel.
+    /// - The critters put together with their faces and clothes, the way the game does it (players-faces, players-outfits,
+    ///   wardrobe, and player-mouse and so on). The player files hold no face or clothes of their own.
     /// - captures.json: when, and the fingerprint of every source file the images came from, for the Sync Ledger.
     /// - art-rules.txt: what Check Art Rules found.
     /// Images are saved at 1 pixel per art pixel; the canvas scales them up with pixelated rendering.
@@ -70,6 +73,7 @@ namespace BellwortBurrow.EditorTools
 
                 EditorUtility.DisplayProgressBar("Bellwort Burrow", "Saving the sheets", 0.8f);
                 CaptureSheets(images);
+                CapturePlayerFaces(images);
             }
             finally
             {
@@ -229,6 +233,178 @@ namespace BellwortBurrow.EditorTools
                 File.WriteAllBytes(Path.Combine(Folder, file), ToPng(sheet.Art, sheet.Width, sheet.Height));
                 images.Add(file);
             }
+        }
+
+        // ---------- Players, faces and clothes ----------
+
+        const string CritterCatalogPath = "Assets/Data/Characters/CritterCatalog.asset";
+        const int CellGap = 4;
+
+        // The kind the wardrobe picture is dressed on (Jocelyn, Oct 20).
+        const string WardrobeKindId = "fox";
+
+        /// <summary>
+        /// The critters put together the way Player Appearance does in the game, in natural colors: the player file, then
+        /// the bottom (unless the top covers it), top, waist, neck, the face (no mouth for a kind with a beak) and the ears
+        /// (moved to the kind's ears, mirrored for a pair, none on a kind without ears). Saves:
+        /// - players-faces.png: a row per kind, a column per face, in the clothes a new character wears;
+        /// - player-&lt;kind&gt;.png: each kind as a new character (the first face and the first piece of every slot);
+        /// - players-outfits.png: a row per kind, and columns that step through every slot's pieces together, so each
+        ///   piece shows on every kind;
+        /// - wardrobe.png: a row per slot, every piece on the fox (Jocelyn, Oct 20; the first kind if there's no fox), with
+        ///   the first piece of every other slot.
+        /// </summary>
+        static void CapturePlayerFaces(List<string> images)
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CritterCatalogPath);
+            var faceList = catalog != null ? catalog.Faces.Where(face => face != null && face.eyes != null).ToList() : null;
+            if (catalog == null || catalog.Palette == null || faceList.Count == 0) return;
+            var wardrobe = catalog.Wardrobe;
+            var kinds = catalog.Kinds.Where(kind => kind != null && kind.Sprite != null).ToList();
+            if (kinds.Count == 0) return;
+
+            var sheets = new Dictionary<string, AsepriteSheet>();
+            var bodies = new List<AsepriteSheet>();
+            try
+            {
+                foreach (var kind in kinds) bodies.Add(ReadSheet(sheets, kind.Sprite));
+                ReadSheet(sheets, faceList[0].eyes);
+                if (wardrobe != null)
+                    foreach (var piece in wardrobe.Pieces.Where(p => p != null && p.sprite != null)) ReadSheet(sheets, piece.sprite);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Bellwort Burrow: couldn't read the player files, faces or clothes for the canvas: {e.Message}");
+                return;
+            }
+            int width = bodies.Max(b => b.Width), height = bodies.Max(b => b.Height);
+            var slots = (ClothingSlot[])Enum.GetValues(typeof(ClothingSlot));
+            Dictionary<ClothingSlot, ClothingPiece> Outfit(Func<List<ClothingPiece>, ClothingPiece> pick) =>
+                wardrobe == null ? new Dictionary<ClothingSlot, ClothingPiece>() : slots.ToDictionary(slot => slot, slot => pick(wardrobe.For(slot)));
+            var firsts = Outfit(list => list.FirstOrDefault());
+
+            byte[] Cell(int k, FaceStyle face, Dictionary<ClothingSlot, ClothingPiece> outfit) =>
+                Dress(sheets, catalog, kinds[k], bodies[k], face, outfit);
+
+            // Every face, in a new character's clothes; and each kind as a new character.
+            var faceCells = new List<List<byte[]>>();
+            for (int k = 0; k < kinds.Count; k++)
+            {
+                var row = faceList.Select(face => Cell(k, face, firsts)).ToList();
+                faceCells.Add(row);
+                string single = $"player-{Slug(kinds[k].Id)}.png";
+                File.WriteAllBytes(Path.Combine(Folder, single), ToPng(row[0], width, height));
+                images.Add(single);
+            }
+            SaveGrid(images, "players-faces.png", faceCells, width, height);
+            if (wardrobe == null) return;
+
+            // Every slot's pieces stepped through together, on every kind.
+            int columns = slots.Max(slot => wardrobe.For(slot).Count);
+            var outfitCells = new List<List<byte[]>>();
+            for (int k = 0; k < kinds.Count; k++)
+                outfitCells.Add(Enumerable.Range(0, columns).Select(i => Cell(k, faceList[0], Outfit(list => list.Count == 0 ? null : list[i % list.Count]))).ToList());
+            SaveGrid(images, "players-outfits.png", outfitCells, width, height);
+
+            // Every piece on the fox, one slot to a row.
+            int model = Math.Max(0, kinds.FindIndex(kind => kind.Id == WardrobeKindId));
+            var wardrobeCells = new List<List<byte[]>>();
+            foreach (var slot in slots)
+            {
+                wardrobeCells.Add(wardrobe.For(slot).Select(piece =>
+                {
+                    var outfit = new Dictionary<ClothingSlot, ClothingPiece>(firsts) { [slot] = piece };
+                    return Cell(model, faceList[0], outfit);
+                }).ToList());
+            }
+            SaveGrid(images, "wardrobe.png", wardrobeCells, width, height);
+        }
+
+        static AsepriteSheet ReadSheet(Dictionary<string, AsepriteSheet> sheets, Sprite sprite)
+        {
+            string path = AssetDatabase.GetAssetPath(sprite);
+            if (!sheets.TryGetValue(path, out var sheet)) sheets[path] = sheet = AsepriteSheet.Read(File.ReadAllBytes(path));
+            return sheet;
+        }
+
+        /// <summary>One critter dressed and wearing a face, in natural colors, as Player Appearance puts it together.</summary>
+        static byte[] Dress(Dictionary<string, AsepriteSheet> sheets, CritterCatalog catalog, CritterKind kind, AsepriteSheet body,
+            FaceStyle face, Dictionary<ClothingSlot, ClothingPiece> outfit)
+        {
+            var cell = (byte[])body.Art.Clone();
+            var none = new List<Color32>();
+            void Put(Sprite part, List<Color32> from, List<Color32> to, int dx = 0, int dy = 0, bool flip = false)
+            {
+                if (part != null) Overlay(cell, body.Width, body.Height, sheets[AssetDatabase.GetAssetPath(part)], part, from, to, dx, dy, flip);
+            }
+            outfit.TryGetValue(ClothingSlot.Top, out var top);
+            outfit.TryGetValue(ClothingSlot.Bottom, out var bottom);
+            if (top == null || !top.coversBottom) Put(bottom?.sprite, none, none);
+            Put(top?.sprite, none, none);
+            if (outfit.TryGetValue(ClothingSlot.Waist, out var waist)) Put(waist?.sprite, none, none);
+            if (outfit.TryGetValue(ClothingSlot.Neck, out var neck)) Put(neck?.sprite, none, none);
+
+            var from = new List<Color32>();
+            var to = new List<Color32>();
+            RampSwap.BuildFace(kind, new PlayerProfile { critterKind = kind.Id }, catalog.Palette, catalog.FaceFurRamp, catalog.FaceEyeRamp, from, to);
+            Put(face.eyes, from, to);
+            if (kind.ShowsMouth) Put(face.mouth, from, to);
+
+            if (kind.HasEars && catalog.Wardrobe != null && outfit.TryGetValue(ClothingSlot.Ears, out var ears) && ears?.sprite != null)
+            {
+                var shift = kind.EarAnchor - catalog.Wardrobe.EarAnchor;
+                Put(ears.sprite, none, none, shift.x, shift.y);
+                if (ears.paired) Put(ears.sprite, none, none, -shift.x, shift.y, flip: true);
+            }
+            return cell;
+        }
+
+        static void SaveGrid(List<string> images, string file, List<List<byte[]>> cells, int cellWidth, int cellHeight)
+        {
+            int columns = cells.Max(row => row.Count);
+            int width = columns * (cellWidth + CellGap) - CellGap, height = cells.Count * (cellHeight + CellGap) - CellGap;
+            var grid = new byte[width * height * 4];
+            for (int row = 0; row < cells.Count; row++)
+                for (int column = 0; column < cells[row].Count; column++)
+                    Blit(grid, width, cells[row][column], cellWidth, cellHeight, column * (cellWidth + CellGap), row * (cellHeight + CellGap));
+            File.WriteAllBytes(Path.Combine(Folder, file), ToPng(grid, width, height));
+            images.Add(file);
+        }
+
+        /// <summary>
+        /// Draws one part's slice over a player frame, lined up by their bottom middle pivots, swapping colors. dx and dy
+        /// move it (y down); flip mirrors it across the frame's middle first, as a flipped SpriteRenderer does.
+        /// </summary>
+        static void Overlay(byte[] cell, int width, int height, AsepriteSheet faces, Sprite part, List<Color32> from, List<Color32> to,
+            int dx = 0, int dy = 0, bool flip = false)
+        {
+            if (part == null) return;
+            var slice = faces.Slices.FirstOrDefault(s => s.Name == part.name);
+            if (slice.Name == null)
+            {
+                Debug.LogWarning($"Bellwort Burrow: no slice named {part.name} for the canvas.");
+                return;
+            }
+            int left = width / 2 - (slice.HasPivot ? slice.PivotX : slice.Width / 2);
+            int top = height - (slice.HasPivot ? slice.PivotY : slice.Height);
+            for (int y = 0; y < slice.Height; y++)
+            for (int x = 0; x < slice.Width; x++)
+            {
+                int source = ((slice.Y + y) * faces.Width + slice.X + x) * 4;
+                int tx = left + (flip ? slice.Width - 1 - x : x) + dx, ty = top + y + dy;
+                if (faces.Art[source + 3] == 0 || tx < 0 || ty < 0 || tx >= width || ty >= height) continue;
+                var color = new Color32(faces.Art[source], faces.Art[source + 1], faces.Art[source + 2], 255);
+                int swap = from.IndexOf(color);
+                if (swap >= 0) color = to[swap];
+                int target = (ty * width + tx) * 4;
+                cell[target] = color.r; cell[target + 1] = color.g; cell[target + 2] = color.b; cell[target + 3] = 255;
+            }
+        }
+
+        static void Blit(byte[] grid, int gridWidth, byte[] cell, int width, int height, int left, int top)
+        {
+            for (int y = 0; y < height; y++)
+                Buffer.BlockCopy(cell, y * width * 4, grid, ((top + y) * gridWidth + left) * 4, width * 4);
         }
 
         static IEnumerable<string> SheetSources()

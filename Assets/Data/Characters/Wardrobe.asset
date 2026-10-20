@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 999e7c26d06f11c42a610c99a0c5013d, type: 3}
+  m_Name: Wardrobe
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.Wardrobe
+  pieces:
+  - id: tunic
+    displayName: Tunic
+    slot: 0
+    sprite: {fileID: -3930126739799414528, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Blue
+    coversBottom: 0
+    paired: 0
+  - id: collared-shirt
+    displayName: Collared shirt
+    slot: 0
+    sprite: {fileID: -2124958141871695347, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: White
+    coversBottom: 0
+    paired: 0
+  - id: blouse
+    displayName: Blouse
+    slot: 0
+    sprite: {fileID: 5890195837136029813, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Pink
+    coversBottom: 0
+    paired: 0
+  - id: dress
+    displayName: Dress
+    slot: 0
+    sprite: {fileID: 3107838431015245540, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Purple
+    coversBottom: 1
+    paired: 0
+  - id: overalls
+    displayName: Overalls
+    slot: 0
+    sprite: {fileID: 1624759860256116756, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Blue
+    coversBottom: 1
+    paired: 0
+  - id: trousers
+    displayName: Trousers
+    slot: 1
+    sprite: {fileID: -6997258912863365523, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Taupe
+    coversBottom: 0
+    paired: 0
+  - id: shorts
+    displayName: Shorts
+    slot: 1
+    sprite: {fileID: 9052602232535330348, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Brown
+    coversBottom: 0
+    paired: 0
+  - id: skirt
+    displayName: Skirt
+    slot: 1
+    sprite: {fileID: 7173072443931771267, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Red
+    coversBottom: 0
+    paired: 0
+  - id: long-skirt
+    displayName: Long skirt
+    slot: 1
+    sprite: {fileID: -4069786023599688127, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: Green
+    coversBottom: 0
+    paired: 0
+  - id: none
+    displayName: None
+    slot: 2
+    sprite: {fileID: 0}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: tie
+    displayName: Tie
+    slot: 2
+    sprite: {fileID: -7971499005239085442, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: bow-tie
+    displayName: Bow tie
+    slot: 2
+    sprite: {fileID: 637784224084494679, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: necklace
+    displayName: Necklace
+    slot: 2
+    sprite: {fileID: 5556859486713912155, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: scarf
+    displayName: Scarf
+    slot: 2
+    sprite: {fileID: -7708388617063138140, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: belt
+    displayName: Belt
+    slot: 3
+    sprite: {fileID: 5017182175056305158, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: sash
+    displayName: Sash
+    slot: 3
+    sprite: {fileID: -8356786341501281774, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: none
+    displayName: None
+    slot: 3
+    sprite: {fileID: 0}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: none
+    displayName: None
+    slot: 4
+    sprite: {fileID: 0}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  - id: studs
+    displayName: Studs
+    slot: 4
+    sprite: {fileID: -5753319476422859548, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 1
+  - id: hoops
+    displayName: Hoops
+    slot: 4
+    sprite: {fileID: 8918840125922206115, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 1
+  - id: flower
+    displayName: Flower
+    slot: 4
+    sprite: {fileID: 4815514832024733569, guid: 9ab92d0a2615c554c8161c03255f4390, type: 3}
+    ramp: 
+    coversBottom: 0
+    paired: 0
+  earAnchor: {x: 5, y: 9}

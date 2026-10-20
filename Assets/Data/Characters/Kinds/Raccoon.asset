@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 579c376c0a6543847a692dd4a681beec, type: 3}
+  m_Name: Raccoon
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.CritterKind
+  id: raccoon
+  displayName: Raccoon
+  sprite: {fileID: 8394445628322377104, guid: 60ae1122ef124cfbb4f348ccc296c145, type: 3}
+  furRamp: Grey
+  markingsRamp: Dark grey
+  eyeRamp: Eyes
+  showsMouth: 1
+  hasEars: 1
+  earAnchor: {x: 5, y: 9}
