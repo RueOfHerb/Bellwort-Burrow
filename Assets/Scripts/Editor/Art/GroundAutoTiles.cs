@@ -180,6 +180,16 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
+        /// The ground sets painted from <see cref="Template"/>, in the order the tile palette lays them out: each one's
+        /// slice and the extra full pieces it picks from (see <see cref="ForestGroundPalette"/>).
+        /// </summary>
+        internal static IEnumerable<(string slice, string[] fills)> TemplateSets()
+        {
+            yield return (PathSlice, PathFills);
+            foreach (var set in Sets) yield return (set.Slice, set.Fills);
+        }
+
+        /// <summary>
         /// Which corner neighbours change a tile's piece, given which sides are painted. A corner counts when both
         /// sides next to it are painted (an inner corner, as in Unity's Auto Tile), and also when it decides a slope:
         /// for an outer corner (both its sides empty), the neighbour past each end of that corner, along a painted
