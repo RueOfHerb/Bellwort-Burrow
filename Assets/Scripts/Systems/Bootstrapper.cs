@@ -19,6 +19,8 @@ namespace BellwortBurrow.Systems
         [SerializeField] VoidEventChannel dayChangedChannel;
         [Tooltip("Every item, so saves can store item ids and find the items again.")]
         [SerializeField] ItemCatalog itemCatalog;
+        [Tooltip("In the editor and development builds, every new game goes in one dev slot (dev.json), so test saves don't pile up.")]
+        [SerializeField] bool reuseDevSlot = true;
 
         static Bootstrapper instance;
 
@@ -55,6 +57,7 @@ namespace BellwortBurrow.Systems
             DontDestroyOnLoad(gameObject);
 
             Session = new GameSession(MakeServices, new SaveStore(SaveStore.DefaultFolder));
+            if (reuseDevSlot && Debug.isDebugBuild) Session.NewGameSlot = SaveStore.DevSlot;
             SceneManager.sceneLoaded += OnSceneLoaded;
             Debug.Log("[Game Root] All services registered.");
         }
@@ -62,9 +65,11 @@ namespace BellwortBurrow.Systems
         GameServices MakeServices() =>
             new(calendarConfig, dayChangedChannel, itemCatalog != null ? itemCatalog.Find : null);
 
+        // A zone is the world: the clock runs there. Every scene change saves a game in progress.
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (scene.path.Contains("/Scenes/Zones/")) Session.Zone = scene.name;
+            if (mode != LoadSceneMode.Single) return;
+            Session.EnterScene(scene.name, scene.path.Contains("/Scenes/Zones/"));
         }
 
         void OnDestroy()

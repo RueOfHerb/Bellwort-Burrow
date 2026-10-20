@@ -7,7 +7,7 @@ namespace BellwortBurrow.UI
 {
     /// <summary>
     /// TEMP DEBUG (sys-3): Ctrl+S or Alt+S shows a Save button in the top right corner, and pressing them again hides it.
-    /// Only in the editor and development builds. The real game saves only when the player goes to bed.
+    /// Only in the editor and development builds. The real game saves when the player goes to bed and whenever a scene loads.
     /// Lives on the Game Root, so it works in every scene.
     /// </summary>
     public class DebugSaveButton : MonoBehaviour

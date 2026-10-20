@@ -17,14 +17,18 @@ namespace BellwortBurrow.Systems
         /// <summary>The zone the player is in, as the save header records it.</summary>
         string Zone { get; }
 
+        /// <summary>True while the player is in the world (a zone scene). The clock and play time only run then.</summary>
+        bool InWorld { get; }
+
         float PlaySeconds { get; }
 
         /// <summary>Fresh services, this profile, the first free slot and the first save. Loading the start scene is up to the caller.</summary>
         void StartNewGame(PlayerProfile profile, string startZone);
 
         /// <summary>
-        /// Writes the game to its slot. The game saves only when the player goes to bed (not built yet, so that call is waiting
-        /// for it), plus the first save from StartNewGame. The temporary debug button calls this too.
+        /// Writes the game to its slot. The game saves when the player goes to bed (not built yet, so that call is waiting
+        /// for it) and whenever a scene loads during a game (EnterScene), plus the first save from StartNewGame.
+        /// The temporary debug button calls this too.
         /// </summary>
         bool Save();
 
@@ -41,8 +45,17 @@ namespace BellwortBurrow.Systems
 
         public GameServices Services { get; private set; }
         public string Slot { get; private set; } = "";
-        public string Zone { get; set; } = "";
+        public string Zone { get; private set; } = "";
+        public bool InWorld { get; private set; }
         public float PlaySeconds { get; private set; }
+
+        /// <summary>
+        /// When set, every new game goes in this slot instead of the next free one. The Game Root sets it to the dev slot
+        /// in the editor and development builds, so test saves don't pile up.
+        /// </summary>
+        public string NewGameSlot { get; set; } = "";
+
+        bool HasGame => !string.IsNullOrEmpty(Slot);
 
         public GameSession(Func<GameServices> makeServices, SaveStore store)
         {
@@ -59,17 +72,31 @@ namespace BellwortBurrow.Systems
             ServiceLocator.Register<IGameSession>(this);
         }
 
+        /// <summary>Moves the clock and play time along, but only while the player is in the world.</summary>
         public void Tick(float deltaTime)
         {
+            if (!InWorld) return;
+
             Services.Time.Tick(deltaTime);
-            if (!string.IsNullOrEmpty(Slot)) PlaySeconds += deltaTime;
+            if (HasGame) PlaySeconds += deltaTime;
+        }
+
+        /// <summary>
+        /// The Game Root calls this whenever a scene loads. Zones are the world: the clock runs there, and the zone goes in
+        /// the save. Any other scene (the character creator, menus) pauses the clock. A game in progress saves.
+        /// </summary>
+        public void EnterScene(string sceneName, bool isZone)
+        {
+            InWorld = isZone;
+            if (isZone) Zone = sceneName ?? "";
+            if (HasGame) Save();
         }
 
         public void StartNewGame(PlayerProfile profile, string startZone)
         {
             Reset();
             Services.Profile.Set(profile);
-            Slot = store.FirstFreeSlot();
+            Slot = string.IsNullOrEmpty(NewGameSlot) ? store.FirstFreeSlot() : NewGameSlot;
             Zone = startZone ?? "";
             PlaySeconds = 0f;
             Save();
@@ -77,7 +104,7 @@ namespace BellwortBurrow.Systems
 
         public bool Save()
         {
-            if (string.IsNullOrEmpty(Slot)) return false;
+            if (!HasGame) return false;
 
             var profile = Services.Profile.Profile;
             var header = new SaveHeader

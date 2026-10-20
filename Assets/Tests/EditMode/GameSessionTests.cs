@@ -90,6 +90,7 @@ namespace BellwortBurrow.Tests.EditMode
             session.StartNewGame(Bryn(), "ForlornForest");
             session.Services.Inventory.TryAdd(acorn, 12);
             session.Services.Relationships.AddFriendship("Nadia", 25);
+            session.EnterScene("ForlornForest", true);
             session.Tick(14.4f + 0.1f); // one in-game day
             Assert.IsTrue(session.Save());
 
@@ -104,6 +105,67 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.AreEqual(25, later.Services.Relationships.GetFriendship("Nadia"));
             Assert.AreEqual("slot1", later.Slot);
             Assert.AreEqual("ForlornForest", later.Zone);
+        }
+
+        [Test]
+        public void NewGames_ReuseTheDevSlot_WhenOneIsSet()
+        {
+            var session = MakeSession();
+            session.NewGameSlot = SaveStore.DevSlot;
+
+            session.StartNewGame(Bryn(), "ForlornForest");
+            session.StartNewGame(new PlayerProfile { name = "Wren", critterKind = "cat" }, "ForlornForest");
+
+            Assert.AreEqual(SaveStore.DevSlot, session.Slot);
+            Assert.IsTrue(store.TryRead(SaveStore.DevSlot, out var file));
+            Assert.AreEqual("Wren", file.header.playerName);
+            Assert.AreEqual("slot1", store.FirstFreeSlot());
+        }
+
+        [Test]
+        public void Clock_RunsOnlyWhileThePlayerIsInTheWorld()
+        {
+            var session = MakeSession();
+            session.StartNewGame(Bryn(), "ForlornForest");
+
+            session.Tick(1f);
+            Assert.AreEqual(0, session.Services.Time.MinutesSinceMidnight, "The clock ran before the player was in the world.");
+
+            session.EnterScene("CharacterCreator", false);
+            session.Tick(1f);
+            Assert.AreEqual(0, session.Services.Time.MinutesSinceMidnight, "The clock ran outside a zone.");
+            Assert.AreEqual(0f, session.PlaySeconds);
+
+            session.EnterScene("ForlornForest", true);
+            session.Tick(1f);
+            Assert.Greater(session.Services.Time.MinutesSinceMidnight, 0);
+            Assert.AreEqual(1f, session.PlaySeconds, 0.001f);
+            Assert.IsTrue(session.InWorld);
+        }
+
+        [Test]
+        public void EnteringAScene_SavesAGameInProgress()
+        {
+            var session = MakeSession();
+            session.StartNewGame(Bryn(), "ForlornForest");
+            session.Services.Relationships.AddFriendship("Nadia", 7);
+
+            session.EnterScene("ThicketPath", true);
+
+            Assert.IsTrue(store.TryRead("slot1", out var file));
+            Assert.AreEqual("ThicketPath", file.header.zone);
+            StringAssert.Contains("Nadia", file.Find("Relationships"));
+        }
+
+        [Test]
+        public void EnteringAScene_WithNoGame_SavesNothing()
+        {
+            var session = MakeSession();
+
+            session.EnterScene("ForlornForest", true);
+
+            Assert.IsFalse(Directory.Exists(folder));
+            Assert.AreEqual("ForlornForest", session.Zone);
         }
 
         [Test]

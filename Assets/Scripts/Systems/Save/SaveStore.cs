@@ -6,13 +6,15 @@ using UnityEngine;
 namespace BellwortBurrow.Systems.Save
 {
     /// <summary>
-    /// Save slots on disk (sys-3): one JSON file per slot, named slot1.json, slot2.json and so on.
+    /// Save slots on disk (sys-3): one JSON file per slot, named slot1.json, slot2.json and so on, plus dev.json, the one
+    /// slot the editor and development builds reuse for every new game.
     /// Each write goes to a temp file first and then replaces the old file, which is kept as a .bak,
     /// so a crash in the middle of a save can't wreck a slot. Reading falls back to the .bak if the file is broken.
     /// </summary>
     public class SaveStore
     {
         public const string SlotPrefix = "slot";
+        public const string DevSlot = "dev";
         public const string Extension = ".json";
 
         readonly string folder;
@@ -65,11 +67,13 @@ namespace BellwortBurrow.Systems.Save
             }
         }
 
-        /// <summary>The header of every slot that can be read, in slot order.</summary>
+        /// <summary>The header of every slot that can be read: the dev slot first, then the others in slot order.</summary>
         public IReadOnlyList<SaveHeader> ListSlots()
         {
             var headers = new List<(int number, SaveHeader header)>();
             if (!Directory.Exists(folder)) return new List<SaveHeader>();
+
+            if (TryRead(DevSlot, out var dev)) headers.Add((0, dev.header));
 
             foreach (string path in Directory.GetFiles(folder, SlotPrefix + "*" + Extension))
             {

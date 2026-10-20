@@ -79,16 +79,18 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
-        public void ListSlots_ReadsEveryHeaderInSlotOrder()
+        public void ListSlots_ReadsEveryHeader_DevSlotFirstThenSlotOrder()
         {
             store.Write("slot10", MakeFile("slot10", "Ten"));
             store.Write("slot2", MakeFile("slot2", "Two"));
+            store.Write(SaveStore.DevSlot, MakeFile(SaveStore.DevSlot, "Dev"));
 
             var slots = store.ListSlots();
 
-            Assert.AreEqual(2, slots.Count);
-            Assert.AreEqual("Two", slots[0].playerName);
-            Assert.AreEqual("Ten", slots[1].playerName);
+            Assert.AreEqual(3, slots.Count);
+            Assert.AreEqual("Dev", slots[0].playerName);
+            Assert.AreEqual("Two", slots[1].playerName);
+            Assert.AreEqual("Ten", slots[2].playerName);
         }
     }
 }
