@@ -16,12 +16,14 @@ namespace BellwortBurrow.Data
         [SerializeField] Sprite sprite;
 
         [Header("Recoloring (sys-6)")]
-        [Tooltip("The color ramp in characters.gpl this kind's fur is drawn in, on the same steps as every coat: Shadow outline, Dark shading, Base main color, Light lit side. The Fur color row swaps it.")]
+        [Tooltip("The color ramp in characters.gpl this kind's fur is drawn in, on the same steps as every coat: Shadow outline, Dark shading, Base main color, Light lit side. The Fur color row swaps it, and the face's brows take it.")]
         [SerializeField] string furRamp;
         [Tooltip("The ramp its markings are drawn in. Nothing else in the file may use it. The Markings color row swaps it.")]
         [SerializeField] string markingsRamp;
-        [Tooltip("The ramp its eyes are drawn in. The Eye color row swaps it.")]
+        [Tooltip("Its natural eye color: the ramp the face's eyes take while Eye color is Natural.")]
         [SerializeField] string eyeRamp = "Eyes";
+        [Tooltip("Off for a kind whose beak sits where a mouth would be, like the finch.")]
+        [SerializeField] bool showsMouth = true;
 
         public string Id => id;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? id : displayName;
@@ -29,8 +31,9 @@ namespace BellwortBurrow.Data
         public string FurRamp => furRamp;
         public string MarkingsRamp => markingsRamp;
         public string EyeRamp => eyeRamp;
+        public bool ShowsMouth => showsMouth;
 
-        internal void ConfigureForTesting(string id, string displayName, Sprite sprite, string furRamp = "", string markingsRamp = "", string eyeRamp = "")
+        internal void ConfigureForTesting(string id, string displayName, Sprite sprite, string furRamp = "", string markingsRamp = "", string eyeRamp = "", bool showsMouth = true)
         {
             this.id = id;
             this.displayName = displayName;
@@ -38,6 +41,7 @@ namespace BellwortBurrow.Data
             this.furRamp = furRamp;
             this.markingsRamp = markingsRamp;
             this.eyeRamp = eyeRamp;
+            this.showsMouth = showsMouth;
         }
     }
 }

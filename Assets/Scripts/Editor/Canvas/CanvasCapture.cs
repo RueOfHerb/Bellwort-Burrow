@@ -8,6 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
+using BellwortBurrow.Data;
 
 namespace BellwortBurrow.EditorTools
 {
@@ -18,6 +19,8 @@ namespace BellwortBurrow.EditorTools
     ///   and sorting: the opening screen (what the Main Camera sees), the whole scene, and two screens stacked above each
     ///   tree home when the scene has any. Each image starts with the scene's name, for example forlorn-forest-opening-screen.
     /// - Every sheet and character exactly as drawn: the Art layer, pixel for pixel.
+    /// - Every critter kind in every face, in natural colors, the way the game puts them together (players-faces), and each
+    ///   kind in the first face, Default (player-mouse and so on). The player files hold no eyes or mouth of their own.
     /// - captures.json: when, and the fingerprint of every source file the images came from, for the Sync Ledger.
     /// - art-rules.txt: what Check Art Rules found.
     /// Images are saved at 1 pixel per art pixel; the canvas scales them up with pixelated rendering.
@@ -70,6 +73,7 @@ namespace BellwortBurrow.EditorTools
 
                 EditorUtility.DisplayProgressBar("Bellwort Burrow", "Saving the sheets", 0.8f);
                 CaptureSheets(images);
+                CapturePlayerFaces(images);
             }
             finally
             {
@@ -229,6 +233,97 @@ namespace BellwortBurrow.EditorTools
                 File.WriteAllBytes(Path.Combine(Folder, file), ToPng(sheet.Art, sheet.Width, sheet.Height));
                 images.Add(file);
             }
+        }
+
+        // ---------- Players and faces ----------
+
+        const string CritterCatalogPath = "Assets/Data/Characters/CritterCatalog.asset";
+        const int FaceGap = 4;
+
+        /// <summary>
+        /// Every kind in every face, in natural colors: the player file, then the face's eyes and brows and its mouth (none
+        /// for a kind with a beak), with the brows on the kind's fur and the eyes on its eye color, as Player Appearance
+        /// does in the game. A row per kind, a column per face, in the Critter Catalog's order.
+        /// </summary>
+        static void CapturePlayerFaces(List<string> images)
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CritterCatalogPath);
+            var faceList = catalog != null ? catalog.Faces.Where(face => face != null && face.eyes != null).ToList() : null;
+            if (catalog == null || catalog.Palette == null || faceList.Count == 0) return;
+
+            AsepriteSheet faces;
+            var kinds = catalog.Kinds.Where(kind => kind != null && kind.Sprite != null).ToList();
+            var bodies = new List<AsepriteSheet>();
+            try
+            {
+                faces = AsepriteSheet.Read(File.ReadAllBytes(AssetDatabase.GetAssetPath(faceList[0].eyes)));
+                foreach (var kind in kinds) bodies.Add(AsepriteSheet.Read(File.ReadAllBytes(AssetDatabase.GetAssetPath(kind.Sprite))));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Bellwort Burrow: couldn't read the player files or faces for the canvas: {e.Message}");
+                return;
+            }
+            if (kinds.Count == 0) return;
+
+            int cellWidth = bodies.Max(b => b.Width), cellHeight = bodies.Max(b => b.Height);
+            int width = faceList.Count * (cellWidth + FaceGap) - FaceGap, height = kinds.Count * (cellHeight + FaceGap) - FaceGap;
+            var grid = new byte[width * height * 4];
+            var from = new List<Color32>();
+            var to = new List<Color32>();
+            for (int row = 0; row < kinds.Count; row++)
+            {
+                var kind = kinds[row];
+                var body = bodies[row];
+                RampSwap.BuildFace(kind, new PlayerProfile { critterKind = kind.Id }, catalog.Palette, catalog.FaceFurRamp, catalog.FaceEyeRamp, from, to);
+                for (int column = 0; column < faceList.Count; column++)
+                {
+                    var cell = (byte[])body.Art.Clone();
+                    Overlay(cell, body.Width, body.Height, faces, faceList[column].eyes, from, to);
+                    if (kind.ShowsMouth) Overlay(cell, body.Width, body.Height, faces, faceList[column].mouth, from, to);
+                    Blit(grid, width, cell, body.Width, body.Height, column * (cellWidth + FaceGap), row * (cellHeight + FaceGap));
+                    if (column > 0) continue;
+
+                    string single = $"player-{Slug(kind.Id)}.png";
+                    File.WriteAllBytes(Path.Combine(Folder, single), ToPng(cell, body.Width, body.Height));
+                    images.Add(single);
+                }
+            }
+            const string file = "players-faces.png";
+            File.WriteAllBytes(Path.Combine(Folder, file), ToPng(grid, width, height));
+            images.Add(file);
+        }
+
+        /// <summary>Draws one face slice over a player frame, lined up by their bottom middle pivots, swapping colors.</summary>
+        static void Overlay(byte[] cell, int width, int height, AsepriteSheet faces, Sprite part, List<Color32> from, List<Color32> to)
+        {
+            if (part == null) return;
+            var slice = faces.Slices.FirstOrDefault(s => s.Name == part.name);
+            if (slice.Name == null)
+            {
+                Debug.LogWarning($"Bellwort Burrow: the faces sheet has no slice named {part.name} for the canvas.");
+                return;
+            }
+            int left = width / 2 - (slice.HasPivot ? slice.PivotX : slice.Width / 2);
+            int top = height - (slice.HasPivot ? slice.PivotY : slice.Height);
+            for (int y = 0; y < slice.Height; y++)
+            for (int x = 0; x < slice.Width; x++)
+            {
+                int source = ((slice.Y + y) * faces.Width + slice.X + x) * 4;
+                int tx = left + x, ty = top + y;
+                if (faces.Art[source + 3] == 0 || tx < 0 || ty < 0 || tx >= width || ty >= height) continue;
+                var color = new Color32(faces.Art[source], faces.Art[source + 1], faces.Art[source + 2], 255);
+                int swap = from.IndexOf(color);
+                if (swap >= 0) color = to[swap];
+                int target = (ty * width + tx) * 4;
+                cell[target] = color.r; cell[target + 1] = color.g; cell[target + 2] = color.b; cell[target + 3] = 255;
+            }
+        }
+
+        static void Blit(byte[] grid, int gridWidth, byte[] cell, int width, int height, int left, int top)
+        {
+            for (int y = 0; y < height; y++)
+                Buffer.BlockCopy(cell, y * width * 4, grid, ((top + y) * gridWidth + left) * 4, width * 4);
         }
 
         static IEnumerable<string> SheetSources()

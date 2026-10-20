@@ -21,3 +21,30 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8be44513da525db4eb3ca5cd2079bdfd, type: 2}
   palette: {fileID: -2552068270393505597, guid: 5ca6c8001a4d03143b3d780d7aeddf41, type: 3}
   recolorMaterial: {fileID: 2100000, guid: fe3cc440d18230943ae9d7745529d235, type: 2}
+  faces:
+  - id: default
+    displayName: Default
+    eyes: {fileID: 8354337608022455356, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: 6471278697973783640, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  - id: big-eyes
+    displayName: Big eyes
+    eyes: {fileID: -7969576474867635228, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: 3530086601289106033, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  - id: hooded-eyes
+    displayName: Hooded eyes
+    eyes: {fileID: 780238133339455331, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: 1549306033929560203, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  - id: small-eyes
+    displayName: Small eyes
+    eyes: {fileID: -1270938213780430172, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: -3025880880469333189, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  - id: lashes
+    displayName: Lashes
+    eyes: {fileID: -4473443952865570688, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: -3514963175393822143, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  - id: thick-brows
+    displayName: Thick brows
+    eyes: {fileID: -4269841694014802293, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+    mouth: {fileID: -7678352594019596230, guid: 192d02b770bdab64c92603a073d88978, type: 3}
+  faceFurRamp: Grey
+  faceEyeRamp: Eyes

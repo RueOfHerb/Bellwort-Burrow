@@ -132,6 +132,26 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void EveryFace_HasEyesAndAMouth_StartingWithDefault()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CatalogPath);
+            Assert.IsNotNull(catalog, $"{CatalogPath} is missing.");
+            if (catalog.Faces.Count == 0) Assert.Ignore("No faces here. Install the art package to check them.");
+
+            Assert.AreEqual("default", catalog.Faces[0]?.id, "Every critter starts on the Default face, so it comes first.");
+            var ids = catalog.Faces.Where(face => face != null).Select(face => face.id).ToList();
+            Assert.AreEqual(catalog.Faces.Count, ids.Count, "The face list has an empty slot.");
+            Assert.AreEqual(ids.Count, ids.Distinct().Count(), "Two faces share an id.");
+            foreach (var face in catalog.Faces)
+            {
+                Assert.IsFalse(string.IsNullOrEmpty(face.id), "Every face needs an id.");
+                Assert.IsNotNull(face.eyes, $"Face {face.id} has no eyes sprite.");
+                Assert.IsNotNull(face.mouth, $"Face {face.id} has no mouth sprite.");
+                Assert.AreEqual(face.eyes.name + "_mouth", face.mouth.name, $"Face {face.id}'s mouth should be its own face_<name>_mouth slice.");
+            }
+        }
+
+        [Test]
         public void CritterKinds_HaveUniqueIds()
         {
             var catalog = AssetDatabase.LoadAssetAtPath<CritterCatalog>(CatalogPath);

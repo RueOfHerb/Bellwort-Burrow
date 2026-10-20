@@ -18,3 +18,4 @@ MonoBehaviour:
   furRamp: Yellow
   markingsRamp: Black
   eyeRamp: Eyes
+  showsMouth: 0

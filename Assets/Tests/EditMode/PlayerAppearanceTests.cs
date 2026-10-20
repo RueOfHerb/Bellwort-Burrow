@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Rendering;
 using BellwortBurrow.Data;
 using BellwortBurrow.Player;
 
@@ -79,6 +80,37 @@ namespace BellwortBurrow.Tests.EditMode
             var to = block.GetVectorArray("_SwapTo");
             Assert.AreEqual(10f / 255f, from[0].x, 0.0001f);
             Assert.AreEqual(250f / 255f, to[1].x, 0.0001f);
+        }
+
+        [Test]
+        public void Apply_PutsTheFaceOnTop_AndABeakHidesTheMouth()
+        {
+            var appearance = MakePlayer(out var body, out var foxSprite, out _);
+            var finch = ScriptableObject.CreateInstance<CritterKind>();
+            finch.ConfigureForTesting("finch", "Finch", MakeSprite("finch"), showsMouth: false);
+            var fox = ScriptableObject.CreateInstance<CritterKind>();
+            fox.ConfigureForTesting("fox", "Fox", foxSprite);
+            var faces = new[]
+            {
+                new FaceStyle("default", "Default", MakeSprite("face_default"), MakeSprite("face_default_mouth")),
+                new FaceStyle("big-eyes", "Big eyes", MakeSprite("face_big_eyes"), MakeSprite("face_big_eyes_mouth")),
+            };
+            var catalog = ScriptableObject.CreateInstance<CritterCatalog>();
+            catalog.ConfigureForTesting(new[] { fox, finch }, null, null, faces);
+            appearance.ConfigureForTesting(catalog, body);
+
+            appearance.Apply(new PlayerProfile { critterKind = "fox", face = "big-eyes" });
+
+            Assert.AreSame(faces[1].eyes, appearance.FaceRenderer.sprite);
+            Assert.AreSame(faces[1].mouth, appearance.MouthRenderer.sprite);
+            Assert.Greater(appearance.FaceRenderer.sortingOrder, body.sortingOrder, "the face draws over the body");
+            Assert.IsNotNull(appearance.GetComponent<SortingGroup>(), "the Player sorts as one picture");
+
+            appearance.Apply(new PlayerProfile { critterKind = "finch", face = "otter-face" });
+
+            Assert.AreEqual("default", appearance.Face.id, "an unknown face shows Default");
+            Assert.AreSame(faces[0].eyes, appearance.FaceRenderer.sprite);
+            Assert.IsNull(appearance.MouthRenderer.sprite, "the finch's beak hides the mouth");
         }
 
         [Test]

@@ -5,7 +5,7 @@ namespace BellwortBurrow.Data
 {
     /// <summary>
     /// The choices behind each character creator row, and stepping through them (sys-6).
-    /// The critter kind's choices come from the Critter Catalog; every other part's from Character Options.
+    /// The critter kind's and the face's choices come from the Critter Catalog; every other part's from Character Options.
     /// </summary>
     public static class AppearanceChoices
     {
@@ -13,6 +13,15 @@ namespace BellwortBurrow.Data
 
         public static IReadOnlyList<AppearanceOption> For(AppearancePart part, CritterCatalog catalog, CharacterOptions options)
         {
+            if (part == AppearancePart.Face && catalog != null && catalog.Faces.Count > 0)
+            {
+                var faces = new List<AppearanceOption>();
+                foreach (var face in catalog.Faces)
+                {
+                    if (face != null) faces.Add(new AppearanceOption(face.id, face.DisplayName));
+                }
+                return faces;
+            }
             if (part != AppearancePart.CritterKind)
                 return options != null ? options.For(part) : Array.Empty<AppearanceOption>();
 

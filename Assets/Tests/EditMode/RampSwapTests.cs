@@ -101,14 +101,55 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
-        public void FurMarkingsAndEyes_AllSwap_AndMaySharePicks()
+        public void FurAndMarkings_BothSwap_AndMaySharePicks()
         {
             int count = Build(new PlayerProfile { furColor = "white", markingsColor = "white", eyeColor = "gold-eyes" }, out var from, out var to);
 
-            Assert.AreEqual(15, count);
+            Assert.AreEqual(10, count, "the body swaps fur and markings; the eyes are on the face");
             Assert.AreEqual(new Color32(30, 16, 10, 255), from[5], "markings start with Dark brown Shadow");
             Assert.AreEqual(new Color32(58, 63, 78, 255), to[5], "and turn White Shadow, the same as the fur");
-            Assert.AreEqual(new Color32(104, 72, 26, 255), to[10]);
+        }
+
+        static int BuildFace(CritterKind kind, PlayerProfile profile, out List<Color32> from, out List<Color32> to)
+        {
+            from = new List<Color32>();
+            to = new List<Color32>();
+            // These faces have their brows drawn in Dark brown, standing in for the catalog's Grey.
+            return RampSwap.BuildFace(kind, profile, MakePalette(), "Dark brown", "Eyes", from, to);
+        }
+
+        [Test]
+        public void Face_BrowsTakeThePickedFur_AndEyesThePickedEyeColor()
+        {
+            int count = BuildFace(Fox(), new PlayerProfile { furColor = "white", eyeColor = "gold-eyes" }, out var from, out var to);
+
+            Assert.AreEqual(10, count);
+            Assert.AreEqual(new Color32(30, 16, 10, 255), from[0], "brows start in Dark brown Shadow");
+            Assert.AreEqual(new Color32(58, 63, 78, 255), to[0], "and take the White fur");
+            Assert.AreEqual(new Color32(27, 29, 38, 255), from[5], "eyes start in Eyes Shadow");
+            Assert.AreEqual(new Color32(104, 72, 26, 255), to[5], "and take Gold");
+        }
+
+        [Test]
+        public void Face_OnNatural_TakesTheKindsOwnFurAndEyes()
+        {
+            var cat = ScriptableObject.CreateInstance<CritterKind>();
+            cat.ConfigureForTesting("cat", "Cat", null, "White", "Orange", "Gold eyes");
+
+            int count = BuildFace(cat, new PlayerProfile { furColor = RampSwap.Natural, eyeColor = "" }, out var from, out var to);
+
+            Assert.AreEqual(10, count);
+            Assert.AreEqual(new Color32(58, 63, 78, 255), to[0], "brows take the cat's own White");
+            Assert.AreEqual(new Color32(104, 72, 26, 255), to[5], "eyes take the cat's own Gold eyes");
+        }
+
+        [Test]
+        public void Face_DrawnInTheKindsOwnColors_SwapsNothing()
+        {
+            var brown = ScriptableObject.CreateInstance<CritterKind>();
+            brown.ConfigureForTesting("brown", "Brown", null, "Dark brown", "Orange", "Eyes");
+
+            Assert.AreEqual(0, BuildFace(brown, new PlayerProfile(), out _, out _));
         }
     }
 }

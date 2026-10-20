@@ -73,10 +73,6 @@ MonoBehaviour:
       displayName: Dark
     - id: gold-eyes
       displayName: Gold
-  - part: 4
-    options:
-    - id: default
-      displayName: Default
   - part: 5
     options:
     - id: default

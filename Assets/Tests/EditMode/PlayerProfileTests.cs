@@ -94,6 +94,24 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void FaceChoices_ComeFromTheCatalogsFaces()
+        {
+            var catalog = MakeCatalog("mouse");
+            catalog.ConfigureForTesting(catalog.Kinds, null, null, new[]
+            {
+                new FaceStyle("default", "Default", null, null),
+                new FaceStyle("lashes", "Lashes", null, null),
+            });
+
+            var choices = AppearanceChoices.For(AppearancePart.Face, catalog, MakeOptions());
+
+            Assert.AreEqual(2, choices.Count);
+            Assert.AreEqual("lashes", choices[1].id);
+            Assert.AreEqual("Lashes", choices[1].displayName);
+            Assert.AreEqual("default", AppearanceChoices.Defaults(catalog, MakeOptions()).face);
+        }
+
+        [Test]
         public void ProfileService_SavesAndLoadsTheProfileAsJson()
         {
             var saved = new PlayerProfileService();
