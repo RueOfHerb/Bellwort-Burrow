@@ -11,8 +11,14 @@ namespace BellwortBurrow.Data
     public class CritterCatalog : ScriptableObject
     {
         [SerializeField] List<CritterKind> kinds = new();
+        [Tooltip("Assets/Art/Palettes/characters.gpl, the ramps the color rows choose from.")]
+        [SerializeField] RampPalette palette;
+        [Tooltip("The lit sprite material that swaps ramps (Sprite Lit Ramp Swap). The Player wears it once dressed.")]
+        [SerializeField] Material recolorMaterial;
 
         public IReadOnlyList<CritterKind> Kinds => kinds;
+        public RampPalette Palette => palette;
+        public Material RecolorMaterial => recolorMaterial;
 
         public CritterKind Find(string id)
         {
@@ -24,6 +30,11 @@ namespace BellwortBurrow.Data
             return null;
         }
 
-        internal void ConfigureForTesting(IEnumerable<CritterKind> kinds) => this.kinds = new List<CritterKind>(kinds);
+        internal void ConfigureForTesting(IEnumerable<CritterKind> kinds, RampPalette palette = null, Material recolorMaterial = null)
+        {
+            this.kinds = new List<CritterKind>(kinds);
+            this.palette = palette;
+            this.recolorMaterial = recolorMaterial;
+        }
     }
 }

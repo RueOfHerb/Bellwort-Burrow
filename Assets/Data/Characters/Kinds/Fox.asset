@@ -15,3 +15,6 @@ MonoBehaviour:
   id: fox
   displayName: Fox
   sprite: {fileID: 8874053461049306272, guid: 80071748fad53a4408485c426fff3d9f, type: 3}
+  furRamp: Fox fur
+  markingsRamp: Rabbit fur
+  eyeRamp: Eyes

@@ -15,3 +15,6 @@ MonoBehaviour:
   id: rabbit
   displayName: Rabbit
   sprite: {fileID: -7667596935804839237, guid: 676c85b5f1d03444f8f224ca42b41de6, type: 3}
+  furRamp: Rabbit fur
+  markingsRamp: Rabbit markings
+  eyeRamp: Eyes

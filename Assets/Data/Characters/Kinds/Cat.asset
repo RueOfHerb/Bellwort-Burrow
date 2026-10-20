@@ -15,3 +15,6 @@ MonoBehaviour:
   id: cat
   displayName: Cat
   sprite: {fileID: -672858224102929812, guid: 9a8b24f57881473c9e5dde798fafe49c, type: 3}
+  furRamp: Black fur
+  markingsRamp: White fur
+  eyeRamp: Gold eyes

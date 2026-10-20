@@ -56,6 +56,32 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void Apply_RecolorsThroughTheRampSwapMaterial()
+        {
+            var appearance = MakePlayer(out var body, out _, out _);
+            var palette = ScriptableObject.CreateInstance<RampPalette>();
+            palette.SetRamps(RampPalette.Parse("Columns: 2\n10 10 10\tFox fur Shadow\n20 20 20\tFox fur Base\n200 200 200\tWhite fur Shadow\n250 250 250\tWhite fur Base\n"));
+            var fox = ScriptableObject.CreateInstance<CritterKind>();
+            fox.ConfigureForTesting("fox", "Fox", body.sprite, "Fox fur", "", "");
+            var material = new Material(Shader.Find("Sprites/Default"));
+            var catalog = ScriptableObject.CreateInstance<CritterCatalog>();
+            catalog.ConfigureForTesting(new[] { fox }, palette, material);
+            appearance.ConfigureForTesting(catalog, body);
+
+            appearance.Apply(new PlayerProfile { critterKind = "fox", furColor = "white-fur" });
+
+            Assert.AreSame(material, body.sharedMaterial);
+            Assert.AreEqual(2, appearance.SwappedColors);
+            var block = new MaterialPropertyBlock();
+            body.GetPropertyBlock(block);
+            Assert.AreEqual(2f, block.GetFloat("_SwapCount"));
+            var from = block.GetVectorArray("_SwapFrom");
+            var to = block.GetVectorArray("_SwapTo");
+            Assert.AreEqual(10f / 255f, from[0].x, 0.0001f);
+            Assert.AreEqual(250f / 255f, to[1].x, 0.0001f);
+        }
+
+        [Test]
         public void Apply_AnUnknownKind_LeavesThePlayerAsPlaced()
         {
             var appearance = MakePlayer(out var body, out var foxSprite, out _);

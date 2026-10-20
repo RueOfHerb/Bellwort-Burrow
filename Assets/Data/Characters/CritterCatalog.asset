@@ -19,3 +19,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8bfae006243f500498bc853ddc01606b, type: 2}
   - {fileID: 11400000, guid: 12428a9b6f7c9c34c87d7522c4791e6e, type: 2}
   - {fileID: 11400000, guid: 8be44513da525db4eb3ca5cd2079bdfd, type: 2}
+  palette: {fileID: -2552068270393505597, guid: 5ca6c8001a4d03143b3d780d7aeddf41, type: 3}
+  recolorMaterial: {fileID: 2100000, guid: fe3cc440d18230943ae9d7745529d235, type: 2}

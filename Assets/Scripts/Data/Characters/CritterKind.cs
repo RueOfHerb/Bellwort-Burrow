@@ -15,15 +15,29 @@ namespace BellwortBurrow.Data
         [Tooltip("The player file's sprite, standing and facing front. Walk frames and the other views come later.")]
         [SerializeField] Sprite sprite;
 
+        [Header("Recoloring (sys-6)")]
+        [Tooltip("The ramp in characters.gpl this kind's fur is drawn in. The Fur color row swaps it.")]
+        [SerializeField] string furRamp;
+        [Tooltip("The ramp its markings are drawn in. Nothing else in the file may use it. The Markings color row swaps it.")]
+        [SerializeField] string markingsRamp;
+        [Tooltip("The ramp its eyes are drawn in. The Eye color row swaps it.")]
+        [SerializeField] string eyeRamp = "Eyes";
+
         public string Id => id;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? id : displayName;
         public Sprite Sprite => sprite;
+        public string FurRamp => furRamp;
+        public string MarkingsRamp => markingsRamp;
+        public string EyeRamp => eyeRamp;
 
-        internal void ConfigureForTesting(string id, string displayName, Sprite sprite)
+        internal void ConfigureForTesting(string id, string displayName, Sprite sprite, string furRamp = "", string markingsRamp = "", string eyeRamp = "")
         {
             this.id = id;
             this.displayName = displayName;
             this.sprite = sprite;
+            this.furRamp = furRamp;
+            this.markingsRamp = markingsRamp;
+            this.eyeRamp = eyeRamp;
         }
     }
 }

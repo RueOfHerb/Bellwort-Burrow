@@ -15,6 +15,8 @@ MonoBehaviour:
   parts:
   - part: 1
     options:
+    - id: natural
+      displayName: Natural
     - id: mouse-fur
       displayName: Mouse fur
     - id: rabbit-fur
@@ -29,12 +31,26 @@ MonoBehaviour:
       displayName: White fur
     - id: black-fur
       displayName: Black fur
+    - id: mouse-markings
+      displayName: Mouse markings
+    - id: rabbit-markings
+      displayName: Rabbit markings
+    - id: raccoon-markings
+      displayName: Raccoon markings
   - part: 2
     options:
+    - id: natural
+      displayName: Natural
     - id: white-fur
       displayName: White fur
     - id: black-fur
       displayName: Black fur
+    - id: mouse-markings
+      displayName: Mouse markings
+    - id: rabbit-markings
+      displayName: Rabbit markings
+    - id: raccoon-markings
+      displayName: Raccoon markings
     - id: mouse-fur
       displayName: Mouse fur
     - id: rabbit-fur
@@ -47,8 +63,12 @@ MonoBehaviour:
       displayName: Finch feathers
   - part: 3
     options:
+    - id: natural
+      displayName: Natural
     - id: eyes
-      displayName: Default
+      displayName: Dark
+    - id: gold-eyes
+      displayName: Gold
   - part: 4
     options:
     - id: default

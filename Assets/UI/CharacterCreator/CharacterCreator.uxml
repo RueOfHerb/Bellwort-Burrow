@@ -17,7 +17,7 @@
             <bb:OptionStepper name="shirt" part="Shirt" label="Shirt" />
             <bb:OptionStepper name="trousers" part="Trousers" label="Trousers" />
             <bb:OptionStepper name="belt" part="Belt" label="Belt" />
-            <ui:Label text="Only Critter Type changes your look for now." name="hint" class="creator__hint" />
+            <ui:Label text="Face and outfit don't change your look yet." name="hint" class="creator__hint" />
             <ui:Button text="Begin" name="begin" class="creator__begin" />
         </ui:VisualElement>
     </ui:VisualElement>
