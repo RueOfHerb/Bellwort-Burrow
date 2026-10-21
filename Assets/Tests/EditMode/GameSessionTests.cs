@@ -91,7 +91,7 @@ namespace BellwortBurrow.Tests.EditMode
             session.Services.Inventory.TryAdd(acorn, 12);
             session.Services.Relationships.AddFriendship("Nadia", 25);
             session.EnterScene("ForlornForest", true);
-            session.Tick(14.4f + 0.1f); // one in-game day
+            session.Tick(8.4f + 0.1f); // one in-game day, 7 PM to 9 AM
             Assert.IsTrue(session.Save());
 
             var later = MakeSession();
@@ -129,18 +129,36 @@ namespace BellwortBurrow.Tests.EditMode
             session.StartNewGame(Bryn(), "ForlornForest");
 
             session.Tick(1f);
-            Assert.AreEqual(0, session.Services.Time.MinutesSinceMidnight, "The clock ran before the player was in the world.");
+            Assert.AreEqual(calendar.WakeMinute, session.Services.Time.MinutesSinceMidnight, "The clock ran before the player was in the world.");
 
             session.EnterScene("CharacterCreator", false);
             session.Tick(1f);
-            Assert.AreEqual(0, session.Services.Time.MinutesSinceMidnight, "The clock ran outside a zone.");
+            Assert.AreEqual(calendar.WakeMinute, session.Services.Time.MinutesSinceMidnight, "The clock ran outside a zone.");
             Assert.AreEqual(0f, session.PlaySeconds);
 
             session.EnterScene("ForlornForest", true);
             session.Tick(1f);
-            Assert.Greater(session.Services.Time.MinutesSinceMidnight, 0);
+            Assert.Greater(session.Services.Time.MinutesSinceMidnight, calendar.WakeMinute);
             Assert.AreEqual(1f, session.PlaySeconds, 0.001f);
             Assert.IsTrue(session.InWorld);
+        }
+
+        [Test]
+        public void TheEndOfTheDay_WakesThePlayerOnTheNextDayAndSaves()
+        {
+            var session = MakeSession();
+            session.StartNewGame(Bryn(), "ForlornForest");
+            session.EnterScene("ForlornForest", true);
+
+            session.Tick(8.4f - 0.05f);
+            Assert.AreEqual(1, session.Services.Time.CurrentDay, "The day ended before 9:00 AM.");
+            session.Tick(0.1f);
+
+            Assert.AreEqual(2, session.Services.Time.CurrentDay);
+            Assert.AreEqual(calendar.WakeMinute, session.Services.Time.MinutesSinceMidnight);
+            Assert.IsFalse(session.Services.Time.DayOver);
+            Assert.IsTrue(store.TryRead("slot1", out var file));
+            Assert.AreEqual(2, file.header.day);
         }
 
         [Test]

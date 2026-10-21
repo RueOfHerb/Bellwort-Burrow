@@ -33,11 +33,18 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.IsFalse(plotService.TryPlant(cell, crop));
             Assert.IsFalse(plotService.IsMature(cell));
 
-            // One in-game day is 1440 minutes; at 0.01 real seconds/minute that's 14.4 real seconds.
-            timeService.Tick(14.4f + 0.05f);
+            // A day is 7 PM to 9 AM, 840 minutes; at 0.01 real seconds a minute that's 8.4 real seconds. Then the
+            // player sleeps (passing out, for now) and the next day starts.
+            void LiveADay()
+            {
+                timeService.Tick(8.4f + 0.05f);
+                timeService.StartNextDay();
+            }
+
+            LiveADay();
             Assert.IsFalse(plotService.IsMature(cell));
 
-            timeService.Tick(14.4f + 0.05f);
+            LiveADay();
             Assert.IsTrue(plotService.IsMature(cell));
 
             bool harvested = plotService.TryHarvest(cell, out var yieldItem);

@@ -26,9 +26,9 @@ namespace BellwortBurrow.Systems
         void StartNewGame(PlayerProfile profile, string startZone);
 
         /// <summary>
-        /// Writes the game to its slot. The game saves when the player goes to bed (not built yet, so that call is waiting
-        /// for it) and whenever a scene loads during a game (EnterScene), plus the first save from StartNewGame.
-        /// The temporary debug button calls this too.
+        /// Writes the game to its slot. The game saves when a day ends (going to bed isn't built yet, so for now that's
+        /// when the player passes out at the end of the day) and whenever a scene loads during a game (EnterScene),
+        /// plus the first save from StartNewGame. The temporary debug button calls this too.
         /// </summary>
         bool Save();
 
@@ -67,9 +67,20 @@ namespace BellwortBurrow.Systems
         void Reset()
         {
             Services = makeServices();
+            Services.Time.OnDayEnded += PassOut;
             ServiceLocator.Clear();
             Services.Register();
             ServiceLocator.Register<IGameSession>(this);
+        }
+
+        /// <summary>
+        /// The clock reached the end of the day (9:00 AM). Until passing out and the bed are built, the player wakes on
+        /// the next day straight away and the game saves.
+        /// </summary>
+        void PassOut()
+        {
+            Services.Time.StartNextDay();
+            Save();
         }
 
         /// <summary>Moves the clock and play time along, but only while the player is in the world.</summary>
