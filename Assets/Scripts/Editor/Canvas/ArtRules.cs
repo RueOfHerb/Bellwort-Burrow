@@ -47,6 +47,23 @@ namespace BellwortBurrow.EditorTools
         public static bool OnTrunk(string sliceName) =>
             sliceName.Contains("tree_room_") || sliceName.Contains("tree_stairs_");
 
+        static readonly Regex RoofPiece = new Regex(@"^(.+)_roof_([a-z]+)$");
+
+        /// <summary>
+        /// Roofs that go on top of a house (burrow_home_roof_red on burrow_home_red): their pivot is where the house's
+        /// feet are when the roof sits on it, below the roof itself, so a roof lands on the house's own spot. On the
+        /// sheet the roof stands on its house like any pieces that go together, so its pivot is further down than the
+        /// house's feet there by how far the roof reaches down over the house.
+        /// </summary>
+        public static bool OnHouse(string sliceName) => RoofPiece.IsMatch(sliceName);
+
+        /// <summary>The house a roof goes on: burrow_home_roof_red goes on burrow_home_red.</summary>
+        public static string HouseOf(string roofName)
+        {
+            var m = RoofPiece.Match(roofName);
+            return m.Success ? $"{m.Groups[1].Value}_{m.Groups[2].Value}" : null;
+        }
+
         /// <summary>The pivot sits at the bottom middle, where the thing meets the ground (a base may reach a few pixels lower).</summary>
         public static bool PivotAtFeet(SheetSlice slice) =>
             slice.HasPivot && Math.Abs(slice.PivotX * 2 - slice.Width) <= 2 &&
@@ -95,19 +112,29 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// Pieces that go together are laid out on the sheet as if painted together: a tree's base, middles and crown
-        /// (bottom to top, the way they stack) and a tree house set's ground house, stairs and upper room, each one
-        /// standing straight on the one below it (touching, no gap) on one center line (the pivot column).
+        /// (bottom to top, the way they stack), a tree house set's ground house, stairs and upper room, and a house with
+        /// the roof that goes on it, each one standing straight on the one below it (touching, no gap) on one center
+        /// line (the pivot column).
         /// Returns a line for every piece that doesn't.
         /// </summary>
         public static List<string> StandTogether(IReadOnlyList<SheetSlice> slices)
         {
             var groups = new Dictionary<string, SortedDictionary<int, SheetSlice>>();
+            var roofed = new HashSet<string>();
+            foreach (var slice in slices)
+            {
+                string under = HouseOf(slice.Name);
+                if (under != null) roofed.Add(under);
+            }
             foreach (var slice in slices)
             {
                 var tree = TreePiece.Match(slice.Name);
                 var house = HousePiece.Match(slice.Name);
                 string key; int rank;
-                if (house.Success) { key = $"{house.Groups[1].Value}_{house.Groups[3].Value} set"; rank = Array.IndexOf(HouseOrder, house.Groups[2].Value); }
+                string roofOn = HouseOf(slice.Name);
+                if (roofOn != null) { key = roofOn + " roofed"; rank = 1; }
+                else if (roofed.Contains(slice.Name)) { key = slice.Name + " roofed"; rank = 0; }
+                else if (house.Success) { key = $"{house.Groups[1].Value}_{house.Groups[3].Value} set"; rank = Array.IndexOf(HouseOrder, house.Groups[2].Value); }
                 else if (tree.Success) { key = tree.Groups[1].Value; rank = Array.IndexOf(TreeOrder, tree.Groups[2].Value); }
                 else continue;
                 if (!groups.TryGetValue(key, out var group)) groups[key] = group = new SortedDictionary<int, SheetSlice>();
@@ -127,6 +154,8 @@ namespace BellwortBurrow.EditorTools
                         int belowColumn = b.X + (b.HasPivot ? b.PivotX : b.Width / 2);
                         if (column != belowColumn || piece.Y + piece.Height != b.Y)
                             problems.Add($"{piece.Name} doesn't stand straight on {b.Name}");
+                        else if (OnHouse(piece.Name) && piece.HasPivot && piece.PivotY <= piece.Height)
+                            problems.Add($"{piece.Name} has its pivot on itself, but a roof's pivot is its house's feet, below it");
                     }
                     below = piece;
                 }
@@ -147,7 +176,7 @@ namespace BellwortBurrow.EditorTools
 
             foreach (var slice in slices)
             {
-                if (!tileSheet && !Floating.Contains(slice.Name) && !OnTrunk(slice.Name) && !PivotAtFeet(slice))
+                if (!tileSheet && !Floating.Contains(slice.Name) && !OnTrunk(slice.Name) && !OnHouse(slice.Name) && !PivotAtFeet(slice))
                     problems.Add($"{sheetName}: {slice.Name} has its pivot away from its feet (set it to the bottom middle)");
 
                 if (NeedsSigil(slice.Name) && CountColor(glow, width, height, slice, SigilRed, false) < MinSigilPixels)

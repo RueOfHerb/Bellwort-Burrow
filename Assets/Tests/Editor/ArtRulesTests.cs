@@ -61,6 +61,26 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void ARoofStandsOnItsHouse_WithItsPivotAtTheHousesFeet()
+        {
+            // The roof's slice stands on its house's; its pivot is below it, where the house's feet are once it's on.
+            var homes = new List<SheetSlice>
+            {
+                Slice("burrow_home_roof_red", 0, 0, 20, 8, 10, 15),
+                Slice("burrow_home_red", 0, 8, 20, 12, 10, 12),
+            };
+            Assert.IsEmpty(ArtRules.StandTogether(homes));
+            Assert.IsEmpty(ArtRules.Check("burrow_buildings", W, H, new byte[W * H * 4], null, homes, false),
+                "a roof's pivot is its house's feet, not its own");
+            Assert.AreEqual("burrow_home_red", ArtRules.HouseOf("burrow_home_roof_red"));
+            homes[0] = Slice("burrow_home_roof_red", 0, 0, 20, 7, 10, 15);
+            Assert.AreEqual(1, ArtRules.StandTogether(homes).Count, "a gap between the roof and its house");
+            homes[0] = Slice("burrow_home_roof_red", 0, 0, 20, 8, 10, 8);
+            Assert.AreEqual(1, ArtRules.Check("burrow_buildings", W, H, new byte[W * H * 4], null, homes, false).Count,
+                "a roof with its pivot on itself would stand on the ground, not on its house");
+        }
+
+        [Test]
         public void TouchingSlicesDontOverlapButCrossingOnesDo()
         {
             var touching = new List<SheetSlice> { Slice("a", 0, 0, 10, 10, 5, 10), Slice("b", 10, 0, 10, 10, 5, 10) };

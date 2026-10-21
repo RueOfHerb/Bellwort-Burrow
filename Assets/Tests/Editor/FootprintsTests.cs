@@ -50,6 +50,18 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void RoofsGoOnTheirHouse_NotOnTheGrid()
+        {
+            Assert.IsTrue(Footprints.IsRoof("burrow_home_wide_roof_blue", out var fits));
+            Assert.AreEqual("burrow_home_wide", fits);
+            Assert.AreEqual(0, Footprints.TilesWide("burrow_home_wide_roof_blue", false, null, 0, 0, null));
+            var names = new[] { "burrow_home_wide_blue", "burrow_home_wide_roof_blue", "round_cottage_blue" };
+            Assert.AreEqual("burrow_home_wide", Footprints.RoofSeatSize("burrow_home_wide_blue", names));
+            Assert.IsNull(Footprints.RoofSeatSize("round_cottage_blue", names), "no roof of its own on the sheet");
+            Assert.IsNull(Footprints.RoofSeatSize("burrow_home_wide_roof_blue", names), "a roof isn't a house");
+        }
+
+        [Test]
         public void WideThingsRootOnTheTilesUnderTheirFront()
         {
             int w = 64, h = 20;
