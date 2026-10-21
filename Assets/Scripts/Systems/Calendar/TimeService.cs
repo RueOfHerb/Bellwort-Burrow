@@ -5,6 +5,11 @@ using BellwortBurrow.Data;
 
 namespace BellwortBurrow.Systems.Calendar
 {
+    /// <summary>
+    /// The clock (see <see cref="ITimeService"/>). New games start on day 1 at the wake time. When the clock reaches
+    /// the pass out time the day is over and the clock holds still until something starts the next day (going to bed,
+    /// or passing out; for now the game session does it straight away).
+    /// </summary>
     public class TimeService : ITimeService, ISaveable
     {
         [Serializable]
@@ -24,8 +29,13 @@ namespace BellwortBurrow.Systems.Calendar
         public int MinutesSinceMidnight { get; private set; }
         public int CurrentDay { get; private set; } = 1;
         public Season CurrentSeason { get; private set; } = Season.Spring;
+        public bool DayOver { get; private set; }
+
+        public int MinutesAwake => calendar == null ? 0
+            : (MinutesSinceMidnight - calendar.WakeMinute + calendar.MinutesPerDay) % calendar.MinutesPerDay;
 
         public event Action OnHourChanged;
+        public event Action OnDayEnded;
         public event Action OnDayChanged;
         public event Action<Season> OnSeasonChanged;
 
@@ -33,6 +43,7 @@ namespace BellwortBurrow.Systems.Calendar
         {
             this.calendar = calendar;
             this.dayChangedChannel = dayChangedChannel;
+            if (calendar != null) SetClock(calendar.WakeMinute);
         }
 
         public string SaveKey => "Calendar";
@@ -51,25 +62,48 @@ namespace BellwortBurrow.Systems.Calendar
 
             CurrentDay = Math.Max(1, state.day);
             CurrentSeason = Enum.TryParse(state.season, out Season season) ? season : Season.Spring;
-            MinutesSinceMidnight = Math.Max(0, state.minutesSinceMidnight);
-            lastHour = calendar != null ? MinutesSinceMidnight / calendar.MinutesPerHour : 0;
-            minuteAccumulator = 0f;
+            SetClock(Math.Max(0, state.minutesSinceMidnight));
+            DayOver = false;
         }
 
         public void Tick(float deltaTime)
         {
+            if (DayOver) return;
+
+            // A save made outside the waking hours (before days ran 7 PM to 9 AM) ends its day at once.
+            if (MinutesAwake >= calendar.AwakeMinutes)
+            {
+                EndDay();
+                return;
+            }
+
             minuteAccumulator += deltaTime / calendar.RealSecondsPerInGameMinute;
 
-            while (minuteAccumulator >= 1f)
+            while (minuteAccumulator >= 1f && !DayOver)
             {
                 minuteAccumulator -= 1f;
                 AdvanceMinute();
             }
         }
 
+        public void StartNextDay()
+        {
+            DayOver = false;
+            SetClock(calendar.WakeMinute);
+            OnHourChanged?.Invoke();
+            AdvanceDay();
+        }
+
+        void SetClock(int minutesSinceMidnight)
+        {
+            MinutesSinceMidnight = calendar != null ? minutesSinceMidnight % calendar.MinutesPerDay : minutesSinceMidnight;
+            lastHour = calendar != null ? MinutesSinceMidnight / calendar.MinutesPerHour : 0;
+            minuteAccumulator = 0f;
+        }
+
         void AdvanceMinute()
         {
-            MinutesSinceMidnight++;
+            MinutesSinceMidnight = (MinutesSinceMidnight + 1) % calendar.MinutesPerDay;
 
             int currentHour = MinutesSinceMidnight / calendar.MinutesPerHour;
             if (currentHour != lastHour)
@@ -78,12 +112,15 @@ namespace BellwortBurrow.Systems.Calendar
                 OnHourChanged?.Invoke();
             }
 
-            if (MinutesSinceMidnight >= calendar.MinutesPerDay)
-            {
-                MinutesSinceMidnight = 0;
-                lastHour = 0;
-                AdvanceDay();
-            }
+            if (MinutesAwake == calendar.AwakeMinutes % calendar.MinutesPerDay)
+                EndDay();
+        }
+
+        void EndDay()
+        {
+            DayOver = true;
+            minuteAccumulator = 0f;
+            OnDayEnded?.Invoke();
         }
 
         void AdvanceDay()

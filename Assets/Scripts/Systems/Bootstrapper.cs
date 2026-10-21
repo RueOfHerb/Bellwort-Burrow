@@ -24,6 +24,8 @@ namespace BellwortBurrow.Systems
 
         static Bootstrapper instance;
 
+        Scene enteredScene;
+
         public GameSession Session { get; private set; }
 
         // Domain reload is off when entering Play mode, so clear what the last run left behind.
@@ -65,10 +67,19 @@ namespace BellwortBurrow.Systems
         GameServices MakeServices() =>
             new(calendarConfig, dayChangedChannel, itemCatalog != null ? itemCatalog.Find : null);
 
+        // Pressing Play in a scene in the editor: that scene can finish loading before the Game Root listens, so its
+        // load is missed and a zone wouldn't count as the world. Enter it here if it wasn't entered already.
+        void Start()
+        {
+            var first = SceneManager.GetActiveScene();
+            if (first.isLoaded) OnSceneLoaded(first, LoadSceneMode.Single);
+        }
+
         // A zone is the world: the clock runs there. Every scene change saves a game in progress.
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (mode != LoadSceneMode.Single) return;
+            if (mode != LoadSceneMode.Single || scene == enteredScene) return;
+            enteredScene = scene;
             Session.EnterScene(scene.name, scene.path.Contains("/Scenes/Zones/"));
         }
 

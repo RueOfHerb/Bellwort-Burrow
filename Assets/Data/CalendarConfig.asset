@@ -16,3 +16,5 @@ MonoBehaviour:
   realSecondsPerInGameMinute: 0.7
   minutesPerHour: 60
   hoursPerDay: 24
+  wakeHour: 19
+  passOutHour: 9
