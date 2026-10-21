@@ -46,7 +46,7 @@ namespace BellwortBurrow.Tests.EditMode
             var sky = At(SevenPm);
             Assert.AreEqual(TreeShadow.Phase.Moon, sky.phase);
             Assert.AreEqual(0f, sky.travel);
-            Assert.AreEqual(settings.moonLightIntensity, sky.directIntensity, 1e-5f);
+            Assert.Greater(sky.directIntensity, 0f);
 
             var middle = MiddleOfTheShadow(Painted(SevenPm), out int count, out _);
             Assert.Greater(count, 0);
@@ -75,9 +75,48 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void TheNightStartsDarkerAndBrightens()
+        {
+            var dusk = At(SevenPm);
+            var later = At(TenPm);
+            var full = At(1 * 60);
+            Assert.Less(dusk.directIntensity, later.directIntensity);
+            Assert.Less(later.directIntensity, full.directIntensity);
+            Assert.Less(dusk.ambientIntensity, full.ambientIntensity);
+            Assert.AreEqual(settings.moonLightIntensity, full.directIntensity, 1e-5f);
+            Assert.AreEqual(settings.moonLightIntensity, At(3 * 60).directIntensity, 1e-5f, "It dimmed again before the fade.");
+        }
+
+        [Test]
+        public void TheBlueHourIsDarkerThanAnyOfTheNight()
+        {
+            var blue = At(6 * 60);
+            int crossing = TreeShadow.CrossingMinutes(settings);
+            for (int i = 0; i * 30 < crossing - settings.fadeMinutes; i++)
+            {
+                int minute = (SevenPm + i * 30) % (24 * 60);
+                var night = At(minute);
+                Assert.Less(Brightness(blue.ambient, blue.ambientIntensity), Brightness(night.ambient, night.ambientIntensity), $"minute {minute}");
+            }
+        }
+
+        [Test]
+        public void TheMoonIsBlueAndTheSunriseYellow()
+        {
+            var moon = At(1 * 60).direct;
+            Assert.Greater(moon.b, moon.r);
+            Assert.Greater(moon.b, moon.g);
+            var sun = At(NineAm).direct;
+            Assert.Greater(sun.r, sun.b);
+            Assert.Greater(sun.g, sun.b);
+        }
+
+        static float Brightness(Color c, float intensity) => (c.r + c.g + c.b) / 3f * intensity;
+
+        [Test]
         public void TheMoonFadesBeforeFiveAndTheBlueHourHasNoShadow()
         {
-            var fading = At(FiveAm - 10);
+            var fading = At(FiveAm - settings.fadeMinutes / 2);
             Assert.AreEqual(TreeShadow.Phase.Moon, fading.phase);
             Assert.Greater(fading.directIntensity, 0f);
             Assert.Less(fading.directIntensity, settings.moonLightIntensity);
@@ -96,7 +135,8 @@ namespace BellwortBurrow.Tests.EditMode
         {
             var sky = At(SevenAm + settings.fadeMinutes);
             Assert.AreEqual(TreeShadow.Phase.Sunrise, sky.phase);
-            Assert.AreEqual(settings.sunLightIntensity, sky.directIntensity, 1e-5f);
+            Assert.Greater(sky.directIntensity, 0f);
+            Assert.AreEqual(settings.sunLightIntensity, At(NineAm).directIntensity, 1e-5f);
 
             var middle = MiddleOfTheShadow(Painted(SevenAm + 1), out int count, out _);
             Assert.Greater(count, 0);
@@ -117,8 +157,20 @@ namespace BellwortBurrow.Tests.EditMode
             var sky = At(NineAm);
             Assert.AreEqual(0.2f, sky.travel, 1e-5f);
 
-            MiddleOfTheShadow(Painted(NineAm), out _, out int leftmost);
-            Assert.Greater(leftmost, Width / 2, "By 9:00 AM the shadow reached the left half of the map.");
+            // The trunk's shadow is a third of the map wide, so "the other side" is the upper left: by 9:00 AM nothing of
+            // it is in the left third, and its middle is still right of the map's middle.
+            var middle = MiddleOfTheShadow(Painted(NineAm), out _, out int leftmost);
+            Assert.Greater(leftmost, Width / 3, "By 9:00 AM the shadow reached the left third of the map.");
+            Assert.Greater(middle.x, Width / 2);
+        }
+
+        [Test]
+        public void TheShadowIsAsWideAsTheTrunk_AboutAThirdOfTheMap()
+        {
+            MiddleOfTheShadow(Painted(0), out int count, out _);
+            float share = count / (float)(Width * Height);
+            Assert.Greater(share, 0.2f);
+            Assert.Less(share, 0.45f);
         }
 
         [Test]
@@ -145,7 +197,7 @@ namespace BellwortBurrow.Tests.EditMode
                 Assert.Less(from, to, $"row {y} has no shadow");
                 // The front edge steps a pixel every two rows, with the bark nudging it: nothing sharper than the stub of
                 // the old branch.
-                if (lastFront != int.MinValue) Assert.LessOrEqual(Mathf.Abs(from - lastFront), 7, $"row {y}");
+                if (lastFront != int.MinValue) Assert.LessOrEqual(Mathf.Abs(from - lastFront), 11, $"row {y}");
                 lastFront = from;
             }
         }

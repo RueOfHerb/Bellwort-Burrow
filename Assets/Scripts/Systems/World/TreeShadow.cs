@@ -13,35 +13,47 @@ namespace BellwortBurrow.Systems.World
         [Header("When (hours, 0 to 24)")]
         [Tooltip("The moon lights the town from this hour (19 is 7:00 PM). Its shadow starts in the lower right.")]
         [Range(0f, 24f)] public float moonRises = 19f;
+        [Tooltip("The moonlight is at its brightest from this hour (1 is 1:00 AM). The night starts darker and brightens until then.")]
+        [Range(0f, 24f)] public float moonFull = 1f;
         [Tooltip("The moon is gone at this hour (5 is 5:00 AM). By then the shadow has crossed to the upper left.")]
         [Range(0f, 24f)] public float moonSets = 5f;
         [Tooltip("The sunrise lights the town from this hour (7 is 7:00 AM). Its shadow starts in the lower right again, at the same pace.")]
         [Range(0f, 24f)] public float sunRises = 7f;
-        [Tooltip("Minutes the moonlight takes to fade out before it sets, and the sunlight to fade in after it rises.")]
-        [Min(1)] public int fadeMinutes = 20;
+        [Tooltip("The sunlight is at its brightest from this hour (9 is 9:00 AM).")]
+        [Range(0f, 24f)] public float sunFull = 9f;
+        [Tooltip("Minutes the moonlight takes to fade into the blue hour before it sets, and the sunlight to fade in after it rises.")]
+        [Min(1)] public int fadeMinutes = 40;
 
-        [Header("Light")]
-        [Tooltip("The shade while the moon is up: what reaches the town inside the trunk's shadow.")]
-        public Color moonShade = new Color32(0xC6, 0xD4, 0xF4, 0xFF);
-        [Min(0f)] public float moonShadeIntensity = 0.5f;
-        [Tooltip("The moonlight added where the trunk doesn't block it.")]
-        public Color moonLight = new Color32(0xC6, 0xD4, 0xF4, 0xFF);
-        [Min(0f)] public float moonLightIntensity = 0.4f;
-        [Tooltip("The blue hour between moonset and sunrise: no direct light, so no shadow.")]
-        public Color blueHour = new Color32(0xB4, 0xC0, 0xEC, 0xFF);
-        [Min(0f)] public float blueHourIntensity = 0.62f;
-        [Tooltip("The shade while the sun is rising.")]
-        public Color sunShade = new Color32(0xC8, 0xB4, 0xD4, 0xFF);
+        [Header("Moon: a blue light")]
+        [Tooltip("The shade while the moon is up: what reaches the town inside the trunk's shadow, at the moon's brightest.")]
+        public Color moonShade = new Color32(0x8E, 0xA4, 0xE0, 0xFF);
+        [Min(0f)] public float moonShadeIntensity = 0.55f;
+        [Tooltip("The moonlight added where the trunk doesn't block it, at the moon's brightest.")]
+        public Color moonLight = new Color32(0xA8, 0xC0, 0xF8, 0xFF);
+        [Min(0f)] public float moonLightIntensity = 0.45f;
+        [Tooltip("How bright the moon is when it rises, as a share of its brightest (0 to 1).")]
+        [Range(0f, 1f)] public float moonStart = 0.6f;
+
+        [Header("Blue hour: no direct light, so no shadow")]
+        [Tooltip("Between moonset and sunrise, the darkest part of the night.")]
+        public Color blueHour = new Color32(0x6A, 0x7C, 0xC4, 0xFF);
+        [Min(0f)] public float blueHourIntensity = 0.3f;
+
+        [Header("Sunrise: a yellow light")]
+        [Tooltip("The shade while the sun is up, at its brightest.")]
+        public Color sunShade = new Color32(0xB0, 0xA8, 0x90, 0xFF);
         [Min(0f)] public float sunShadeIntensity = 0.55f;
-        [Tooltip("The sunrise light added where the trunk doesn't block it.")]
-        public Color sunLight = new Color32(0xFF, 0xC8, 0x8C, 0xFF);
+        [Tooltip("The sunlight added where the trunk doesn't block it, at its brightest.")]
+        public Color sunLight = new Color32(0xFF, 0xE6, 0xA0, 0xFF);
         [Min(0f)] public float sunLightIntensity = 0.5f;
+        [Tooltip("How bright the sun is once it has faded in, as a share of its brightest (0 to 1).")]
+        [Range(0f, 1f)] public float sunStart = 0.6f;
 
         [Header("Shadow (pixels)")]
         [Tooltip("How wide the trunk's shadow is halfway across the map.")]
-        [Min(2)] public int widthMiddle = 80;
+        [Min(2)] public int widthMiddle = 240;
         [Tooltip("How wide it is at the ends of its run, in the lower right and upper left, when the light is low.")]
-        [Min(2)] public int widthEnds = 128;
+        [Min(2)] public int widthEnds = 360;
     }
 
     /// <summary>
@@ -51,7 +63,9 @@ namespace BellwortBurrow.Systems.World
     /// passes out it's only part of the way across.
     /// - Its edges are clean 2 by 1 pixel stairs, so it reads as pixel art, with a bark wobble and the stub of an old
     ///   branch that ride along with it.
-    /// - It's wider at the ends of its run than in the middle.
+    /// - It's wider at the ends of its run than in the middle, and as wide as the trunk is, about a third of the map.
+    /// - The moon gives a blue light that starts dim and brightens into the night; the blue hour is the darkest part;
+    ///   the sunrise gives a yellow light.
     /// </summary>
     public static class TreeShadow
     {
@@ -106,27 +120,39 @@ namespace BellwortBurrow.Systems.World
 
             if (sinceMoonrise < crossing)
             {
+                // Dimmer at moonrise, brightening until the moon's full hour, then fading into the blue hour.
+                float strength = Brightening(sinceMoonrise, Wrap(Minute(s.moonFull) - Minute(s.moonRises)), s.moonStart);
                 float up = Mathf.Clamp01((crossing - sinceMoonrise) / (float)fade);
                 sky.phase = Phase.Moon;
                 sky.ambient = Color.Lerp(s.blueHour, s.moonShade, up);
-                sky.ambientIntensity = Mathf.Lerp(s.blueHourIntensity, s.moonShadeIntensity, up);
+                sky.ambientIntensity = Mathf.Lerp(s.blueHourIntensity, s.moonShadeIntensity * strength, up);
                 sky.direct = s.moonLight;
-                sky.directIntensity = s.moonLightIntensity * up;
+                sky.directIntensity = s.moonLightIntensity * strength * up;
                 sky.travel = sinceMoonrise / (float)crossing;
             }
             else if (sinceSunrise < sunUp)
             {
+                // Fading in out of the blue hour, then brightening until the sun's full hour.
+                float strength = Brightening(sinceSunrise, Wrap(Minute(s.sunFull) - Minute(s.sunRises)), s.sunStart);
                 float up = Mathf.Clamp01(sinceSunrise / (float)fade);
                 sky.phase = Phase.Sunrise;
                 sky.ambient = Color.Lerp(s.blueHour, s.sunShade, up);
-                sky.ambientIntensity = Mathf.Lerp(s.blueHourIntensity, s.sunShadeIntensity, up);
+                sky.ambientIntensity = Mathf.Lerp(s.blueHourIntensity, s.sunShadeIntensity * strength, up);
                 sky.direct = s.sunLight;
-                sky.directIntensity = s.sunLightIntensity * up;
+                sky.directIntensity = s.sunLightIntensity * strength * up;
                 sky.travel = sinceSunrise / (float)crossing;
             }
 
             sky.shadow = sky.directIntensity > 0f && sky.travel <= 1f;
             return sky;
+        }
+
+        // A light's strength: start (0 to 1) when it comes up, easing to 1 after minutesToFull.
+        static float Brightening(int minutesUp, int minutesToFull, float start)
+        {
+            if (minutesToFull <= 0) return 1f;
+            float t = Mathf.Clamp01(minutesUp / (float)minutesToFull);
+            return Mathf.Lerp(start, 1f, t * t * (3f - 2f * t));
         }
 
         /// <summary>The shadow's width across, in pixels, at a point in its run: widest at the ends, always even.</summary>
@@ -192,8 +218,8 @@ namespace BellwortBurrow.Systems.World
         static int Bark(int along, float phase, bool stub)
         {
             float s = FloorDiv(along, 8) * 8;
-            float bulge = 2.6f * Mathf.Sin(2f * Mathf.PI * s / 170f + phase) + 1.1f * Mathf.Sin(2f * Mathf.PI * s / 61f + 2.3f * phase);
-            if (stub) bulge += 7f * Mathf.Clamp01((14f - Mathf.Abs(s - 900f)) / 6f);   // where an old branch was
+            float bulge = 4f * Mathf.Sin(2f * Mathf.PI * s / 260f + phase) + 1.5f * Mathf.Sin(2f * Mathf.PI * s / 83f + 2.3f * phase);
+            if (stub) bulge += 10f * Mathf.Clamp01((20f - Mathf.Abs(s - 900f)) / 8f);   // where an old branch was
             return Mathf.RoundToInt(bulge);
         }
 

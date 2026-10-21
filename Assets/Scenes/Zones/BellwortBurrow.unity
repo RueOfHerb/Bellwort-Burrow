@@ -23379,21 +23379,25 @@ MonoBehaviour:
   pixelsPerUnit: 16
   settings:
     moonRises: 19
+    moonFull: 1
     moonSets: 5
     sunRises: 7
-    fadeMinutes: 20
-    moonShade: {r: 0.7764706, g: 0.83137256, b: 0.95686275, a: 1}
-    moonShadeIntensity: 0.5
-    moonLight: {r: 0.7764706, g: 0.83137256, b: 0.95686275, a: 1}
-    moonLightIntensity: 0.4
-    blueHour: {r: 0.7058824, g: 0.7529412, b: 0.9254902, a: 1}
-    blueHourIntensity: 0.62
-    sunShade: {r: 0.78431374, g: 0.7058824, b: 0.83137256, a: 1}
+    sunFull: 9
+    fadeMinutes: 40
+    moonShade: {r: 0.5568628, g: 0.6431373, b: 0.8784314, a: 1}
+    moonShadeIntensity: 0.55
+    moonLight: {r: 0.65882355, g: 0.7529412, b: 0.972549, a: 1}
+    moonLightIntensity: 0.45
+    moonStart: 0.6
+    blueHour: {r: 0.41568628, g: 0.4862745, b: 0.76862746, a: 1}
+    blueHourIntensity: 0.3
+    sunShade: {r: 0.6901961, g: 0.65882355, b: 0.5647059, a: 1}
     sunShadeIntensity: 0.55
-    sunLight: {r: 1, g: 0.78431374, b: 0.54901963, a: 1}
+    sunLight: {r: 1, g: 0.9019608, b: 0.627451, a: 1}
     sunLightIntensity: 0.5
-    widthMiddle: 80
-    widthEnds: 128
+    sunStart: 0.6
+    widthMiddle: 240
+    widthEnds: 360
   preview: 0
   previewHour: 19
 --- !u!4 &1064144305
