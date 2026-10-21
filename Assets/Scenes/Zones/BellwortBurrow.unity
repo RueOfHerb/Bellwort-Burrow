@@ -23345,6 +23345,72 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1 &1064144303
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1064144305}
+  - component: {fileID: 1064144304}
+  m_Layer: 0
+  m_Name: Tree Shadow Clock
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1064144304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1064144303}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7f5cc16d3215734b8f67e3fbc956c11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Systems::BellwortBurrow.Systems.World.TreeShadowClock
+  ambient: {fileID: 912518388}
+  area: {fileID: 997302232}
+  pixelsPerUnit: 16
+  settings:
+    moonRises: 19
+    moonSets: 5
+    sunRises: 7
+    fadeMinutes: 20
+    moonShade: {r: 0.7764706, g: 0.83137256, b: 0.95686275, a: 1}
+    moonShadeIntensity: 0.5
+    moonLight: {r: 0.7764706, g: 0.83137256, b: 0.95686275, a: 1}
+    moonLightIntensity: 0.4
+    blueHour: {r: 0.7058824, g: 0.7529412, b: 0.9254902, a: 1}
+    blueHourIntensity: 0.62
+    sunShade: {r: 0.78431374, g: 0.7058824, b: 0.83137256, a: 1}
+    sunShadeIntensity: 0.55
+    sunLight: {r: 1, g: 0.78431374, b: 0.54901963, a: 1}
+    sunLightIntensity: 0.5
+    widthMiddle: 80
+    widthEnds: 128
+  preview: 0
+  previewHour: 19
+--- !u!4 &1064144305
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1064144303}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1117128855
 GameObject:
   m_ObjectHideFlags: 0
@@ -26087,6 +26153,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 603809747}
   - {fileID: 912518389}
+  - {fileID: 1064144305}
   - {fileID: 511861685}
   - {fileID: 980957794}
   - {fileID: 174232304}
