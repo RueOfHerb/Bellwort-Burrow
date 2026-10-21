@@ -23,6 +23,13 @@ namespace BellwortBurrow.EditorTools
     ///   wider, or fill the inside of a turn. Each full and half pair are Path Rule Tiles (<see cref="PathRuleTile"/>):
     ///   Rule Tiles whose neighbour conditions tell full, half and neither apart.
     /// - Grass (Forest Grass): a Rule Tile that picks one of the grass variations at random.
+    /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
+    /// - Bank Top (Burrow Bank Top): where the ground is raised. A Rule Tile that reads all eight neighbours, with the
+    ///   47 layouts of a 3x3 Auto Tile and no slopes, since a face can't run on a slant (<see cref="TopLayoutOf"/>). Its
+    ///   back and sides have a rim a couple of pixels in; its front runs to the tile's edge as a lip over the face.
+    /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under a top's front
+    ///   edge, painted as many rows tall as the bank. They are Face Tiles (<see cref="FaceTile"/>), which pick a piece
+    ///   by their four sides and by where they sit on the map, so the face's texture runs on across the seams.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
     /// (see <see cref="GeneratedAssets"/>).
@@ -46,6 +53,11 @@ namespace BellwortBurrow.EditorTools
             public string Zone;
             /// <summary>The tile palette's name, like "Forest Ground".</summary>
             public string Palette;
+            /// <summary>
+            /// Whether the sheet has raised ground: the bank top set and the face sets (<see cref="TopSlice"/>,
+            /// <see cref="Faces"/>), which make the Bank Top, Bank Face and Cliff Face tiles.
+            /// </summary>
+            public bool Banks;
 
             /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail Half").</summary>
             public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
@@ -55,7 +67,7 @@ namespace BellwortBurrow.EditorTools
         public static readonly GroundSheet[] Sheets =
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
-            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground" },
+            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true },
         };
 
         /// <summary>A ground that comes as a full tile and a half tile: its set, its half set and its extra full pieces.</summary>
@@ -71,6 +83,45 @@ namespace BellwortBurrow.EditorTools
             new HalfPair { Kind = "Path", Slice = "path_set", HalfSlice = "path_half_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
             new HalfPair { Kind = "Deer Trail", Slice = "trail_set", HalfSlice = "trail_half_set", Fills = new[] { "trail_00", "trail_01" } },
         };
+
+        /// <summary>Raised ground: the top's kind and its set, painted from <see cref="Template"/>.</summary>
+        internal const string TopKind = "Bank Top", TopSlice = "bank_top_set";
+
+        /// <summary>Raised ground's faces: each kind and its set, painted from <see cref="FaceTemplate"/>.</summary>
+        internal static readonly (string kind, string slice)[] Faces =
+        {
+            ("Bank Face", "bank_face_set"),
+            ("Cliff Face", "cliff_face_set"),
+        };
+
+        /// <summary>
+        /// The patch every face set is painted from, top row first: '#' is face, '.' is not. Its shapes (four wide and
+        /// three tall, one wide, one tall, a lone tile) are placed so each of a face's 16 layouts comes up at each of its
+        /// 6 phases: a cell's phase is its column mod 3 and its row mod 2, counted from the patch's top left, the same
+        /// as <see cref="FaceTile.Phase"/> counts them on the map. Change it only together with the sheets' slices.
+        /// </summary>
+        public static readonly string[] FaceTemplate =
+        {
+            "####.#.####.....#",
+            "####.#.####.####.",
+            "####.#.####.####.",
+            "......#.....####.",
+            "#.####.....#....#",
+            "#.####.####.#.#.#",
+            "#.####.####.#.#.#",
+            ".#.....####.#.#..",
+            "#................",
+            "..####.#.....####",
+            "..####.#.####....",
+            "..####.#......#..",
+            "..........####...",
+            "......####.......",
+            "..####...........",
+            "........####.....",
+        };
+
+        /// <summary>How many layouts a bank top has: the 47 of Unity's 3x3 Auto Tile.</summary>
+        public const int TopLayoutCount = 47;
 
         /// <summary>
         /// The patch every 3x3 ground set is painted from, top row first: '#' is a painted tile, '.' is not. Outside
@@ -194,6 +245,18 @@ namespace BellwortBurrow.EditorTools
             string grassPath = ground.Tile("Grass");
             if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
             else if (MakeGrassTile(sprites, grassPath)) written.Add(grassPath);
+            if (ground.Banks)
+            {
+                string topPath = ground.Tile(TopKind);
+                if (!GeneratedAssets.CanOverwrite(topPath)) kept.Add(topPath);
+                else if (MakeTopTile(ground, sprites, topPath)) written.Add(topPath);
+                foreach (var (kind, slice) in Faces)
+                {
+                    string facePath = ground.Tile(kind);
+                    if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
+                    else if (MakeFaceTile(ground, slice, sprites, facePath)) written.Add(facePath);
+                }
+            }
 
             AssetDatabase.SaveAssets();
             foreach (var path in written) GeneratedAssets.Stamp(path);
@@ -210,6 +273,9 @@ namespace BellwortBurrow.EditorTools
                 yield return ground.Tile(pair.Kind);
                 yield return ground.Tile(pair.Kind + " Half");
             }
+            if (!ground.Banks) yield break;
+            yield return ground.Tile(TopKind);
+            foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
         }
 
         /// <summary>
@@ -247,6 +313,73 @@ namespace BellwortBurrow.EditorTools
             bool n = (neighbours & N) != 0, s = (neighbours & S) != 0, w = (neighbours & W) != 0, e = (neighbours & E) != 0;
             uint layout = 16 | (neighbours & (N | S | W | E));
             return layout | (neighbours & RelevantCorners(n, s, w, e));
+        }
+
+        /// <summary>
+        /// A bank top's layout from all eight neighbours (bits as above, 16 for the tile itself): its painted sides, and a
+        /// corner only when both sides beside it are painted, an inner corner. No slopes, so 47 layouts.
+        /// </summary>
+        internal static uint TopLayoutOf(uint neighbours)
+        {
+            uint layout = 16 | (neighbours & (N | S | W | E));
+            foreach (var (corner, a, b) in new[] { (NW, N, W), (NE, N, E), (SW, S, W), (SE, S, E) })
+                if ((neighbours & a) != 0 && (neighbours & b) != 0) layout |= neighbours & corner;
+            return layout;
+        }
+
+        /// <summary>
+        /// The Rule Tile neighbour conditions for a bank top's layout, in the Rule Tile's order: every side, and each
+        /// corner whose two sides are painted.
+        /// </summary>
+        internal static int[] TopRuleNeighbours(uint layout)
+        {
+            uint matters = N | S | W | E;
+            foreach (var (corner, a, b) in new[] { (NW, N, W), (NE, N, E), (SW, S, W), (SE, S, E) })
+                if ((layout & a) != 0 && (layout & b) != 0) matters |= corner;
+            var conditions = new int[8];
+            for (int i = 0; i < 8; i++)
+            {
+                uint bit = RuleOrder[i];
+                if ((matters & bit) == 0) conditions[i] = 0;
+                else conditions[i] = (layout & bit) != 0 ? RuleTile.TilingRuleOutput.Neighbor.This : RuleTile.TilingRuleOutput.Neighbor.NotThis;
+            }
+            return conditions;
+        }
+
+        /// <summary>A painted template cell's neighbours (bits as above, 16 for the cell itself).</summary>
+        internal static uint Neighbours(string[] template, int column, int row)
+        {
+            bool Painted(int dx, int dy)
+            {
+                int x = column + dx, y = row + dy;
+                return y >= 0 && y < template.Length && x >= 0 && x < template[y].Length && template[y][x] == '#';
+            }
+            uint around = 16;
+            if (Painted(0, -1)) around |= N;
+            if (Painted(0, 1)) around |= S;
+            if (Painted(-1, 0)) around |= W;
+            if (Painted(1, 0)) around |= E;
+            if (Painted(-1, -1)) around |= NW;
+            if (Painted(1, -1)) around |= NE;
+            if (Painted(-1, 1)) around |= SW;
+            if (Painted(1, 1)) around |= SE;
+            return around;
+        }
+
+        /// <summary>A face template cell's layout: <see cref="FaceTile.North"/> and so on where the face carries on.</summary>
+        internal static int FaceLayout(string[] template, int column, int row)
+        {
+            bool Face(int dx, int dy)
+            {
+                int x = column + dx, y = row + dy;
+                return y >= 0 && y < template.Length && x >= 0 && x < template[y].Length && template[y][x] == '#';
+            }
+            int layout = 0;
+            if (Face(0, -1)) layout |= FaceTile.North;
+            if (Face(0, 1)) layout |= FaceTile.South;
+            if (Face(-1, 0)) layout |= FaceTile.West;
+            if (Face(1, 0)) layout |= FaceTile.East;
+            return layout;
         }
 
         /// <summary>The layout of a painted template cell.</summary>
@@ -629,6 +762,80 @@ namespace BellwortBurrow.EditorTools
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
             // Tilemaps keep calling the old kind's code for an asset whose kind changed until scripts reload.
             EditorUtility.RequestScriptReload();
+        }
+
+        /// <summary>
+        /// Makes a Bank Top: a Rule Tile with a rule per layout (<see cref="TopLayoutOf"/>), its pieces from the bank top
+        /// set painted from <see cref="Template"/>, picked at random where a layout has several.
+        /// </summary>
+        static bool MakeTopTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            var pieces = new Dictionary<uint, List<Sprite>>();
+            int missing = 0;
+            for (int row = 0; row < Template.Length; row++)
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName(TopSlice, column, row, Template), out var piece)) { missing++; continue; }
+                    uint layout = TopLayoutOf(Neighbours(Template, column, row));
+                    if (!pieces.TryGetValue(layout, out var list)) pieces[layout] = list = new List<Sprite>();
+                    list.Add(piece);
+                }
+            if (!pieces.ContainsKey(Full))
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no {TopSlice} slice painted from the template.");
+                return false;
+            }
+            if (missing > 0)
+                Debug.LogWarning($"Bellwort Burrow: {name}: {missing} tiles of the template have no piece in {TopSlice}. Is the slice the size of GroundAutoTiles.Template, and painted from it?");
+            if (pieces.Count < TopLayoutCount)
+                Debug.LogWarning($"Bellwort Burrow: {name} has {pieces.Count} of the {TopLayoutCount} layouts; tiles with a missing layout show the full piece.");
+
+            var tile = ScriptableObject.CreateInstance<RuleTile>();
+            tile.name = name;
+            tile.m_DefaultSprite = pieces[Full][0];
+            tile.m_DefaultColliderType = Tile.ColliderType.None;
+            tile.m_TilingRules = new List<RuleTile.TilingRule>();
+            foreach (var layout in pieces.Keys.OrderByDescending(l => l))
+                tile.m_TilingRules.Add(PathRule(TopRuleNeighbours(layout), pieces[layout]));
+            SaveKeepingId(tile, path);
+            return true;
+        }
+
+        /// <summary>
+        /// Makes a Bank Face or Cliff Face: a Face Tile whose piece for each layout and phase is the first cell of the
+        /// face set (painted from <see cref="FaceTemplate"/>) with that layout at that phase.
+        /// </summary>
+        static bool MakeFaceTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            var pieces = new Sprite[FaceTile.Layouts * FaceTile.Columns * FaceTile.Rows];
+            int found = 0;
+            for (int row = 0; row < FaceTemplate.Length; row++)
+                for (int column = 0; column < FaceTemplate[row].Length; column++)
+                {
+                    if (FaceTemplate[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName(slice, column, row, FaceTemplate), out var piece)) continue;
+                    int index = FaceTile.Index(FaceLayout(FaceTemplate, column, row), column % FaceTile.Columns, row % FaceTile.Rows);
+                    if (pieces[index] != null) continue;
+                    pieces[index] = piece;
+                    found++;
+                }
+            if (found == 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no {slice} slice painted from the face template.");
+                return false;
+            }
+            if (found < pieces.Length)
+                Debug.LogWarning($"Bellwort Burrow: {name} has {found} of its {pieces.Length} pieces; is {slice} the size of GroundAutoTiles.FaceTemplate, and painted from it?");
+
+            var tile = ScriptableObject.CreateInstance<FaceTile>();
+            tile.name = name;
+            tile.pieces = pieces;
+            tile.defaultSprite = pieces[FaceTile.Index(0, 0, 0)] ?? pieces.First(p => p != null);
+            SaveKeepingId(tile, path);
+            return true;
         }
 
         static bool MakeGrassTile(Dictionary<string, Sprite> sprites, string path)

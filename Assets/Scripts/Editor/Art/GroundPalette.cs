@@ -13,8 +13,9 @@ namespace BellwortBurrow.EditorTools
     /// <summary>
     /// Builds each zone's ground Tile Palette (Window > 2D > Tile Palette) from its ground sheet: "Forest Ground" from
     /// forest_ground.aseprite, "Burrow Ground" from burrow_ground.aseprite (see <see cref="GroundAutoTiles.Sheets"/>).
-    /// The top row holds the tiles you paint with (grass, path, half path, deer trail, half deer trail; see
-    /// <see cref="GroundAutoTiles"/>). Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/>
+    /// The top row holds the tiles you paint with (grass, path, half path, deer trail, half deer trail, and on a sheet
+    /// with raised ground the bank top, bank face and cliff face; see <see cref="GroundAutoTiles"/>). The raised ground's
+    /// sets sit with the other slices, as painted on the sheet. Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/>
     /// (the path, then the deer trail beside it) is laid out as ready-made shapes (<see cref="Groups"/>) for painting by
     /// hand: every piece sits beside the pieces it joins, and every layout comes up at least once. Under them, the set's
     /// half tiles get shapes of their own (<see cref="HalfGroups"/>): full path ending half a tile in or half a tile
