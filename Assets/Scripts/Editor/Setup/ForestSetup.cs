@@ -29,18 +29,19 @@ namespace BellwortBurrow.EditorTools
                 EditorUtility.DisplayProgressBar("Bellwort Burrow", "Making the ground auto tiles", 0.7f);
                 int groundTiles = GroundAutoTiles.MakeAll();
 
-                EditorUtility.DisplayProgressBar("Bellwort Burrow", "Painting the ground tile palette", 0.85f);
-                bool palette = ForestGroundPalette.Make();
+                EditorUtility.DisplayProgressBar("Bellwort Burrow", "Painting the ground tile palettes", 0.85f);
+                var palettes = GroundPalette.MakeAll();
 
-                if (palette)
+                if (palettes != null)
                 {
                     // Remember the Glow layers and slices this run was built from, so Check Art Rules can tell when it's out of date.
                     SetupStamp.Write();
-                    Debug.Log($"Bellwort Burrow: forest art set up. {prefabs} prefabs, {trees} tall trees, {groundTiles} ground tiles and the Forest Ground tile palette.");
+                    Debug.Log($"Bellwort Burrow: forest art set up. {prefabs} prefabs, {trees} tall trees, {groundTiles} ground tiles and the " +
+                              $"{string.Join(" and ", palettes)} tile palette{(palettes.Count == 1 ? "" : "s")}.");
                 }
                 else
                     Debug.LogError($"Bellwort Burrow: forest art setup finished with problems ({prefabs} prefabs, {trees} tall trees, " +
-                                   $"{groundTiles} ground tiles, palette not made). See the messages above.");
+                                   $"{groundTiles} ground tiles, a tile palette not made). See the messages above.");
             }
             finally
             {

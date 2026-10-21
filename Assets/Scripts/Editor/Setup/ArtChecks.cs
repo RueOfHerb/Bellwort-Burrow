@@ -58,14 +58,15 @@ namespace BellwortBurrow.EditorTools
                 }
             }
 
-            // The ground tiles and the palette exist.
-            if (ArtLibrary.FindSheet("forest_ground") != null)
+            // Each installed ground sheet's tiles and palette exist.
+            foreach (var ground in GroundAutoTiles.Sheets)
             {
-                foreach (var path in GroundAutoTiles.TilePaths())
+                if (ArtLibrary.FindSheet(ground.Sheet) == null) continue;
+                foreach (var path in GroundAutoTiles.TilePaths(ground))
                     if (AssetDatabase.LoadAssetAtPath<TileBase>(path) == null)
                         problems.Add($"{Path.GetFileNameWithoutExtension(path)} tile is missing");
-                if (AssetDatabase.LoadAssetAtPath<GameObject>(ForestGroundPalette.PalettePath) == null)
-                    problems.Add("the Forest Ground tile palette is missing");
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(GroundPalette.PalettePath(ground)) == null)
+                    problems.Add($"the {ground.Palette} tile palette is missing");
             }
 
             // Glow or slices changed since setup last ran (the lights and prefabs are built from them).

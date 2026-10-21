@@ -11,16 +11,18 @@ using Object = UnityEngine.Object;
 namespace BellwortBurrow.EditorTools
 {
     /// <summary>
-    /// Makes the ground tiles you paint with, in Assets/Art/Tiles/, from forest_ground.aseprite:
-    /// - Forest Path and Forest Deer Trail: Unity Rule Tiles that read all eight neighbours. Paint where the path goes,
-    ///   any width down to one tile, and each tile picks its piece from which neighbours are painted. The edge sits a
-    ///   couple of pixels inside the painted tiles, so every tile you paint shows. Paint a staircase and the steps
-    ///   become a slope: a corner whose next step carries on diagonally is cut from tile corner to tile corner.
-    /// - Forest Path Half: a half tile of path. Set it beside the path and it fills the half of its tile that touches
-    ///   the path (beside two paths, both halves), so a path can end half way into a tile, be half a tile wider, or
-    ///   fill the inside of a turn. Forest Path and Forest Path Half are Path Rule Tiles (<see cref="PathRuleTile"/>):
-    ///   Rule Tiles whose neighbour conditions tell full path, half path and no path apart.
-    /// - Forest Grass: a Rule Tile that picks one of the grass variations at random.
+    /// Makes the ground tiles you paint with, in Assets/Art/Tiles/, from each zone's ground sheet (<see cref="Sheets"/>:
+    /// forest_ground makes the Forest tiles, burrow_ground the Burrow tiles). Every ground sheet has the same slices, and
+    /// each makes:
+    /// - Path and Deer Trail (Forest Path, Forest Deer Trail): Rule Tiles that read all eight neighbours. Paint where the
+    ///   path goes, any width down to one tile, and each tile picks its piece from which neighbours are painted. The
+    ///   edge sits a couple of pixels inside the painted tiles, so every tile you paint shows. Paint a staircase and the
+    ///   steps become a slope: a corner whose next step carries on diagonally is cut from tile corner to tile corner.
+    /// - Path Half and Deer Trail Half: a half tile of each. Set it beside the full tile and it fills the half of its
+    ///   tile that touches it (beside two, both halves), so a path or trail can end half way into a tile, be half a tile
+    ///   wider, or fill the inside of a turn. Each full and half pair are Path Rule Tiles (<see cref="PathRuleTile"/>):
+    ///   Rule Tiles whose neighbour conditions tell full, half and neither apart.
+    /// - Grass (Forest Grass): a Rule Tile that picks one of the grass variations at random.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
     /// (see <see cref="GeneratedAssets"/>).
@@ -28,16 +30,47 @@ namespace BellwortBurrow.EditorTools
     /// Every ground set is painted together on the sheet as one patch, from <see cref="Template"/>: each painted ('#')
     /// cell of the slice is a piece, and its layout is read from its neighbours in the template, exactly as the Rule
     /// Tile reads them in a scene. The template holds all 83 layouts (<see cref="Layout"/>); a layout that comes up
-    /// more than once gives the tile several pieces to pick from at random. The half path set is painted the same way
+    /// more than once gives the tile several pieces to pick from at random. The half sets are painted the same way
     /// from <see cref="HalfTemplate"/>. tools/ground_sets.py reads these templates too.
     /// </summary>
     public static class GroundAutoTiles
     {
         public const string Folder = ArtLibrary.ArtRoot + "/Tiles";
-        const string SheetName = "forest_ground";
-        const string PathAsset = "Forest Path", HalfPathAsset = "Forest Path Half";
-        const string PathSlice = "path_set", HalfPathSlice = "path_half_set";
-        static readonly string[] PathFills = { "path_fill_00", "path_fill_01" };
+
+        /// <summary>A zone's ground sheet: the tiles named after the zone are made from it, and its tile palette.</summary>
+        public sealed class GroundSheet
+        {
+            /// <summary>The sheet's file name, like "forest_ground".</summary>
+            public string Sheet;
+            /// <summary>What its tiles are named after: "Forest" makes Forest Grass, Forest Path and so on.</summary>
+            public string Zone;
+            /// <summary>The tile palette's name, like "Forest Ground".</summary>
+            public string Palette;
+
+            /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail Half").</summary>
+            public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
+        }
+
+        /// <summary>Every zone's ground sheet, in the order setup makes them.</summary>
+        public static readonly GroundSheet[] Sheets =
+        {
+            new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
+            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground" },
+        };
+
+        /// <summary>A ground that comes as a full tile and a half tile: its set, its half set and its extra full pieces.</summary>
+        sealed class HalfPair
+        {
+            public string Kind, Slice, HalfSlice;
+            public string[] Fills; // extra full pieces, picked at random alongside the template's full pieces
+        }
+
+        /// <summary>The grounds every ground sheet has, in the order the tile palette lays them out.</summary>
+        static readonly HalfPair[] Pairs =
+        {
+            new HalfPair { Kind = "Path", Slice = "path_set", HalfSlice = "path_half_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
+            new HalfPair { Kind = "Deer Trail", Slice = "trail_set", HalfSlice = "trail_half_set", Fills = new[] { "trail_00", "trail_01" } },
+        };
 
         /// <summary>
         /// The patch every 3x3 ground set is painted from, top row first: '#' is a painted tile, '.' is not. Outside
@@ -58,10 +91,10 @@ namespace BellwortBurrow.EditorTools
         };
 
         /// <summary>
-        /// The patch the half path set is painted from, top row first: 'H' is a half path tile, 'F' a full path tile
-        /// and '.' neither. Every look a half tile can have (<see cref="HalfLook"/>) comes up on at least one 'H'; the
-        /// 'F' tiles are there so the halves have path to turn toward, and become more full path pieces. Change it only
-        /// together with the sheet's slices.
+        /// The patch the half sets (half path, half deer trail) are painted from, top row first: 'H' is a half tile,
+        /// 'F' a full tile and '.' neither. Every look a half tile can have (<see cref="HalfLook"/>) comes up on at least
+        /// one 'H'; the 'F' tiles are there so the halves have a full tile to turn toward, and become more full pieces.
+        /// Change it only together with the sheets' slices.
         /// </summary>
         public static readonly string[] HalfTemplate =
         {
@@ -94,7 +127,7 @@ namespace BellwortBurrow.EditorTools
             ".......FFF..HF...",
         };
 
-        /// <summary>How many looks a half path tile has.</summary>
+        /// <summary>How many looks a half tile has.</summary>
         public const int HalfLookCount = 131;
 
         /// <summary>How many layouts a ground set has: the 47 of Unity's 3x3 Auto Tile plus 36 slope pieces.</summary>
@@ -115,17 +148,6 @@ namespace BellwortBurrow.EditorTools
             new Vector3Int(-1, -1, 0), new Vector3Int(0, -1, 0), new Vector3Int(1, -1, 0),
         };
 
-        sealed class GroundSet
-        {
-            public string Asset, Slice;
-            public string[] Fills; // extra full pieces, picked at random alongside the template's full pieces
-        }
-
-        static readonly GroundSet[] Sets =
-        {
-            new GroundSet { Asset = "Forest Deer Trail", Slice = "trail_set", Fills = new[] { "trail_00", "trail_01" } },
-        };
-
         // Perlin noise favors the middle of the list, so the plainest grass goes in the middle.
         static readonly string[] GrassPieces = { "grass_00", "grass_01", "grass_02", "grass_03" };
 
@@ -136,31 +158,40 @@ namespace BellwortBurrow.EditorTools
             Debug.Log($"Bellwort Burrow: made or refreshed {MakeAll()} ground tiles in {Folder}.");
         }
 
-        /// <summary>Makes or refreshes every ground tile. Returns how many.</summary>
+        /// <summary>Makes or refreshes every ground tile of every installed ground sheet. Returns how many.</summary>
         public static int MakeAll()
         {
-            string sheetPath = ArtLibrary.FindSheet(SheetName);
-            if (sheetPath == null)
+            int made = 0;
+            var missing = new List<string>();
+            foreach (var ground in Sheets)
             {
-                Debug.LogError($"Bellwort Burrow: couldn't find {SheetName}.aseprite under {ArtLibrary.ArtRoot}.");
-                return 0;
+                string sheetPath = ArtLibrary.FindSheet(ground.Sheet);
+                if (sheetPath == null) missing.Add(ground.Sheet + ".aseprite");
+                else made += Make(ground, sheetPath);
             }
+            if (missing.Count == Sheets.Length)
+                Debug.LogError($"Bellwort Burrow: couldn't find any ground sheet ({string.Join(", ", missing)}) under {ArtLibrary.ArtRoot}.");
+            else if (missing.Count > 0)
+                Debug.LogWarning($"Bellwort Burrow: skipped the tiles of {string.Join(", ", missing)}, which isn't under {ArtLibrary.ArtRoot}.");
+            return made;
+        }
+
+        /// <summary>Makes or refreshes one ground sheet's tiles. Returns how many.</summary>
+        static int Make(GroundSheet ground, string sheetPath)
+        {
             var sprites = ArtLibrary.LoadSubAssets<Sprite>(sheetPath);
             ArtLibrary.EnsureFolder(Folder);
 
             var written = new List<string>();
             var kept = new List<string>();
-            string pathPath = $"{Folder}/{PathAsset}.asset", halfPath = $"{Folder}/{HalfPathAsset}.asset";
-            if (!GeneratedAssets.CanOverwrite(pathPath) || !GeneratedAssets.CanOverwrite(halfPath))
-                kept.AddRange(new[] { pathPath, halfPath }.Where(p => !GeneratedAssets.CanOverwrite(p)));
-            else if (MakePathTiles(sprites, pathPath, halfPath)) written.AddRange(new[] { pathPath, halfPath });
-            foreach (var set in Sets)
+            foreach (var pair in Pairs)
             {
-                string path = $"{Folder}/{set.Asset}.asset";
-                if (!GeneratedAssets.CanOverwrite(path)) kept.Add(path);
-                else if (MakeSetTile(set, sprites, path)) written.Add(path);
+                string fullPath = ground.Tile(pair.Kind), halfPath = ground.Tile(pair.Kind + " Half");
+                var locked = new[] { fullPath, halfPath }.Where(p => !GeneratedAssets.CanOverwrite(p)).ToList();
+                if (locked.Count > 0) kept.AddRange(locked);
+                else if (MakeHalfPair(ground, pair, sprites, fullPath, halfPath)) written.AddRange(new[] { fullPath, halfPath });
             }
-            string grassPath = $"{Folder}/Forest Grass.asset";
+            string grassPath = ground.Tile("Grass");
             if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
             else if (MakeGrassTile(sprites, grassPath)) written.Add(grassPath);
 
@@ -170,23 +201,25 @@ namespace BellwortBurrow.EditorTools
             return written.Count;
         }
 
-        /// <summary>Paths in the order the painting tiles should sit in the tile palette.</summary>
-        public static IEnumerable<string> TilePaths()
+        /// <summary>A ground sheet's tiles, in the order the painting tiles sit in its tile palette.</summary>
+        public static IEnumerable<string> TilePaths(GroundSheet ground)
         {
-            yield return $"{Folder}/Forest Grass.asset";
-            yield return $"{Folder}/{PathAsset}.asset";
-            yield return $"{Folder}/{HalfPathAsset}.asset";
-            foreach (var set in Sets) yield return $"{Folder}/{set.Asset}.asset";
+            yield return ground.Tile("Grass");
+            foreach (var pair in Pairs)
+            {
+                yield return ground.Tile(pair.Kind);
+                yield return ground.Tile(pair.Kind + " Half");
+            }
         }
 
         /// <summary>
         /// The ground sets painted from <see cref="Template"/>, in the order the tile palette lays them out: each one's
-        /// slice and the extra full pieces it picks from (see <see cref="ForestGroundPalette"/>).
+        /// slice, its half set's slice (painted from <see cref="HalfTemplate"/>) and the extra full pieces it picks from
+        /// (see <see cref="GroundPalette"/>). Every ground sheet has them.
         /// </summary>
-        internal static IEnumerable<(string slice, string[] fills)> TemplateSets()
+        internal static IEnumerable<(string slice, string halfSlice, string[] fills)> TemplateSets()
         {
-            yield return (PathSlice, PathFills);
-            foreach (var set in Sets) yield return (set.Slice, set.Fills);
+            foreach (var pair in Pairs) yield return (pair.Slice, pair.HalfSlice, pair.Fills);
         }
 
         /// <summary>
@@ -466,6 +499,10 @@ namespace BellwortBurrow.EditorTools
             return rules;
         }
 
+        // The rules are the same for every pair, so they're worked out once.
+        static List<(uint key, int[] conditions)> fullRules;
+        static List<(string key, int[] conditions)> halfRules;
+
         static RuleTile.TilingRule PathRule(int[] conditions, List<Sprite> pieces) => new RuleTile.TilingRule
         {
             m_Neighbors = new List<int>(conditions),
@@ -477,9 +514,13 @@ namespace BellwortBurrow.EditorTools
             m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
         };
 
-        /// <summary>Makes Forest Path from path_set (and the full tiles of path_half_set), and Forest Path Half from path_half_set.</summary>
-        static bool MakePathTiles(Dictionary<string, Sprite> sprites, string pathPath, string halfPath)
+        /// <summary>
+        /// Makes a full and half pair, like Forest Path and Forest Path Half: the full tile from its set (and the full
+        /// tiles of its half set), the half tile from its half set.
+        /// </summary>
+        static bool MakeHalfPair(GroundSheet ground, HalfPair pair, Dictionary<string, Sprite> sprites, string pathPath, string halfPath)
         {
+            string fullName = Path.GetFileNameWithoutExtension(pathPath), halfName = Path.GetFileNameWithoutExtension(halfPath);
             var full = new Dictionary<uint, List<Sprite>>();
             var half = new Dictionary<string, List<Sprite>>();
             int missing = 0;
@@ -488,7 +529,7 @@ namespace BellwortBurrow.EditorTools
                 for (int column = 0; column < Template[row].Length; column++)
                 {
                     if (Template[row][column] != '#') continue;
-                    if (sprites.TryGetValue(PieceName(PathSlice, column, row, Template), out var piece)) AddFull(Layout(Template, column, row), piece);
+                    if (sprites.TryGetValue(PieceName(pair.Slice, column, row, Template), out var piece)) AddFull(Layout(Template, column, row), piece);
                     else missing++;
                 }
             for (int row = 0; row < HalfTemplate.Length; row++)
@@ -496,7 +537,7 @@ namespace BellwortBurrow.EditorTools
                 {
                     char type = HalfTemplate[row][column];
                     if (type == '.') continue;
-                    if (!sprites.TryGetValue(PieceName(HalfPathSlice, column, row, HalfTemplate), out var piece)) { missing++; continue; }
+                    if (!sprites.TryGetValue(PieceName(pair.HalfSlice, column, row, HalfTemplate), out var piece)) { missing++; continue; }
                     var around = Around(HalfTemplate, column, row);
                     if (type == 'F') AddFull(FullLayout(around), piece);
                     else
@@ -508,35 +549,35 @@ namespace BellwortBurrow.EditorTools
                 }
             if (!full.ContainsKey(Full))
             {
-                Debug.LogWarning($"Bellwort Burrow: skipped {PathAsset}; {SheetName} has no {PathSlice} slice painted from the template.");
+                Debug.LogWarning($"Bellwort Burrow: skipped {fullName}; {ground.Sheet} has no {pair.Slice} slice painted from the template.");
                 return false;
             }
-            foreach (var name in PathFills)
+            foreach (var name in pair.Fills)
                 if (sprites.TryGetValue(name, out var fill)) full[Full].Add(fill);
             if (missing > 0)
-                Debug.LogWarning($"Bellwort Burrow: {missing} path tiles of the templates have no piece in {PathSlice} or {HalfPathSlice}. " +
+                Debug.LogWarning($"Bellwort Burrow: {fullName}: {missing} tiles of the templates have no piece in {pair.Slice} or {pair.HalfSlice}. " +
                                  "Are the slices the size of GroundAutoTiles.Template and HalfTemplate, and painted from them?");
 
             var pathTile = ScriptableObject.CreateInstance<PathRuleTile>();
-            pathTile.name = PathAsset;
+            pathTile.name = fullName;
             pathTile.m_DefaultSprite = full[Full][0];
             pathTile.m_DefaultColliderType = Tile.ColliderType.None;
             pathTile.m_TilingRules = new List<RuleTile.TilingRule>();
-            foreach (var (layout, conditions) in PathRules<uint>(FullLayout))
+            foreach (var (layout, conditions) in fullRules ??= PathRules<uint>(FullLayout))
                 if (full.TryGetValue(layout, out var pieces)) pathTile.m_TilingRules.Add(PathRule(conditions, pieces));
             if (full.Count < LayoutCount)
-                Debug.LogWarning($"Bellwort Burrow: {PathAsset} has {full.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
+                Debug.LogWarning($"Bellwort Burrow: {fullName} has {full.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
 
             var halfTile = ScriptableObject.CreateInstance<PathRuleTile>();
-            halfTile.name = HalfPathAsset;
+            halfTile.name = halfName;
             var facingWest = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
             halfTile.m_DefaultSprite = half.TryGetValue(HalfLook(facingWest), out var west) ? west[0] : full[Full][0];
             halfTile.m_DefaultColliderType = Tile.ColliderType.None;
             halfTile.m_TilingRules = new List<RuleTile.TilingRule>();
-            foreach (var (look, conditions) in PathRules<string>(HalfLook))
+            foreach (var (look, conditions) in halfRules ??= PathRules<string>(HalfLook))
                 if (half.TryGetValue(look, out var pieces)) halfTile.m_TilingRules.Add(PathRule(conditions, pieces));
             if (half.Count < HalfLookCount)
-                Debug.LogWarning($"Bellwort Burrow: {HalfPathAsset} has {half.Count} of the {HalfLookCount} looks; half tiles with a missing look show its first piece.");
+                Debug.LogWarning($"Bellwort Burrow: {halfName} has {half.Count} of the {HalfLookCount} looks; half tiles with a missing look show its first piece.");
 
             SaveKeepingId(pathTile, pathPath);
             SaveKeepingId(halfTile, halfPath);
@@ -554,61 +595,6 @@ namespace BellwortBurrow.EditorTools
                 tile.halfPath = savedHalf;
                 EditorUtility.SetDirty(tile);
             }
-            return true;
-        }
-
-        static bool MakeSetTile(GroundSet set, Dictionary<string, Sprite> sprites, string path)
-        {
-            // Which pieces go with which layout, in template order.
-            var layouts = new List<uint>();
-            var choices = new List<List<Sprite>>();
-            int missing = 0;
-            for (int row = 0; row < Template.Length; row++)
-            {
-                for (int column = 0; column < Template[row].Length; column++)
-                {
-                    if (Template[row][column] != '#') continue;
-                    if (!sprites.TryGetValue(PieceName(set.Slice, column, row, Template), out var piece)) { missing++; continue; }
-                    uint layout = Layout(Template, column, row);
-                    int at = layouts.IndexOf(layout);
-                    if (at < 0) { layouts.Add(layout); choices.Add(new List<Sprite>()); at = layouts.Count - 1; }
-                    choices[at].Add(piece);
-                }
-            }
-            int full = layouts.IndexOf(Full);
-            if (full < 0)
-            {
-                Debug.LogWarning($"Bellwort Burrow: skipped {set.Asset}; {SheetName} has no {set.Slice} slice painted from the template.");
-                return false;
-            }
-            foreach (var name in set.Fills)
-                if (sprites.TryGetValue(name, out var fill)) choices[full].Add(fill);
-            if (missing > 0)
-                Debug.LogWarning($"Bellwort Burrow: {set.Asset}: {missing} painted cells of the template have no piece in {set.Slice}. " +
-                                 $"Is the slice {Template[0].Length} by {Template.Length} tiles and painted from GroundAutoTiles.Template?");
-            if (layouts.Count < LayoutCount)
-                Debug.LogWarning($"Bellwort Burrow: {set.Asset} has {layouts.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
-
-            var tile = ScriptableObject.CreateInstance<RuleTile>();
-            tile.name = set.Asset;
-            tile.m_DefaultSprite = choices[full][0];
-            tile.m_DefaultColliderType = Tile.ColliderType.None;
-            tile.m_TilingRules = new List<RuleTile.TilingRule>();
-            for (int i = 0; i < layouts.Count; i++)
-            {
-                var rule = new RuleTile.TilingRule
-                {
-                    m_Neighbors = new List<int>(RuleNeighbours(layouts[i])),
-                    m_NeighborPositions = new List<Vector3Int>(RulePositions),
-                    m_Sprites = choices[i].ToArray(),
-                    m_Output = choices[i].Count > 1 ? RuleTile.TilingRuleOutput.OutputSprite.Random : RuleTile.TilingRuleOutput.OutputSprite.Single,
-                    m_PerlinScale = 0.5f,
-                    m_ColliderType = Tile.ColliderType.None,
-                    m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
-                };
-                tile.m_TilingRules.Add(rule);
-            }
-            SaveKeepingId(tile, path);
             return true;
         }
 
@@ -637,6 +623,9 @@ namespace BellwortBurrow.EditorTools
             AssetDatabase.SaveAssets();
             File.Copy(temp, path, true);
             AssetDatabase.DeleteAsset(temp);
+            // The copy still carries the temporary file's name inside it.
+            string name = Path.GetFileNameWithoutExtension(path);
+            File.WriteAllText(path, File.ReadAllText(path).Replace($"m_Name: {name} (rebuilding)", $"m_Name: {name}"));
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
             // Tilemaps keep calling the old kind's code for an asset whose kind changed until scripts reload.
             EditorUtility.RequestScriptReload();

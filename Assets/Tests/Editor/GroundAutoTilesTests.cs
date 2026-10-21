@@ -180,5 +180,20 @@ namespace BellwortBurrow.Tests.Editor
             UnityEngine.Object.DestroyImmediate(half);
             UnityEngine.Object.DestroyImmediate(other);
         }
+
+        [Test]
+        public void EveryGroundSheet_MakesGrassAndAFullAndHalfPathAndDeerTrail()
+        {
+            var every = new HashSet<string>();
+            foreach (var ground in GroundAutoTiles.Sheets)
+            {
+                var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
+                var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" };
+                CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
+                foreach (var path in GroundAutoTiles.TilePaths(ground))
+                    Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");
+            }
+            Assert.AreEqual(GroundAutoTiles.Sheets.Length, GroundAutoTiles.Sheets.Select(g => g.Palette).Distinct().Count(), "two ground sheets share a palette");
+        }
     }
 }
