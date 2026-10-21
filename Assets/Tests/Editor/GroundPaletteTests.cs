@@ -73,6 +73,25 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void SplitRuns_KeepsTheShapesAndGivesTheRunsAColumnOfTheirOwn()
+        {
+            // The full set: the shape cells stay where they are, everything else is a run, from row 0 down.
+            var spots = GroundPalette.SetSpots("path_set", PathFills);
+            var (shapes, runs) = GroundPalette.SplitRuns(spots, GroundPalette.ShapeSpots().Max(s => s.row));
+            CollectionAssert.AreEquivalent(GroundPalette.ShapeSpots().Select(s => (s.column, s.row)), shapes.Select(s => (s.column, s.row)));
+            Assert.AreEqual(spots.Count, shapes.Count + runs.Count);
+            Assert.AreEqual(0, runs.Min(s => s.row), "the runs start on their column's first row");
+            Assert.AreEqual(runs.Count, runs.Select(s => (s.column, s.row)).Distinct().Count(), "two runs share a cell");
+
+            // The half set, the same way.
+            var halfSpots = GroundPalette.HalfSetSpots("path_set", "path_half_set");
+            var (halfShapes, halfRuns) = GroundPalette.SplitRuns(halfSpots, GroundPalette.HalfShapeSpots().Max(s => s.row));
+            CollectionAssert.AreEquivalent(GroundPalette.HalfShapeSpots().Select(s => (s.column, s.row)), halfShapes.Select(s => (s.column, s.row)));
+            Assert.AreEqual(halfSpots.Count, halfShapes.Count + halfRuns.Count);
+            Assert.AreEqual(0, halfRuns.Min(s => s.row), "the half runs start on their column's first row");
+        }
+
+        [Test]
         public void HalfShapes_OnlyJoinTheirOwnPieces()
         {
             // Every cell's key, read from all the half shapes together, is the one its own shape gives it.
