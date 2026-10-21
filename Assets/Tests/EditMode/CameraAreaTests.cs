@@ -64,6 +64,25 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void SettledView_ForASpot_IsTheScreenThePlayerSeesThere()
+        {
+            var areas = new[] { leg, band };
+            var c = CameraFollow.SettledView(new Vector2(8f, 26.5f), new Vector2(0f, 1f), areas, null, 15f, 8.4375f, 16);
+            Assert.AreEqual(new Vector2(15f, 32.4375f), c, "round the corner: held off the west edge, the band at the bottom");
+            c = CameraFollow.SettledView(new Vector2(8f, 13f), new Vector2(0f, 1f), areas, null, 15f, 8.4375f, 16);
+            Assert.AreEqual(new Vector2(15f, 14f), c, "up the closed path, centred on the leg's width");
+        }
+
+        [Test]
+        public void SettledView_OutsideEveryArea_KeepsToTheGround()
+        {
+            var c = CameraFollow.SettledView(new Vector2(2f, 1f), new Vector2(0f, 1f), new CameraArea[0], new Rect(0f, 0f, 60f, 17f), 15f, 8.4375f, 16);
+            Assert.AreEqual(new Vector2(15f, 8.4375f), c);
+            c = CameraFollow.SettledView(new Vector2(2.03f, 1f), new Vector2(0f, 1f), new CameraArea[0], null, 15f, 8.4375f, 16);
+            Assert.AreEqual(new Vector2(2f, 2f), c, "no limit: just above the feet, snapped to whole pixels");
+        }
+
+        [Test]
         public void Clamp_AViewSmallerThanTheScreen_IsCentred()
         {
             var c = CameraFollow.Clamp(new Vector2(3f, 3f), new Rect(0f, 0f, 20f, 10f), 15f, 8.4375f);

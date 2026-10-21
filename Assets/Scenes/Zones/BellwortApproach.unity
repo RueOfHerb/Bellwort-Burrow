@@ -137,7 +137,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1025,6 +1025,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
   m_PrefabInstance: {fileID: 35363082}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &39422710
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 39422711}
+  - component: {fileID: 39422712}
+  m_Layer: 0
+  m_Name: Closed path
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &39422711
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 39422710}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8, y: 13, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 299132176}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &39422712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 39422710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397ac2c9136f018488a5cb1416c74567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.SnapshotSpot
 --- !u!1001 &55926412
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1352,11 +1396,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 66
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 31
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1524,6 +1568,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
   m_PrefabInstance: {fileID: 163597625}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &168868756
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 168868757}
+  - component: {fileID: 168868758}
+  m_Layer: 0
+  m_Name: Far thicket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &168868757
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 168868756}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 46, y: 26.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 299132176}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &168868758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 168868756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397ac2c9136f018488a5cb1416c74567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.SnapshotSpot
 --- !u!1001 &168967957
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1542,7 +1630,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 16
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1796,6 +1884,42 @@ MonoBehaviour:
     y: 0
     width: 30
     height: 32
+--- !u!1 &299132175
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 299132176}
+  m_Layer: 0
+  m_Name: Canvas snapshots
+  m_TagString: EditorOnly
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &299132176
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 299132175}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 39422711}
+  - {fileID: 1203612426}
+  - {fileID: 1978881190}
+  - {fileID: 168868757}
+  - {fileID: 1776650369}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &323489188
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2000,7 +2124,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2550895800470707100, guid: ae8ca35fc58c02d47a0cc7a53cd250da, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 16
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 2550895800470707100, guid: ae8ca35fc58c02d47a0cc7a53cd250da, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2191,7 +2315,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8674388699756317449, guid: e8e10353ad5e2e7429e01f063cf74127, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8674388699756317449, guid: e8e10353ad5e2e7429e01f063cf74127, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2248,7 +2372,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 13
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2306,7 +2430,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4503755407029488932, guid: e6869960e7bcaa64ebddc4c79d1aa154, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 20
+      value: 19
       objectReference: {fileID: 0}
     - target: {fileID: 4503755407029488932, guid: e6869960e7bcaa64ebddc4c79d1aa154, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2887,7 +3011,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 13
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.z
@@ -3270,7 +3394,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 997212560004544436, guid: 3dc0e762ffcca8b459b6782a802da462, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 73
+      value: 75
       objectReference: {fileID: 0}
     - target: {fileID: 997212560004544436, guid: 3dc0e762ffcca8b459b6782a802da462, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3327,7 +3451,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5428837249138214080, guid: 0592d3d39c3088746b1bac87d00801c4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 40.5
+      value: 41.5
       objectReference: {fileID: 0}
     - target: {fileID: 5428837249138214080, guid: 0592d3d39c3088746b1bac87d00801c4, type: 3}
       propertyPath: m_LocalPosition.y
@@ -4026,7 +4150,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 6989177747842532324, guid: 70c7714df53b8794f91522a024d0f6f0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -27661,7 +27785,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5263016691474056945, guid: 0d762a180417c2b419467c6f5f927139, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 21
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 5263016691474056945, guid: 0d762a180417c2b419467c6f5f927139, type: 3}
       propertyPath: m_LocalPosition.z
@@ -27856,7 +27980,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.z
@@ -28209,6 +28333,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5019903000173916585, guid: 09c8df33d59d25842a2ace5d25fa9a42, type: 3}
   m_PrefabInstance: {fileID: 1202993845}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1203612425
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1203612426}
+  - component: {fileID: 1203612427}
+  m_Layer: 0
+  m_Name: The corner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1203612426
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1203612425}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8, y: 26.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 299132176}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1203612427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1203612425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397ac2c9136f018488a5cb1416c74567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.SnapshotSpot
 --- !u!1001 &1219105206
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -30624,7 +30792,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6537633494199814990, guid: 251edd011c4464a48bbd739559a64e4e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 14
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 6537633494199814990, guid: 251edd011c4464a48bbd739559a64e4e, type: 3}
       propertyPath: m_LocalPosition.z
@@ -32081,6 +32249,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6537633494199814990, guid: 251edd011c4464a48bbd739559a64e4e, type: 3}
   m_PrefabInstance: {fileID: 1770018606}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1776650368
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1776650369}
+  - component: {fileID: 1776650370}
+  m_Layer: 0
+  m_Name: North leg
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1776650369
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1776650368}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 66, y: 34, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 299132176}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1776650370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1776650368}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397ac2c9136f018488a5cb1416c74567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.SnapshotSpot
 --- !u!1001 &1802646372
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -32099,7 +32311,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6537633494199814990, guid: 251edd011c4464a48bbd739559a64e4e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 6537633494199814990, guid: 251edd011c4464a48bbd739559a64e4e, type: 3}
       propertyPath: m_LocalPosition.z
@@ -32297,7 +32509,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4262101838514789941, guid: 9f2c148b57edbfa44b6c70fcca72142f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 20
+      value: 19
       objectReference: {fileID: 0}
     - target: {fileID: 4262101838514789941, guid: 9f2c148b57edbfa44b6c70fcca72142f, type: 3}
       propertyPath: m_LocalPosition.z
@@ -32517,7 +32729,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.z
@@ -32918,6 +33130,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8674388699756317449, guid: e8e10353ad5e2e7429e01f063cf74127, type: 3}
   m_PrefabInstance: {fileID: 382546562}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1978881189
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1978881190}
+  - component: {fileID: 1978881191}
+  m_Layer: 0
+  m_Name: The fallen tree
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1978881190
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978881189}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 26, y: 26.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 299132176}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1978881191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978881189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 397ac2c9136f018488a5cb1416c74567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BellwortBurrow.Player::BellwortBurrow.Player.SnapshotSpot
 --- !u!1 &2000488735
 GameObject:
   m_ObjectHideFlags: 0
@@ -33650,7 +33906,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 7756157784617289782, guid: b46b20abb2ccec443919f9a51b0c2285, type: 3}
       propertyPath: m_LocalPosition.z
@@ -33800,3 +34056,4 @@ SceneRoots:
   - {fileID: 189375499}
   - {fileID: 124132507}
   - {fileID: 980957794}
+  - {fileID: 299132176}

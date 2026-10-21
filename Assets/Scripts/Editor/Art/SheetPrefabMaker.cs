@@ -149,11 +149,28 @@ namespace BellwortBurrow.EditorTools
                     foreach (Transform child in root.transform)
                         if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = order + 1;
                 }
+                else if (Footprints.IsRoof(pair.Key, out var fits))
+                {
+                    // A roof goes on a house and sorts inside the house's sorting group (see HouseRoof.SortingOrder).
+                    root.AddComponent<HouseRoof>().fits = fits;
+                    var roofGroup = root.GetComponent<SortingGroup>();
+                    if (roofGroup != null) Object.DestroyImmediate(roofGroup);
+                    renderer.sortingOrder = HouseRoof.SortingOrder;
+                    foreach (Transform child in root.transform)
+                        if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = HouseRoof.SortingOrder + 1;
+                }
                 else
                 {
                     SheetSlice? footSlice = slices.TryGetValue(pair.Key, out var found) ? found : (SheetSlice?)null;
                     int tiles = Footprints.TilesWide(pair.Key, backdrop, sheet?.Art, sheet?.Width ?? 0, sheet?.Height ?? 0, footSlice);
                     if (tiles > 0) root.AddComponent<GridFootprint>().tilesWide = tiles;
+                    // A house that takes a roof: the roof sorts inside the house, so the house keeps a sorting group.
+                    string seatSize = Footprints.RoofSeatSize(pair.Key, slices.Keys);
+                    if (seatSize != null)
+                    {
+                        root.AddComponent<RoofSeat>().size = seatSize;
+                        if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
+                    }
                 }
 
                 if (backdrop)

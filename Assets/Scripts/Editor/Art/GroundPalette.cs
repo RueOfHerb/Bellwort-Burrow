@@ -13,16 +13,18 @@ namespace BellwortBurrow.EditorTools
     /// <summary>
     /// Builds each zone's ground Tile Palette (Window > 2D > Tile Palette) from its ground sheet: "Forest Ground" from
     /// forest_ground.aseprite, "Burrow Ground" from burrow_ground.aseprite (see <see cref="GroundAutoTiles.Sheets"/>).
-    /// The top row holds the tiles you paint with (grass, path, half path, deer trail, half deer trail; see
-    /// <see cref="GroundAutoTiles"/>). Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/>
+    /// The top row holds the tiles you paint with (grass, path, half path, deer trail, half deer trail, and on a sheet
+    /// with raised ground the bank top, bank face and cliff face; see <see cref="GroundAutoTiles"/>). The raised ground's
+    /// sets sit with the other slices, as painted on the sheet. Below them, each ground set painted from <see cref="GroundAutoTiles.Template"/>
     /// (the path, then the deer trail beside it) is laid out as ready-made shapes (<see cref="Groups"/>) for painting by
-    /// hand: every piece sits beside the pieces it joins, and every layout comes up at least once. Under the shapes wait
-    /// the set's other pieces (the repeats and fills the tile picks from at random), in a run per layout. Under those, the
-    /// set's half tiles get shapes of their own (<see cref="HalfGroups"/>): full path ending half a tile in or half a
-    /// tile wider, rounded turns, inside corners, dots and joins, with the half pieces the shapes don't use (mostly half
-    /// tiles filled in between full ones, which look whole) in a run per look under them. Every other slice (grass,
-    /// tufts, crops) goes to the right, as it sits on the sheet. The sheet itself keeps its patches, because the tiles
-    /// read each piece's layout from its spot there.
+    /// hand: every piece sits beside the pieces it joins, and every layout comes up at least once. Under them, the set's
+    /// half tiles get shapes of their own (<see cref="HalfGroups"/>): full path ending half a tile in or half a tile
+    /// wider, rounded turns, inside corners, dots and joins. Every other slice (grass, tufts, crops) goes to the right
+    /// of the sets, as it sits on the sheet. The set's other pieces (the repeats and fills the tile picks from at random,
+    /// in a run per layout, then the half pieces the shapes don't use, mostly half tiles filled in between full ones,
+    /// which look whole, in a run per look) wait in a column of their own at the far right, one per set, so the palette
+    /// opens on the shapes (Jocelyn, Oct 20). The sheet itself keeps its patches, because the tiles read each piece's
+    /// layout from its spot there.
     /// If you rearranged a palette by hand, it is left alone (see <see cref="GeneratedAssets"/>).
     /// </summary>
     public static class GroundPalette
@@ -310,6 +312,23 @@ namespace BellwortBurrow.EditorTools
             return spots;
         }
 
+        /// <summary>
+        /// Splits a set's spots (<see cref="SetSpots"/> or <see cref="HalfSetSpots"/>) into its shapes, the spots down to
+        /// the shapes' last row, and its runs, the spots under them, moved up so the first run sits on row 0.
+        /// </summary>
+        internal static (List<(int column, int row, string piece)> shapes, List<(int column, int row, string piece)> runs)
+            SplitRuns(List<(int column, int row, string piece)> spots, int shapesBottom)
+        {
+            var shapes = spots.Where(s => s.row <= shapesBottom).ToList();
+            var runs = spots.Where(s => s.row > shapesBottom).ToList();
+            if (runs.Count > 0)
+            {
+                int top = runs.Min(s => s.row);
+                runs = runs.Select(s => (s.column, s.row - top, s.piece)).ToList();
+            }
+            return (shapes, runs);
+        }
+
         [MenuItem("Bellwort Burrow/Setup/Forest Steps/5. Make Ground Tile Palettes", false, 205)]
         static void MakeFromMenu()
         {
@@ -417,14 +436,23 @@ namespace BellwortBurrow.EditorTools
                 placed.Add(name);
             }
 
-            // The ground sets, side by side: shapes, with the other pieces under them.
+            // The ground sets, side by side: each set's shapes, with its half shapes under them. Their other pieces (the
+            // runs) wait for a column of their own at the far right, so they count as placed already.
             int left = 1;
+            var shapesBottom = ShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
+            var halfShapesBottom = HalfShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
+            var runColumns = new List<List<(int column, int row, string piece)>>();
             foreach (var (slice, halfSlice, fills) in GroundAutoTiles.TemplateSets())
             {
-                var set = SetSpots(slice, fills);
-                foreach (var (column, row, piece) in set) Put(left + column, row, piece);
-                int halfTop = (set.Count == 0 ? 0 : set.Max(s => s.row) + 1) + GroupGap + 1;
-                foreach (var (column, row, piece) in HalfSetSpots(slice, halfSlice)) Put(left + column, halfTop + row, piece);
+                var (shapes, runs) = SplitRuns(SetSpots(slice, fills), shapesBottom);
+                var (halfShapes, halfRuns) = SplitRuns(HalfSetSpots(slice, halfSlice), halfShapesBottom);
+                foreach (var (column, row, piece) in shapes) Put(left + column, row, piece);
+                int halfTop = (shapes.Count == 0 ? 0 : shapes.Max(s => s.row) + 1) + GroupGap + 1;
+                foreach (var (column, row, piece) in halfShapes) Put(left + column, halfTop + row, piece);
+                int halfRunTop = (runs.Count == 0 ? 0 : runs.Max(s => s.row) + 1) + GroupGap + 1;
+                var column_ = runs.Concat(halfRuns.Select(s => (s.column, halfRunTop + s.row, s.piece))).ToList();
+                foreach (var spot in column_) if (tiles.ContainsKey(spot.piece)) placed.Add(spot.piece);
+                runColumns.Add(column_);
                 left += SetWidth + SetGap;
             }
 
@@ -433,7 +461,7 @@ namespace BellwortBurrow.EditorTools
             var rest = sheet.Slices
                 .Where(s => SliceTiles(s, tileSize).Any(t => tiles.ContainsKey(t.name) && !placed.Contains(t.name)))
                 .OrderBy(s => s.Y).ThenBy(s => s.X).ToList();
-            int bandTop = 0;
+            int bandTop = 0, restRight = left;
             for (int i = 0; i < rest.Count;)
             {
                 int sheetTop = rest[i].Y, sheetBottom = rest[i].Y + rest[i].Height, end = i + 1;
@@ -445,8 +473,17 @@ namespace BellwortBurrow.EditorTools
                     foreach (var (column, row, name) in SliceTiles(rest[k], tileSize)) Put(x + column, bandTop + down + row, name);
                     x += rest[k].Width / tileSize + 1;
                 }
+                restRight = Math.Max(restRight, x);
                 bandTop += (sheetBottom - sheetTop) / tileSize + GroupGap;
                 i = end;
+            }
+
+            // The runs, a column per set at the far right, in the same order as the sets.
+            int runLeft = restRight + SetGap - 1;
+            foreach (var column_ in runColumns)
+            {
+                foreach (var (column, row, piece) in column_) Put(runLeft + column, row, piece);
+                runLeft += SetWidth + SetGap;
             }
 
             // The painting tiles, in a row above.

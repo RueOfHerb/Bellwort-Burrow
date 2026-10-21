@@ -18,6 +18,9 @@ namespace BellwortBurrow.EditorTools
     /// - Scene shots of every zone scene in Assets/Scenes/Zones, rendered by a camera to a texture with Unity's own lighting
     ///   and sorting: the opening screen (what the Main Camera sees), the whole scene, and two screens stacked above each
     ///   tree home when the scene has any. Each image starts with the scene's name, for example forlorn-forest-opening-screen.
+    /// - Snapshots: the 480 by 270 screen at every Snapshot Spot in a zone scene, as in play (the player on the spot, the
+    ///   camera where it settles there, the backdrops drifted for it), named by the spot's order and name, for example
+    ///   bellwort-approach-snapshot-2-the-corner.
     /// - Every sheet and character exactly as drawn: the Art layer, pixel for pixel.
     /// - The critters put together with their faces and clothes, the way the game does it (players-faces, players-outfits,
     ///   wardrobe, and player-mouse and so on). The player files hold no face or clothes of their own.
@@ -57,6 +60,8 @@ namespace BellwortBurrow.EditorTools
             var setup = EditorSceneManager.GetSceneManagerSetup();
             bool canRestore = setup.Length > 0 && setup.All(s => !string.IsNullOrEmpty(s.path));
             Directory.CreateDirectory(Folder);
+            // A spot that was renamed, moved in the order or taken out would leave its old image behind.
+            foreach (var old in Directory.GetFiles(Folder, "*-snapshot-*.png")) File.Delete(old);
             var images = new List<string>();
             try
             {
@@ -124,6 +129,66 @@ namespace BellwortBurrow.EditorTools
                 for (int i = 2; !used.Add(name); i++) name = $"{prefix}-walking-north-{home.name}-{i}";
                 images.Add(Shot(name, Snap(new Vector2(x, y)), ScreenWidth, 2 * ScreenHeight, background, mask));
             }
+
+            CaptureSnapshots(images, prefix, background, mask);
+        }
+
+        /// <summary>
+        /// The screen at every Snapshot Spot in the open scene, in Hierarchy order, as in play: the player stands on the spot,
+        /// the camera settles where CameraFollow puts it, and every backdrop drifts by its share of the camera's move.
+        /// Everything moved goes back afterwards; the scene is never saved.
+        /// </summary>
+        static void CaptureSnapshots(List<string> images, string prefix, Color background, int mask)
+        {
+            var spots = UnityEngine.Object.FindObjectsByType<BellwortBurrow.Player.SnapshotSpot>().ToList();
+            if (spots.Count == 0) return;
+            spots.Sort((a, b) => CompareInHierarchy(a.transform, b.transform));
+            var follow = UnityEngine.Object.FindAnyObjectByType<BellwortBurrow.Player.CameraFollow>();
+            var areas = UnityEngine.Object.FindObjectsByType<BellwortBurrow.Systems.World.CameraArea>();
+            var backdrops = UnityEngine.Object.FindObjectsByType<BellwortBurrow.Systems.World.Parallax>();
+            var placed = backdrops.Select(b => b.transform.position).ToArray();
+            Transform player = follow != null ? follow.Target : null;
+            Vector3 standing = player != null ? player.position : Vector3.zero;
+            float ppu = ArtLibrary.PixelsPerUnit;
+            try
+            {
+                for (int i = 0; i < spots.Count; i++)
+                {
+                    Vector2 centre = spots[i].View(follow, areas);
+                    Vector3 feet = spots[i].transform.position;
+                    if (player != null) player.position = new Vector3(feet.x, feet.y, standing.z);
+                    for (int b = 0; b < backdrops.Length; b++)
+                        backdrops[b].transform.position = BellwortBurrow.Systems.World.Parallax.Drifted(placed[b], centre, backdrops[b].Follow, Mathf.RoundToInt(ppu));
+                    SortingGroup.UpdateAllSortingGroups();
+                    string name = $"{prefix}-snapshot-{i + 1}-{Words(spots[i].name)}";
+                    images.Add(Shot(name, Snap(centre - new Vector2(ScreenWidth, ScreenHeight) / (2 * ppu)), ScreenWidth, ScreenHeight, background, mask));
+                }
+            }
+            finally
+            {
+                if (player != null) player.position = standing;
+                for (int b = 0; b < backdrops.Length; b++) backdrops[b].transform.position = placed[b];
+                SortingGroup.UpdateAllSortingGroups();
+            }
+        }
+
+        /// <summary>"The corner" becomes "the-corner", for the snapshot names.</summary>
+        static string Words(string name) =>
+            System.Text.RegularExpressions.Regex.Replace(name.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+
+        /// <summary>Orders two objects as the Hierarchy lists them.</summary>
+        static int CompareInHierarchy(Transform a, Transform b)
+        {
+            List<int> Path(Transform t)
+            {
+                var path = new List<int>();
+                for (; t != null; t = t.parent) path.Insert(0, t.GetSiblingIndex());
+                return path;
+            }
+            List<int> pa = Path(a), pb = Path(b);
+            for (int i = 0; i < Mathf.Min(pa.Count, pb.Count); i++)
+                if (pa[i] != pb[i]) return pa[i].CompareTo(pb[i]);
+            return pa.Count.CompareTo(pb.Count);
         }
 
         /// <summary>The giant trees in the open scene that have a ground tree house on them.</summary>

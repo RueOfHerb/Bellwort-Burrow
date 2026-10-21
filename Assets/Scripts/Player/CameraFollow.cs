@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BellwortBurrow.Systems.World;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -67,6 +68,50 @@ namespace BellwortBurrow.Player
             want.x = Mathf.Round(want.x * pixelsPerUnit) / pixelsPerUnit;
             want.y = Mathf.Round(want.y * pixelsPerUnit) / pixelsPerUnit;
             transform.position = new Vector3(want.x, want.y, transform.position.z);
+        }
+
+        /// <summary>The target the camera follows.</summary>
+        public Transform Target => target;
+        /// <summary>Where the camera centres, relative to the target's feet (in units).</summary>
+        public Vector2 Offset => offset;
+        /// <summary>The zone's Grid the camera stays inside when there are no camera areas, or null for no limit.</summary>
+        public Grid Limits => bounds;
+
+        /// <summary>
+        /// Where the camera settles for a player standing still at <paramref name="feet"/>: <paramref name="offset"/> above
+        /// them, kept inside the view of the camera area they stand in, or inside <paramref name="ground"/> when they stand in
+        /// none, snapped to whole pixels. Canvas snapshots use it to frame the screen the player sees there.
+        /// </summary>
+        public static Vector2 SettledView(Vector2 feet, Vector2 offset, IReadOnlyList<CameraArea> areas, Rect? ground,
+            float halfWidth, float halfHeight, int pixelsPerUnit)
+        {
+            Vector2 want = feet + offset;
+            var area = CameraArea.Pick(areas, feet, null);
+            if (area != null) want = Clamp(want, area.view, halfWidth, halfHeight);
+            else if (ground.HasValue) want = Clamp(want, ground.Value, halfWidth, halfHeight);
+            if (pixelsPerUnit > 0)
+            {
+                want.x = Mathf.Round(want.x * pixelsPerUnit) / pixelsPerUnit;
+                want.y = Mathf.Round(want.y * pixelsPerUnit) / pixelsPerUnit;
+            }
+            return want;
+        }
+
+        /// <summary>The ground a Grid's tilemaps cover, in world units, or null when it has nothing painted.</summary>
+        public static Rect? GroundOf(Grid grid)
+        {
+            if (grid == null) return null;
+            bool any = false;
+            Vector3 min = Vector3.zero, max = Vector3.zero;
+            foreach (var map in grid.GetComponentsInChildren<Tilemap>())
+            {
+                var cells = map.cellBounds;
+                if (cells.size.x <= 0 || cells.size.y <= 0) continue;
+                Vector3 a = map.CellToWorld(cells.min), b = map.CellToWorld(cells.max);
+                if (!any) { min = Vector3.Min(a, b); max = Vector3.Max(a, b); any = true; }
+                else { min = Vector3.Min(min, Vector3.Min(a, b)); max = Vector3.Max(max, Vector3.Max(a, b)); }
+            }
+            return any ? Rect.MinMaxRect(min.x, min.y, max.x, max.y) : (Rect?)null;
         }
 
         /// <summary>Keeps a camera centre inside <paramref name="limits"/>; on an axis where the limits are smaller than the screen, centres on them.</summary>
