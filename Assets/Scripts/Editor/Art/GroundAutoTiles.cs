@@ -81,7 +81,12 @@ namespace BellwortBurrow.EditorTools
         {
             public string Kind, Slice, HalfSlice;
             public string[] Fills; // extra full pieces, picked at random alongside the template's full pieces
+            /// <summary>The half tiles that cut 45 degrees, painted from <see cref="HalfSlopeTemplate"/>.</summary>
+            public string SlopeSlice => SlopeSliceOf(HalfSlice);
         }
+
+        /// <summary>A half set's slope set: path_half_set has path_slope_set.</summary>
+        internal static string SlopeSliceOf(string halfSlice) => halfSlice.Replace("_half_set", "_slope_set");
 
         /// <summary>The grounds every ground sheet has, in the order the tile palette lays them out.</summary>
         static readonly HalfPair[] Pairs =
@@ -209,8 +214,34 @@ namespace BellwortBurrow.EditorTools
             ".......FFF..HF...",
         };
 
+        /// <summary>
+        /// The patch the half sets' slope sets (path_slope_set beside path_half_set, and so on) are painted from, laid out
+        /// as <see cref="HalfTemplate"/>: every half look <see cref="HalfTemplate"/> doesn't hold comes up on at least one
+        /// 'H' here. These are the looks that cut 45 degrees (<see cref="HalfLook"/>). A sheet without a slope set still
+        /// works: those half tiles take the rounded look they had before (<see cref="RoundedLook"/>).
+        /// Change it only together with the sheets' slices.
+        /// </summary>
+        public static readonly string[] HalfSlopeTemplate =
+        {
+            "FHH..FFFF..HFHF..",
+            ".FFHFH.HHF.F.HFFF",
+            "FHHHFHH..HFH.FFHH",
+            "...F.FHFHHF.F...H",
+            "FHHFHHF.F.F.FFF.H",
+            "FFF.FHFFH.HFHHFHH",
+            ".HFHHFF.HFH.H.HF.",
+            "H..F..HFF.FH.HFH.",
+            "HFHHF.HHFFH..F..H",
+            ".FF.HHFFH..F..HFF",
+            ".HHF.FH.H.HF.FFF.",
+            "FHHFHH.F.FFFH.HF.",
+            "FHH...HH...FFFHH.",
+            ".H.HF.HH......HF.",
+            ".FH....F.....H...",
+        };
+
         /// <summary>How many looks a half tile has.</summary>
-        public const int HalfLookCount = 131;
+        public const int HalfLookCount = 191;
 
         /// <summary>How many layouts a ground set has: the 47 of Unity's 3x3 Auto Tile plus 36 slope pieces.</summary>
         public const int LayoutCount = 83;
@@ -520,7 +551,8 @@ namespace BellwortBurrow.EditorTools
         /// <summary>
         /// What a half path tile's piece looks like, as a key: the quarters it fills and, around each of them, the
         /// quarters that can change it (the four beside it, and a diagonal one only where both quarters between are
-        /// path, as that closes an inner corner). "lone" when it fills none. <see cref="HalfLookCount"/> looks in all.
+        /// path, as that closes an inner corner), then after a '|' the outer corners it cuts on a slope, if any.
+        /// "lone" when it fills none. <see cref="HalfLookCount"/> looks in all.
         /// </summary>
         internal static string HalfLook(char[] around)
         {
@@ -540,7 +572,31 @@ namespace BellwortBurrow.EditorTools
                 foreach (var (dy, dx) in new[] { (-1, -1), (-1, 1), (1, -1), (1, 1) })
                     if (P(y + dy, x) && P(y, x + dx)) seen[(y + dy + 1) * 4 + (x + dx + 1)] = P(y + dy, x + dx);
             }
-            return own + ":" + string.Join(",", seen.Select(kv => kv.Key + (kv.Value ? "+" : "-")));
+            string look = own + ":" + string.Join(",", seen.Select(kv => kv.Key + (kv.Value ? "+" : "-")));
+            // An outer corner of a quarter (both quarters beside it there aren't path) is cut on a slope, as a full
+            // tile's is, where the quarter staircase carries on past an end of it: past the far end of its edge along
+            // the top or bottom (the quarter beside it there and the one past that are path), or past the far end of
+            // its edge along the side.
+            var slopes = new List<string>();
+            foreach (var (y, x) in mine)
+                foreach (var (sy, sx) in new[] { (1, -1), (1, 1), (-1, -1), (-1, 1) })
+                {
+                    if (P(y, x - sx) || P(y - sy, x)) continue;
+                    bool alongTop = P(y, x + sx) && P(y - sy, x + sx);
+                    bool alongSide = P(y + sy, x) && P(y + sy, x - sx);
+                    if (alongTop || alongSide) slopes.Add($"{y}{x}{(sy > 0 ? 'n' : 's')}{(sx > 0 ? 'w' : 'e')}{(alongTop ? 1 : 0)}{(alongSide ? 1 : 0)}");
+                }
+            return slopes.Count == 0 ? look : look + "|" + string.Join(",", slopes);
+        }
+
+        /// <summary>
+        /// A half look as it is without its slopes: the rounded look a half tile had before half tiles cut 45 degrees,
+        /// which it takes on a sheet with no piece for its look.
+        /// </summary>
+        internal static string RoundedLook(string look)
+        {
+            int bar = look.IndexOf('|');
+            return bar < 0 ? look : look.Substring(0, bar);
         }
 
         // Neighbour conditions of a Path Rule Tile, and the types each one lets through.
@@ -646,21 +702,30 @@ namespace BellwortBurrow.EditorTools
                     if (sprites.TryGetValue(PieceName(pair.Slice, column, row, Template), out var piece)) AddFull(Layout(Template, column, row), piece);
                     else missing++;
                 }
-            for (int row = 0; row < HalfTemplate.Length; row++)
-                for (int column = 0; column < HalfTemplate[row].Length; column++)
-                {
-                    char type = HalfTemplate[row][column];
-                    if (type == '.') continue;
-                    if (!sprites.TryGetValue(PieceName(pair.HalfSlice, column, row, HalfTemplate), out var piece)) { missing++; continue; }
-                    var around = Around(HalfTemplate, column, row);
-                    if (type == 'F') AddFull(FullLayout(around), piece);
-                    else
+            int slopePieces = 0, slopeMissing = 0;
+            foreach (var (template, slice) in new[] { (HalfTemplate, pair.HalfSlice), (HalfSlopeTemplate, pair.SlopeSlice) })
+                for (int row = 0; row < template.Length; row++)
+                    for (int column = 0; column < template[row].Length; column++)
                     {
-                        string look = HalfLook(around);
-                        if (!half.TryGetValue(look, out var l)) half[look] = l = new List<Sprite>();
-                        l.Add(piece);
+                        char type = template[row][column];
+                        if (type == '.') continue;
+                        bool slopes = template == HalfSlopeTemplate;
+                        if (!sprites.TryGetValue(PieceName(slice, column, row, template), out var piece))
+                        {
+                            if (slopes) slopeMissing++; else missing++;
+                            continue;
+                        }
+                        if (slopes) slopePieces++;
+                        var around = Around(template, column, row);
+                        if (type == 'F') AddFull(FullLayout(around), piece);
+                        else
+                        {
+                            string look = HalfLook(around);
+                            if (!half.TryGetValue(look, out var l)) half[look] = l = new List<Sprite>();
+                            l.Add(piece);
+                        }
                     }
-                }
+            if (slopePieces > 0) missing += slopeMissing;
             if (!full.ContainsKey(Full))
             {
                 Debug.LogWarning($"Bellwort Burrow: skipped {fullName}; {ground.Sheet} has no {pair.Slice} slice painted from the template.");
@@ -688,9 +753,19 @@ namespace BellwortBurrow.EditorTools
             halfTile.m_DefaultSprite = half.TryGetValue(HalfLook(facingWest), out var west) ? west[0] : full[Full][0];
             halfTile.m_DefaultColliderType = Tile.ColliderType.None;
             halfTile.m_TilingRules = new List<RuleTile.TilingRule>();
+            // A look the sheet has no piece for (a sheet painted before half tiles cut 45 degrees) takes the pieces of
+            // its rounded look, or of any look with the same rounded look: on such a sheet they're all drawn rounded.
+            var byRounded = new Dictionary<string, List<Sprite>>();
+            foreach (var kv in half)
+                if (!byRounded.ContainsKey(RoundedLook(kv.Key)) || kv.Key == RoundedLook(kv.Key)) byRounded[RoundedLook(kv.Key)] = kv.Value;
             foreach (var (look, conditions) in halfRules ??= PathRules<string>(HalfLook))
-                if (half.TryGetValue(look, out var pieces)) halfTile.m_TilingRules.Add(PathRule(conditions, pieces));
-            if (half.Count < HalfLookCount)
+            {
+                if (!half.TryGetValue(look, out var pieces) && !byRounded.TryGetValue(RoundedLook(look), out pieces)) continue;
+                halfTile.m_TilingRules.Add(PathRule(conditions, pieces));
+            }
+            if (slopePieces == 0)
+                Debug.Log($"Bellwort Burrow: {ground.Sheet} has no {pair.SlopeSlice}, so {halfName} keeps its rounded corners where it would cut 45 degrees.");
+            else if (half.Count < HalfLookCount)
                 Debug.LogWarning($"Bellwort Burrow: {halfName} has {half.Count} of the {HalfLookCount} looks; half tiles with a missing look show its first piece.");
 
             SaveKeepingId(pathTile, pathPath);

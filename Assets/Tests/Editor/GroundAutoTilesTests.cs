@@ -135,17 +135,51 @@ namespace BellwortBurrow.Tests.Editor
         [Test]
         public void HalfTemplate_HoldsEveryLook()
         {
-            var t = GroundAutoTiles.HalfTemplate;
-            for (int row = 0; row < t.Length; row++)
-                Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
+            // The half template and the slope template together hold every look.
             var every = new HashSet<string>();
             for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++) every.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
             Assert.AreEqual(GroundAutoTiles.HalfLookCount, every.Count);
             var have = new HashSet<string>();
+            foreach (var t in new[] { GroundAutoTiles.HalfTemplate, GroundAutoTiles.HalfSlopeTemplate })
+            {
+                for (int row = 0; row < t.Length; row++)
+                    Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
+                for (int row = 0; row < t.Length; row++)
+                    for (int column = 0; column < t[row].Length; column++)
+                        if (t[row][column] == 'H') have.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row)));
+            }
+            foreach (var look in every) Assert.IsTrue(have.Contains(look), $"the half templates lack look {look}");
+        }
+
+        [Test]
+        public void HalfTemplate_AloneHasARoundedPieceForEveryLook()
+        {
+            // A sheet painted before half tiles cut 45 degrees has only the half set: every look's rounded look still
+            // comes up on it, under its own key or a sloped one, so its half tiles keep the corners they had.
+            var t = GroundAutoTiles.HalfTemplate;
+            var rounded = new HashSet<string>();
             for (int row = 0; row < t.Length; row++)
                 for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == 'H') have.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row)));
-            foreach (var look in every) Assert.IsTrue(have.Contains(look), $"the half template lacks look {look}");
+                    if (t[row][column] == 'H') rounded.Add(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row))));
+            for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++)
+            {
+                string look = GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
+                Assert.IsTrue(rounded.Contains(look), $"no rounded piece for {look}");
+            }
+        }
+
+        [Test]
+        public void HalfLook_AHalfTileAlongAStaircaseCutsAtFortyFiveDegrees()
+        {
+            // A half tile beside the full tiles of a 45 degree run, the staircase carrying on below it, cuts its outer
+            // corner on a slope; a half tile at the end of a straight path keeps its rounded corners.
+            //   . . .        . . .
+            //   F H .        F H .
+            //   F F H        . . .
+            var along = new[] { '.', '.', '.', 'F', '.', 'F', 'F', 'H' };   // NW N NE W E SW S SE
+            var end = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
+            StringAssert.Contains("|", GroundAutoTiles.HalfLook(along));
+            Assert.AreEqual(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(end)), GroundAutoTiles.HalfLook(end));
         }
 
         static void EveryNeighbourhoodMatchesOnlyRulesForItsPiece<T>(Func<char[], T> keyOf)
