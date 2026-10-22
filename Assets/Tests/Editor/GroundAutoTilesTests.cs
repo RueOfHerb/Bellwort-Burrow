@@ -88,47 +88,6 @@ namespace BellwortBurrow.Tests.Editor
             }
         }
 
-        [TestCase(new[] { "##.", "##.", "..." }, 64u + 128 + 8 + 16)]     // bottom right of a block: its inner corner counts
-        [TestCase(new[] { "#..", "##.", ".##" }, 2u + 8 + 16)]           // a stair step: no slopes, so only its sides
-        [TestCase(new[] { "###", "###", "##." }, 511u - 4)]               // an inner corner
-        [TestCase(new[] { "#.#", ".#.", "#.#" }, 16u)]                    // corners alone don't count
-        public void TopLayout_KeepsSidesAndInnerCorners(string[] grid, uint expected)
-        {
-            Assert.AreEqual(expected, GroundAutoTiles.TopLayoutOf(GroundAutoTiles.Neighbours(grid, 1, 1)));
-        }
-
-        [Test]
-        public void Template_HoldsEveryTopLayout()
-        {
-            var every = new HashSet<uint>(EveryNeighbourhood().Select(GroundAutoTiles.TopLayoutOf));
-            Assert.AreEqual(GroundAutoTiles.TopLayoutCount, every.Count);
-            var t = GroundAutoTiles.Template;
-            var have = new HashSet<uint>();
-            for (int row = 0; row < t.Length; row++)
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == '#') have.Add(GroundAutoTiles.TopLayoutOf(GroundAutoTiles.Neighbours(t, column, row)));
-            CollectionAssert.AreEquivalent(every, have);
-        }
-
-        [Test]
-        public void TopRuleNeighbours_EveryNeighbourhoodMatchesOnlyItsOwnRule()
-        {
-            var layouts = new HashSet<uint>(EveryNeighbourhood().Select(GroundAutoTiles.TopLayoutOf));
-            var rules = layouts.Select(l => (layout: l, conditions: GroundAutoTiles.TopRuleNeighbours(l))).ToList();
-            foreach (var around in EveryNeighbourhood())
-            {
-                var matched = rules.Where(r => Enumerable.Range(0, 8).All(i =>
-                {
-                    bool painted = (around & RuleOrder[i]) != 0;
-                    if (r.conditions[i] == RuleTile.TilingRuleOutput.Neighbor.This) return painted;
-                    if (r.conditions[i] == RuleTile.TilingRuleOutput.Neighbor.NotThis) return !painted;
-                    return true;
-                })).Select(r => r.layout).ToList();
-                Assert.AreEqual(1, matched.Count, $"neighbourhood {around} matches {matched.Count} rules");
-                Assert.AreEqual(GroundAutoTiles.TopLayoutOf(around), matched[0]);
-            }
-        }
-
         [Test]
         public void FacePieceKeys_FitTheFaceSetAndCoverEveryLook()
         {
@@ -246,7 +205,7 @@ namespace BellwortBurrow.Tests.Editor
             {
                 var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
                 var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" }.ToList();
-                if (ground.Banks) kinds.AddRange(new[] { "Bank Top", "Bank Face", "Cliff Face" });
+                if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face" });
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))
                     Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");

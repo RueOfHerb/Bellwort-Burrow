@@ -5,8 +5,8 @@ using UnityEngine.Tilemaps;
 namespace BellwortBurrow.Tiles
 {
     /// <summary>
-    /// The face of raised ground, a bank's earth or a cliff's stone, seen from the front. Paint it under a Bank Top's
-    /// front edge, three rows tall. Its top row draws the lip, the grass rounding over the edge with a fringe hanging
+    /// The face of raised ground, a bank's earth or a cliff's stone, seen from the front. Paint it under the raised
+    /// grass's front edge, three rows tall. Its top row draws the lip, the grass rounding over the edge with a fringe hanging
     /// from it; its bottom row is the foot.
     /// Each cell works out its piece by looking up and down its own column, and at its neighbours' columns:
     /// - Where the face beside it starts a row higher or lower (a step), the block further south is in front, and its
@@ -172,16 +172,8 @@ namespace BellwortBurrow.Tiles
             tileData.colliderType = Tile.ColliderType.None;
         }
 
-        /// <summary>Whether a face cell is the top cell of a 45 degree column (its upper part is the high ground's grass).</summary>
-        public bool IsDiagonalLip(ITilemap tilemap, Vector3Int position)
-        {
-            var (key, _) = KeyAt(tilemap, position);
-            return key != null && key[0] != 'F' && key[1] == '0';
-        }
-
         /// <summary>
-        /// A cell's piece depends on its column and its neighbours', and a Bank Top beside a 45 degree run reads the
-        /// face too, so painting one refreshes everything around it.
+        /// A cell's piece depends on its column and its neighbours', so painting one refreshes everything around it.
         /// </summary>
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
