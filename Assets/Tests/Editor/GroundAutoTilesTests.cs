@@ -182,6 +182,18 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(end)), GroundAutoTiles.HalfLook(end));
         }
 
+        [TestCase(false, true, false, true, 'T', 'l')]
+        [TestCase(false, true, true, true, 'T', 'm')]
+        [TestCase(true, true, true, false, 'M', 'r')]
+        [TestCase(true, false, true, true, 'B', 'm')]
+        [TestCase(true, false, false, false, 'B', 's')]
+        [TestCase(false, false, true, true, 'T', 'm')]
+        public void WaterfallPiece_TopMiddleBottomAndItsEnds(bool n, bool s, bool w, bool e, char row, char side)
+        {
+            // A fall is three rows tall like the face it runs over, and as wide as it's painted.
+            Assert.AreEqual((row, side), GroundAutoTiles.WaterfallPiece(n, s, w, e));
+        }
+
         static void EveryNeighbourhoodMatchesOnlyRulesForItsPiece<T>(Func<char[], T> keyOf)
         {
             var rules = GroundAutoTiles.PathRules(keyOf);
@@ -242,6 +254,7 @@ namespace BellwortBurrow.Tests.Editor
                 if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
                 if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face" });
+                if (ground.Banks && ground.Water) kinds.Add("Waterfall");
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))
                     Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");

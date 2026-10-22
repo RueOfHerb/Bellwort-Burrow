@@ -27,6 +27,8 @@ namespace BellwortBurrow.EditorTools
     /// Half (Burrow Flagstones), a full and a half pair like the path's, with the paths' grass fringe for an edge.
     /// A ground sheet with water (<see cref="GroundSheet.Water"/>: burrow_ground) also makes Water and Water Half
     /// (Burrow Water), a full and a half pair like the path's: the water with its pebbled banks, the far one a wall.
+    /// With raised ground too, it makes the Waterfall (Burrow Waterfall), painted over a bank face where the creek runs
+    /// off the edge (<see cref="WaterfallPiece"/>).
     /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
     /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under raised ground's
     ///   front edge (the raised ground itself is plain Grass), painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
@@ -315,6 +317,12 @@ namespace BellwortBurrow.EditorTools
                     if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
                     else if (MakeFaceTile(ground, slice, sprites, facePath)) written.Add(facePath);
                 }
+                if (ground.Water)
+                {
+                    string fallPath = ground.Tile("Waterfall");
+                    if (!GeneratedAssets.CanOverwrite(fallPath)) kept.Add(fallPath);
+                    else if (MakeWaterfallTile(ground, sprites, fallPath)) written.Add(fallPath);
+                }
             }
 
             AssetDatabase.SaveAssets();
@@ -334,6 +342,7 @@ namespace BellwortBurrow.EditorTools
             }
             if (!ground.Banks) yield break;
             foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
+            if (ground.Water) yield return ground.Tile("Waterfall");
         }
 
         /// <summary>
@@ -853,6 +862,70 @@ namespace BellwortBurrow.EditorTools
             int plain = keys.IndexOf("FMcc");
             tile.defaultSprite = plain >= 0 ? pieces[plain] : pieces[0];
             SaveKeepingId(tile, path);
+            return true;
+        }
+
+        // ---- Waterfall ----------------------------------------------------------------------------------------------
+        /// <summary>
+        /// The waterfall set: a fall over a bank face, three rows tall like the face, its pieces in columns by side
+        /// (the left end, the middle, the right end, a fall one tile wide) and rows top, middle, bottom.
+        /// </summary>
+        internal const string WaterfallSlice = "waterfall_set";
+        internal const string WaterfallSides = "lmrs";   // left end, middle, right end, single (one tile wide)
+        internal const string WaterfallRows = "TMB";
+
+        /// <summary>
+        /// Which waterfall piece a cell takes from whether the fall carries on above, below, west and east of it: the
+        /// top row where nothing falls into it, the bottom where nothing is under it, the middle between (a fall one
+        /// row tall takes the top); an end where the fall stops on that side.
+        /// </summary>
+        internal static (char row, char side) WaterfallPiece(bool n, bool s, bool w, bool e)
+        {
+            char row = !n ? 'T' : !s ? 'B' : 'M';
+            char side = w && e ? 'm' : w ? 'r' : e ? 'l' : 's';
+            return (row, side);
+        }
+
+        /// <summary>
+        /// Makes the Waterfall (Burrow Waterfall): painted over the bank face where the creek runs off raised ground,
+        /// on a Tilemap of its own above Banks, with the creek's Water painted straight on underneath. Each cell picks
+        /// its piece from <see cref="WaterfallPiece"/>, one rule for each way its four sides can be.
+        /// </summary>
+        static bool MakeWaterfallTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path)
+        {
+            var template = new[] { new string('#', WaterfallSides.Length), new string('#', WaterfallSides.Length), new string('#', WaterfallSides.Length) };
+            Sprite Piece(char row, char side) =>
+                sprites.TryGetValue(PieceName(WaterfallSlice, WaterfallSides.IndexOf(side), WaterfallRows.IndexOf(row), template), out var p) ? p : null;
+            if (Piece('M', 'm') == null)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {WaterfallSlice} slice.");
+                return false;
+            }
+            var tile = AssetDatabase.LoadAssetAtPath<RuleTile>(path);
+            bool isNew = tile == null;
+            if (isNew) tile = ScriptableObject.CreateInstance<RuleTile>();
+            tile.m_DefaultSprite = Piece('M', 'm');
+            tile.m_DefaultColliderType = Tile.ColliderType.None;
+            tile.m_TilingRules = new List<RuleTile.TilingRule>();
+            var positions = new List<Vector3Int> { new Vector3Int(0, 1, 0), new Vector3Int(0, -1, 0), new Vector3Int(-1, 0, 0), new Vector3Int(1, 0, 0) };
+            for (int bits = 0; bits < 16; bits++)
+            {
+                bool n = (bits & 1) != 0, s = (bits & 2) != 0, w = (bits & 4) != 0, e = (bits & 8) != 0;
+                var (row, side) = WaterfallPiece(n, s, w, e);
+                var sprite = Piece(row, side) ?? Piece('M', 'm');
+                int Is(bool on) => on ? RuleTile.TilingRuleOutput.Neighbor.This : RuleTile.TilingRuleOutput.Neighbor.NotThis;
+                tile.m_TilingRules.Add(new RuleTile.TilingRule
+                {
+                    m_Neighbors = new List<int> { Is(n), Is(s), Is(w), Is(e) },
+                    m_NeighborPositions = new List<Vector3Int>(positions),
+                    m_Sprites = new[] { sprite },
+                    m_Output = RuleTile.TilingRuleOutput.OutputSprite.Single,
+                    m_ColliderType = Tile.ColliderType.None,
+                    m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
+                });
+            }
+            if (isNew) AssetDatabase.CreateAsset(tile, path);
+            EditorUtility.SetDirty(tile);
             return true;
         }
 
