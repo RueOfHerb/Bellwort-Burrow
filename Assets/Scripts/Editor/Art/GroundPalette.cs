@@ -442,7 +442,7 @@ namespace BellwortBurrow.EditorTools
             var shapesBottom = ShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
             var halfShapesBottom = HalfShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
             var runColumns = new List<List<(int column, int row, string piece)>>();
-            foreach (var (slice, halfSlice, fills) in GroundAutoTiles.TemplateSets())
+            foreach (var (slice, halfSlice, fills) in GroundAutoTiles.TemplateSets(ground))
             {
                 var (shapes, runs) = SplitRuns(SetSpots(slice, fills), shapesBottom);
                 var (halfShapes, halfRuns) = SplitRuns(HalfSetSpots(slice, halfSlice), halfShapesBottom);

@@ -23,6 +23,8 @@ namespace BellwortBurrow.EditorTools
     ///   wider, or fill the inside of a turn. Each full and half pair are Path Rule Tiles (<see cref="PathRuleTile"/>):
     ///   Rule Tiles whose neighbour conditions tell full, half and neither apart.
     /// - Grass (Forest Grass): a Rule Tile that picks one of the grass variations at random.
+    /// A ground sheet with stone (<see cref="GroundSheet.Stone"/>: burrow_ground) also makes Flagstones and Flagstones
+    /// Half (Burrow Flagstones), a full and a half pair like the path's, with the paths' grass fringe for an edge.
     /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
     /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under raised ground's
     ///   front edge (the raised ground itself is plain Grass), painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
@@ -56,6 +58,8 @@ namespace BellwortBurrow.EditorTools
             /// Cliff Face tiles.
             /// </summary>
             public bool Banks;
+            /// <summary>Whether the sheet has flagstones laid like a path (<see cref="StonePairs"/>: burrow_ground).</summary>
+            public bool Stone;
 
             /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail Half").</summary>
             public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
@@ -65,7 +69,7 @@ namespace BellwortBurrow.EditorTools
         public static readonly GroundSheet[] Sheets =
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
-            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true },
+            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true },
         };
 
         /// <summary>A ground that comes as a full tile and a half tile: its set, its half set and its extra full pieces.</summary>
@@ -81,6 +85,23 @@ namespace BellwortBurrow.EditorTools
             new HalfPair { Kind = "Path", Slice = "path_set", HalfSlice = "path_half_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
             new HalfPair { Kind = "Deer Trail", Slice = "trail_set", HalfSlice = "trail_half_set", Fills = new[] { "trail_00", "trail_01" } },
         };
+
+        /// <summary>
+        /// A sheet with stone (<see cref="GroundSheet.Stone"/>) also lays flagstones as a path is laid: Flagstones and
+        /// Flagstones Half, from flag_set and flag_half_set, with the stone_flag tiles as extra full pieces.
+        /// </summary>
+        static readonly HalfPair[] StonePairs =
+        {
+            new HalfPair { Kind = "Flagstones", Slice = "flag_set", HalfSlice = "flag_half_set",
+                           Fills = new[] { "stone_flag_00", "stone_flag_01", "stone_flag_02", "stone_flag_03" } },
+        };
+
+        /// <summary>The full and half grounds a sheet has, in the order its tile palette lays them out.</summary>
+        static IEnumerable<HalfPair> PairsOf(GroundSheet ground)
+        {
+            foreach (var pair in Pairs) yield return pair;
+            if (ground.Stone) foreach (var pair in StonePairs) yield return pair;
+        }
 
         /// <summary>Raised ground's faces: each kind and its set of pieces (<see cref="FacePieceKeys"/>).</summary>
         internal static readonly (string kind, string slice)[] Faces =
@@ -230,7 +251,7 @@ namespace BellwortBurrow.EditorTools
 
             var written = new List<string>();
             var kept = new List<string>();
-            foreach (var pair in Pairs)
+            foreach (var pair in PairsOf(ground))
             {
                 string fullPath = ground.Tile(pair.Kind), halfPath = ground.Tile(pair.Kind + " Half");
                 var locked = new[] { fullPath, halfPath }.Where(p => !GeneratedAssets.CanOverwrite(p)).ToList();
@@ -260,7 +281,7 @@ namespace BellwortBurrow.EditorTools
         public static IEnumerable<string> TilePaths(GroundSheet ground)
         {
             yield return ground.Tile("Grass");
-            foreach (var pair in Pairs)
+            foreach (var pair in PairsOf(ground))
             {
                 yield return ground.Tile(pair.Kind);
                 yield return ground.Tile(pair.Kind + " Half");
@@ -272,11 +293,12 @@ namespace BellwortBurrow.EditorTools
         /// <summary>
         /// The ground sets painted from <see cref="Template"/>, in the order the tile palette lays them out: each one's
         /// slice, its half set's slice (painted from <see cref="HalfTemplate"/>) and the extra full pieces it picks from
-        /// (see <see cref="GroundPalette"/>). Every ground sheet has them.
+        /// (see <see cref="GroundPalette"/>). Every ground sheet has the path and deer trail; a sheet with stone has the
+        /// flagstones too.
         /// </summary>
-        internal static IEnumerable<(string slice, string halfSlice, string[] fills)> TemplateSets()
+        internal static IEnumerable<(string slice, string halfSlice, string[] fills)> TemplateSets(GroundSheet ground)
         {
-            foreach (var pair in Pairs) yield return (pair.Slice, pair.HalfSlice, pair.Fills);
+            foreach (var pair in PairsOf(ground)) yield return (pair.Slice, pair.HalfSlice, pair.Fills);
         }
 
         /// <summary>
