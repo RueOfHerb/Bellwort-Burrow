@@ -172,14 +172,24 @@ namespace BellwortBurrow.Tiles
             tileData.colliderType = Tile.ColliderType.None;
         }
 
-        /// <summary>A cell's piece depends on its column and its neighbours', so painting one refreshes the face around it.</summary>
+        /// <summary>Whether a face cell is the top cell of a 45 degree column (its upper part is the high ground's grass).</summary>
+        public bool IsDiagonalLip(ITilemap tilemap, Vector3Int position)
+        {
+            var (key, _) = KeyAt(tilemap, position);
+            return key != null && key[0] != 'F' && key[1] == '0';
+        }
+
+        /// <summary>
+        /// A cell's piece depends on its column and its neighbours', and a Bank Top beside a 45 degree run reads the
+        /// face too, so painting one refreshes everything around it.
+        /// </summary>
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
             for (int dx = -2; dx <= 2; dx++)
                 for (int dy = -Rows - 2; dy <= Rows + 2; dy++)
                 {
                     var p = position + new Vector3Int(dx, dy, 0);
-                    if (dx == 0 && dy == 0 || tilemap.GetTile(p) == this) tilemap.RefreshTile(p);
+                    if ((dx == 0 && dy == 0) || tilemap.GetTile(p) != null) tilemap.RefreshTile(p);
                 }
         }
     }

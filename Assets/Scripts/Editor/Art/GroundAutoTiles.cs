@@ -753,8 +753,9 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// Makes a Bank Top: a Rule Tile with a rule per layout (<see cref="TopLayoutOf"/>), its pieces from the bank top
-        /// set painted from <see cref="Template"/>, picked at random where a layout has several.
+        /// Makes a Bank Top: a Bank Top Tile (a Rule Tile that reads a 45 degree face's top cell as more of itself) with
+        /// a rule per layout (<see cref="TopLayoutOf"/>), its pieces from the bank top set painted from
+        /// <see cref="Template"/>, picked at random where a layout has several.
         /// </summary>
         static bool MakeTopTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path)
         {
@@ -780,7 +781,7 @@ namespace BellwortBurrow.EditorTools
             if (pieces.Count < TopLayoutCount)
                 Debug.LogWarning($"Bellwort Burrow: {name} has {pieces.Count} of the {TopLayoutCount} layouts; tiles with a missing layout show the full piece.");
 
-            var tile = ScriptableObject.CreateInstance<RuleTile>();
+            var tile = ScriptableObject.CreateInstance<BankTopTile>();
             tile.name = name;
             tile.m_DefaultSprite = pieces[Full][0];
             tile.m_DefaultColliderType = Tile.ColliderType.None;
