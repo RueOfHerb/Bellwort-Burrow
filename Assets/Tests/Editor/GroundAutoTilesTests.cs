@@ -206,6 +206,7 @@ namespace BellwortBurrow.Tests.Editor
                 var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
                 var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" }.ToList();
                 if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
+                if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face" });
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))

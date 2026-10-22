@@ -25,6 +25,8 @@ namespace BellwortBurrow.EditorTools
     /// - Grass (Forest Grass): a Rule Tile that picks one of the grass variations at random.
     /// A ground sheet with stone (<see cref="GroundSheet.Stone"/>: burrow_ground) also makes Flagstones and Flagstones
     /// Half (Burrow Flagstones), a full and a half pair like the path's, with the paths' grass fringe for an edge.
+    /// A ground sheet with water (<see cref="GroundSheet.Water"/>: burrow_ground) also makes Water and Water Half
+    /// (Burrow Water), a full and a half pair like the path's: the water with its pebbled banks, the far one a wall.
     /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
     /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under raised ground's
     ///   front edge (the raised ground itself is plain Grass), painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
@@ -60,6 +62,8 @@ namespace BellwortBurrow.EditorTools
             public bool Banks;
             /// <summary>Whether the sheet has flagstones laid like a path (<see cref="StonePairs"/>: burrow_ground).</summary>
             public bool Stone;
+            /// <summary>Whether the sheet has water laid like a path (<see cref="WaterPairs"/>: burrow_ground).</summary>
+            public bool Water;
 
             /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail Half").</summary>
             public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
@@ -69,7 +73,7 @@ namespace BellwortBurrow.EditorTools
         public static readonly GroundSheet[] Sheets =
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
-            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true },
+            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true, Water = true },
         };
 
         /// <summary>A ground that comes as a full tile and a half tile: its set, its half set and its extra full pieces.</summary>
@@ -96,11 +100,22 @@ namespace BellwortBurrow.EditorTools
                            Fills = new[] { "stone_flag_00", "stone_flag_01", "stone_flag_02", "stone_flag_03" } },
         };
 
+        /// <summary>
+        /// A sheet with water (<see cref="GroundSheet.Water"/>) also lays water as a path is laid: Water and Water Half,
+        /// from water_set and water_half_set, so a creek or a river of any width bends half a tile at a time and cuts 45
+        /// degrees on a staircase. The far bank's wall and the stones along the waterline are drawn in each piece.
+        /// </summary>
+        static readonly HalfPair[] WaterPairs =
+        {
+            new HalfPair { Kind = "Water", Slice = "water_set", HalfSlice = "water_half_set", Fills = new string[0] },
+        };
+
         /// <summary>The full and half grounds a sheet has, in the order its tile palette lays them out.</summary>
         static IEnumerable<HalfPair> PairsOf(GroundSheet ground)
         {
             foreach (var pair in Pairs) yield return pair;
             if (ground.Stone) foreach (var pair in StonePairs) yield return pair;
+            if (ground.Water) foreach (var pair in WaterPairs) yield return pair;
         }
 
         /// <summary>Raised ground's faces: each kind and its set of pieces (<see cref="FacePieceKeys"/>).</summary>
