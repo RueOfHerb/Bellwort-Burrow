@@ -25,11 +25,12 @@ namespace BellwortBurrow.EditorTools
     /// - Grass (Forest Grass): a Rule Tile that picks one of the grass variations at random.
     /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
     /// - Bank Top (Burrow Bank Top): where the ground is raised. A Rule Tile that reads all eight neighbours, with the
-    ///   47 layouts of a 3x3 Auto Tile and no slopes, since a face can't run on a slant (<see cref="TopLayoutOf"/>). Its
-    ///   back and sides have a rim a couple of pixels in; its front runs to the tile's edge as a lip over the face.
+    ///   47 layouts of a 3x3 Auto Tile (<see cref="TopLayoutOf"/>). Its back and sides have a rim a couple of pixels in;
+    ///   its front is plain grass to the tile's edge, since the face below draws the lip.
     /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under a top's front
-    ///   edge, painted as many rows tall as the bank. They are Face Tiles (<see cref="FaceTile"/>), which pick a piece
-    ///   by their four sides and by where they sit on the map, so the face's texture runs on across the seams.
+    ///   edge, painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
+    ///   read their own column and their neighbours' to draw the lip and foot, step borders, 45 degree runs, inner
+    ///   corner creases and open ends, each look in several variations (<see cref="FacePieceKeys"/>).
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
     /// (see <see cref="GeneratedAssets"/>).
@@ -87,38 +88,41 @@ namespace BellwortBurrow.EditorTools
         /// <summary>Raised ground: the top's kind and its set, painted from <see cref="Template"/>.</summary>
         internal const string TopKind = "Bank Top", TopSlice = "bank_top_set";
 
-        /// <summary>Raised ground's faces: each kind and its set, painted from <see cref="FaceTemplate"/>.</summary>
+        /// <summary>Raised ground's faces: each kind and its set of pieces (<see cref="FacePieceKeys"/>).</summary>
         internal static readonly (string kind, string slice)[] Faces =
         {
             ("Bank Face", "bank_face_set"),
             ("Cliff Face", "cliff_face_set"),
         };
 
+        /// <summary>The face sets' slices: 17 by 16 tiles, the pieces laid in <see cref="FacePieceKeys"/> order, 17 to a row.</summary>
+        public const int FaceSetColumns = 17, FaceSetRows = 16;
+
         /// <summary>
-        /// The patch every face set is painted from, top row first: '#' is face, '.' is not. Its shapes (four wide and
-        /// three tall, one wide, one tall, a lone tile) are placed so each of a face's 16 layouts comes up at each of its
-        /// 6 phases: a cell's phase is its column mod 3 and its row mod 2, counted from the patch's top left, the same
-        /// as <see cref="FaceTile.Phase"/> counts them on the map. Change it only together with the sheets' slices.
+        /// Every face piece's key, in the order the face sets lay them out (tools/face_pieces.py lays them the same way;
+        /// see <see cref="FaceTile.keys"/> for what a key means). A key that comes up more than once has variations: a
+        /// flat face carrying on both ways has 12, a 45 degree column 4, everything else 2. Change it only together with
+        /// the sheets.
         /// </summary>
-        public static readonly string[] FaceTemplate =
+        public static List<string> FacePieceKeys()
         {
-            "####.#.####.....#",
-            "####.#.####.####.",
-            "####.#.####.####.",
-            "......#.....####.",
-            "#.####.....#....#",
-            "#.####.####.#.#.#",
-            "#.####.####.#.#.#",
-            ".#.....####.#.#..",
-            "#................",
-            "..####.#.....####",
-            "..####.#.####....",
-            "..####.#......#..",
-            "..........####...",
-            "......####.......",
-            "..####...........",
-            "........####.....",
-        };
+            var keys = new List<string>();
+            foreach (char row in "TMBS")
+                foreach (char west in "cobk")
+                    foreach (char east in "cobk")
+                    {
+                        int n = west == 'c' && east == 'c' ? 12 : 2;
+                        for (int v = 0; v < n; v++) keys.Add($"F{row}{west}{east}");
+                    }
+            foreach (char shape in "DU")
+                for (int place = 0; place < 4; place++)
+                    foreach (var (west, east) in new[] { ('c', 'c'), ('o', 'c'), ('c', 'o') })
+                    {
+                        int n = west == 'c' && east == 'c' ? 4 : 2;
+                        for (int v = 0; v < n; v++) keys.Add($"{shape}{(char)('0' + place)}{west}{east}");
+                    }
+            return keys;
+        }
 
         /// <summary>How many layouts a bank top has: the 47 of Unity's 3x3 Auto Tile.</summary>
         public const int TopLayoutCount = 47;
@@ -364,22 +368,6 @@ namespace BellwortBurrow.EditorTools
             if (Painted(-1, 1)) around |= SW;
             if (Painted(1, 1)) around |= SE;
             return around;
-        }
-
-        /// <summary>A face template cell's layout: <see cref="FaceTile.North"/> and so on where the face carries on.</summary>
-        internal static int FaceLayout(string[] template, int column, int row)
-        {
-            bool Face(int dx, int dy)
-            {
-                int x = column + dx, y = row + dy;
-                return y >= 0 && y < template.Length && x >= 0 && x < template[y].Length && template[y][x] == '#';
-            }
-            int layout = 0;
-            if (Face(0, -1)) layout |= FaceTile.North;
-            if (Face(0, 1)) layout |= FaceTile.South;
-            if (Face(-1, 0)) layout |= FaceTile.West;
-            if (Face(1, 0)) layout |= FaceTile.East;
-            return layout;
         }
 
         /// <summary>The layout of a painted template cell.</summary>
@@ -804,36 +792,37 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// Makes a Bank Face or Cliff Face: a Face Tile whose piece for each layout and phase is the first cell of the
-        /// face set (painted from <see cref="FaceTemplate"/>) with that layout at that phase.
+        /// Makes a Bank Face or Cliff Face: a Face Tile holding every piece of the face set with its key
+        /// (<see cref="FacePieceKeys"/>), the set's tiles read row by row from the top left.
         /// </summary>
         static bool MakeFaceTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
         {
             string name = Path.GetFileNameWithoutExtension(path);
-            var pieces = new Sprite[FaceTile.Layouts * FaceTile.Columns * FaceTile.Rows];
-            int found = 0;
-            for (int row = 0; row < FaceTemplate.Length; row++)
-                for (int column = 0; column < FaceTemplate[row].Length; column++)
-                {
-                    if (FaceTemplate[row][column] != '#') continue;
-                    if (!sprites.TryGetValue(PieceName(slice, column, row, FaceTemplate), out var piece)) continue;
-                    int index = FaceTile.Index(FaceLayout(FaceTemplate, column, row), column % FaceTile.Columns, row % FaceTile.Rows);
-                    if (pieces[index] != null) continue;
-                    pieces[index] = piece;
-                    found++;
-                }
-            if (found == 0)
+            var all = FacePieceKeys();
+            var keys = new List<string>();
+            var pieces = new List<Sprite>();
+            int count = FaceSetColumns * FaceSetRows, missing = 0;
+            string digits = new string('0', Mathf.Max(2, count.ToString().Length));
+            for (int i = 0; i < all.Count; i++)
             {
-                Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no {slice} slice painted from the face template.");
+                if (!sprites.TryGetValue(slice + "_" + i.ToString(digits), out var piece)) { missing++; continue; }
+                keys.Add(all[i]);
+                pieces.Add(piece);
+            }
+            if (pieces.Count == 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no {slice} slice of face pieces.");
                 return false;
             }
-            if (found < pieces.Length)
-                Debug.LogWarning($"Bellwort Burrow: {name} has {found} of its {pieces.Length} pieces; is {slice} the size of GroundAutoTiles.FaceTemplate, and painted from it?");
+            if (missing > 0)
+                Debug.LogWarning($"Bellwort Burrow: {name} lacks {missing} of its {all.Count} pieces; is {slice} {FaceSetColumns} by {FaceSetRows} tiles, laid out in FacePieceKeys order?");
 
             var tile = ScriptableObject.CreateInstance<FaceTile>();
             tile.name = name;
-            tile.pieces = pieces;
-            tile.defaultSprite = pieces[FaceTile.Index(0, 0, 0)] ?? pieces.First(p => p != null);
+            tile.keys = keys.ToArray();
+            tile.sprites = pieces.ToArray();
+            int plain = keys.IndexOf("FMcc");
+            tile.defaultSprite = plain >= 0 ? pieces[plain] : pieces[0];
             SaveKeepingId(tile, path);
             return true;
         }

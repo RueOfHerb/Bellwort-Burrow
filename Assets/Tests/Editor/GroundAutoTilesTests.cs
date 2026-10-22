@@ -130,18 +130,19 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
-        public void FaceTemplate_HoldsEveryLayoutAtEveryPhase()
+        public void FacePieceKeys_FitTheFaceSetAndCoverEveryLook()
         {
-            var t = GroundAutoTiles.FaceTemplate;
-            for (int row = 0; row < t.Length; row++)
-                Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
-            var have = new HashSet<int>();
-            for (int row = 0; row < t.Length; row++)
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == '#')
-                        have.Add(FaceTile.Index(GroundAutoTiles.FaceLayout(t, column, row), column % FaceTile.Columns, row % FaceTile.Rows));
-            for (int index = 0; index < FaceTile.Layouts * FaceTile.Columns * FaceTile.Rows; index++)
-                Assert.IsTrue(have.Contains(index), $"the face template lacks piece {index}");
+            var keys = GroundAutoTiles.FacePieceKeys();
+            Assert.LessOrEqual(keys.Count, GroundAutoTiles.FaceSetColumns * GroundAutoTiles.FaceSetRows);
+            foreach (char row in "TMBS")
+                foreach (char west in "cobk")
+                    foreach (char east in "cobk")
+                        Assert.Contains($"F{row}{west}{east}", keys);
+            foreach (char shape in "DU")
+                for (int place = 0; place < 4; place++)
+                    foreach (var ends in new[] { "cc", "oc", "co" })
+                        Assert.Contains($"{shape}{place}{ends}", keys);
+            Assert.AreEqual(12, keys.Count(k => k == "FMcc"), "a plain face has twelve variations");
         }
 
         [Test]
