@@ -18,6 +18,9 @@ namespace BellwortBurrow.EditorTools
         /// <summary>The contact shadow's navy, drawn part transparent on the ground around every home.</summary>
         public static readonly byte[] ShadowNavy = { 0x12, 0x1C, 0x34 };
 
+        /// <summary>The same navy in the Bellwort Burrow's palette (its Roof blue Shadow, a step lifted like every Burrow ramp).</summary>
+        public static readonly byte[] BurrowShadowNavy = { 0x19, 0x24, 0x3F };
+
         /// <summary>Slices that float instead of standing on the ground, so their pivot isn't at their feet.</summary>
         public static readonly HashSet<string> Floating = new HashSet<string> { "wisp" };
 
@@ -35,9 +38,12 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        /// <summary>Cottages and tree house upper rooms carry the sigil.</summary>
+        /// <summary>
+        /// Cottages and tree house upper rooms carry the sigil. The Bellwort Burrow's homes (burrow_*) don't yet: whether
+        /// they should is Jocelyn's call (art-2.10).
+        /// </summary>
         public static bool NeedsSigil(string sliceName) =>
-            sliceName.Contains("_cottage_") || sliceName.Contains("tree_room_");
+            (sliceName.Contains("_cottage_") && !sliceName.StartsWith("burrow_")) || sliceName.Contains("tree_room_");
 
         /// <summary>Cottages and ground tree houses sit on a contact shadow.</summary>
         public static bool NeedsShadow(string sliceName) =>
@@ -181,7 +187,8 @@ namespace BellwortBurrow.EditorTools
 
                 if (NeedsSigil(slice.Name) && CountColor(glow, width, height, slice, SigilRed, false) < MinSigilPixels)
                     problems.Add($"{sheetName}: {slice.Name} has no sigil on its Glow layer");
-                if (NeedsShadow(slice.Name) && CountColor(art, width, height, slice, ShadowNavy, true) < MinShadowPixels)
+                if (NeedsShadow(slice.Name) && CountColor(art, width, height, slice, ShadowNavy, true)
+                                               + CountColor(art, width, height, slice, BurrowShadowNavy, true) < MinShadowPixels)
                     problems.Add($"{sheetName}: {slice.Name} has no contact shadow at its base, so it will look like it hovers");
             }
             return problems;

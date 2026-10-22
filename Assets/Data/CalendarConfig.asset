@@ -11,9 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 939fa7914ff4939498a434764817dfe7, type: 3}
   m_Name: CalendarConfig
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   daysPerSeason: 28
-  realSecondsPerInGameMinute: 0.7
+  realSecondsPerInGameMinute: 1.0714285
   minutesPerHour: 60
   hoursPerDay: 24
   wakeHour: 19

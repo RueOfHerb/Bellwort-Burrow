@@ -88,60 +88,20 @@ namespace BellwortBurrow.Tests.Editor
             }
         }
 
-        [TestCase(new[] { "##.", "##.", "..." }, 64u + 128 + 8 + 16)]     // bottom right of a block: its inner corner counts
-        [TestCase(new[] { "#..", "##.", ".##" }, 2u + 8 + 16)]           // a stair step: no slopes, so only its sides
-        [TestCase(new[] { "###", "###", "##." }, 511u - 4)]               // an inner corner
-        [TestCase(new[] { "#.#", ".#.", "#.#" }, 16u)]                    // corners alone don't count
-        public void TopLayout_KeepsSidesAndInnerCorners(string[] grid, uint expected)
-        {
-            Assert.AreEqual(expected, GroundAutoTiles.TopLayoutOf(GroundAutoTiles.Neighbours(grid, 1, 1)));
-        }
-
         [Test]
-        public void Template_HoldsEveryTopLayout()
+        public void FacePieceKeys_FitTheFaceSetAndCoverEveryLook()
         {
-            var every = new HashSet<uint>(EveryNeighbourhood().Select(GroundAutoTiles.TopLayoutOf));
-            Assert.AreEqual(GroundAutoTiles.TopLayoutCount, every.Count);
-            var t = GroundAutoTiles.Template;
-            var have = new HashSet<uint>();
-            for (int row = 0; row < t.Length; row++)
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == '#') have.Add(GroundAutoTiles.TopLayoutOf(GroundAutoTiles.Neighbours(t, column, row)));
-            CollectionAssert.AreEquivalent(every, have);
-        }
-
-        [Test]
-        public void TopRuleNeighbours_EveryNeighbourhoodMatchesOnlyItsOwnRule()
-        {
-            var layouts = new HashSet<uint>(EveryNeighbourhood().Select(GroundAutoTiles.TopLayoutOf));
-            var rules = layouts.Select(l => (layout: l, conditions: GroundAutoTiles.TopRuleNeighbours(l))).ToList();
-            foreach (var around in EveryNeighbourhood())
-            {
-                var matched = rules.Where(r => Enumerable.Range(0, 8).All(i =>
-                {
-                    bool painted = (around & RuleOrder[i]) != 0;
-                    if (r.conditions[i] == RuleTile.TilingRuleOutput.Neighbor.This) return painted;
-                    if (r.conditions[i] == RuleTile.TilingRuleOutput.Neighbor.NotThis) return !painted;
-                    return true;
-                })).Select(r => r.layout).ToList();
-                Assert.AreEqual(1, matched.Count, $"neighbourhood {around} matches {matched.Count} rules");
-                Assert.AreEqual(GroundAutoTiles.TopLayoutOf(around), matched[0]);
-            }
-        }
-
-        [Test]
-        public void FaceTemplate_HoldsEveryLayoutAtEveryPhase()
-        {
-            var t = GroundAutoTiles.FaceTemplate;
-            for (int row = 0; row < t.Length; row++)
-                Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
-            var have = new HashSet<int>();
-            for (int row = 0; row < t.Length; row++)
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == '#')
-                        have.Add(FaceTile.Index(GroundAutoTiles.FaceLayout(t, column, row), column % FaceTile.Columns, row % FaceTile.Rows));
-            for (int index = 0; index < FaceTile.Layouts * FaceTile.Columns * FaceTile.Rows; index++)
-                Assert.IsTrue(have.Contains(index), $"the face template lacks piece {index}");
+            var keys = GroundAutoTiles.FacePieceKeys();
+            Assert.LessOrEqual(keys.Count, GroundAutoTiles.FaceSetColumns * GroundAutoTiles.FaceSetRows);
+            foreach (char row in "TMBS")
+                foreach (char west in "cobk")
+                    foreach (char east in "cobk")
+                        Assert.Contains($"F{row}{west}{east}", keys);
+            foreach (char shape in "DU")
+                for (int place = 0; place < 4; place++)
+                    foreach (var ends in new[] { "cc", "oc", "co" })
+                        Assert.Contains($"{shape}{place}{ends}", keys);
+            Assert.AreEqual(12, keys.Count(k => k == "FMcc"), "a plain face has twelve variations");
         }
 
         [Test]
@@ -175,17 +135,63 @@ namespace BellwortBurrow.Tests.Editor
         [Test]
         public void HalfTemplate_HoldsEveryLook()
         {
-            var t = GroundAutoTiles.HalfTemplate;
-            for (int row = 0; row < t.Length; row++)
-                Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
+            // The half template and the slope template together hold every look.
             var every = new HashSet<string>();
             for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++) every.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
             Assert.AreEqual(GroundAutoTiles.HalfLookCount, every.Count);
             var have = new HashSet<string>();
+            foreach (var t in new[] { GroundAutoTiles.HalfTemplate, GroundAutoTiles.HalfSlopeTemplate })
+            {
+                for (int row = 0; row < t.Length; row++)
+                    Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
+                for (int row = 0; row < t.Length; row++)
+                    for (int column = 0; column < t[row].Length; column++)
+                        if (t[row][column] == 'H') have.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row)));
+            }
+            foreach (var look in every) Assert.IsTrue(have.Contains(look), $"the half templates lack look {look}");
+        }
+
+        [Test]
+        public void HalfTemplate_AloneHasARoundedPieceForEveryLook()
+        {
+            // A sheet painted before half tiles cut 45 degrees has only the half set: every look's rounded look still
+            // comes up on it, under its own key or a sloped one, so its half tiles keep the corners they had.
+            var t = GroundAutoTiles.HalfTemplate;
+            var rounded = new HashSet<string>();
             for (int row = 0; row < t.Length; row++)
                 for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == 'H') have.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row)));
-            foreach (var look in every) Assert.IsTrue(have.Contains(look), $"the half template lacks look {look}");
+                    if (t[row][column] == 'H') rounded.Add(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row))));
+            for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++)
+            {
+                string look = GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
+                Assert.IsTrue(rounded.Contains(look), $"no rounded piece for {look}");
+            }
+        }
+
+        [Test]
+        public void HalfLook_AHalfTileAlongAStaircaseCutsAtFortyFiveDegrees()
+        {
+            // A half tile beside the full tiles of a 45 degree run, the staircase carrying on below it, cuts its outer
+            // corner on a slope; a half tile at the end of a straight path keeps its rounded corners.
+            //   . . .        . . .
+            //   F H .        F H .
+            //   F F H        . . .
+            var along = new[] { '.', '.', '.', 'F', '.', 'F', 'F', 'H' };   // NW N NE W E SW S SE
+            var end = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
+            StringAssert.Contains("|", GroundAutoTiles.HalfLook(along));
+            Assert.AreEqual(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(end)), GroundAutoTiles.HalfLook(end));
+        }
+
+        [TestCase(false, true, false, true, 'T', 'l')]
+        [TestCase(false, true, true, true, 'T', 'm')]
+        [TestCase(true, true, true, false, 'M', 'r')]
+        [TestCase(true, false, true, true, 'B', 'm')]
+        [TestCase(true, false, false, false, 'B', 's')]
+        [TestCase(false, false, true, true, 'T', 'm')]
+        public void WaterfallPiece_TopMiddleBottomAndItsEnds(bool n, bool s, bool w, bool e, char row, char side)
+        {
+            // A fall is three rows tall like the face it runs over, and as wide as it's painted.
+            Assert.AreEqual((row, side), GroundAutoTiles.WaterfallPiece(n, s, w, e));
         }
 
         static void EveryNeighbourhoodMatchesOnlyRulesForItsPiece<T>(Func<char[], T> keyOf)
@@ -245,7 +251,10 @@ namespace BellwortBurrow.Tests.Editor
             {
                 var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
                 var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" }.ToList();
-                if (ground.Banks) kinds.AddRange(new[] { "Bank Top", "Bank Face", "Cliff Face" });
+                if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
+                if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
+                if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face" });
+                if (ground.Banks && ground.Water) kinds.Add("Waterfall");
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))
                     Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");

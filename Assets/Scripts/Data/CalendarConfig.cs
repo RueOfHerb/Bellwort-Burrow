@@ -10,7 +10,8 @@ namespace BellwortBurrow.Data
     public class CalendarConfig : ScriptableObject
     {
         [SerializeField, Min(1)] int daysPerSeason = 28;
-        [SerializeField, Min(0.01f)] float realSecondsPerInGameMinute = 0.7f;
+        [Tooltip("Real seconds an in-game minute takes. 900 / 840 makes a day, 7:00 PM to 9:00 AM, last 15 real minutes.")]
+        [SerializeField, Min(0.01f)] float realSecondsPerInGameMinute = 900f / 840f;
         [SerializeField, Min(1)] int minutesPerHour = 60;
         [SerializeField, Min(1)] int hoursPerDay = 24;
         [Tooltip("The hour the player wakes and a day starts (19 is 7:00 PM). New games start here.")]

@@ -103,6 +103,18 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void ABurrowCottage_SitsOnTheBurrowsNavy_AndWaitsOnTheSigil()
+        {
+            var slices = new List<SheetSlice> { Slice("burrow_cottage_red", 0, 0, W, H, W / 2, H) };
+            var art = new byte[W * H * 4];
+            Assert.AreEqual(1, ArtRules.Check("burrow_buildings", W, H, art, new byte[W * H * 4], slices, false).Count,
+                "Only the contact shadow should be missing: Burrow homes don't carry the sigil yet.");
+
+            for (int i = 0; i < 45; i++) Paint(art, i % W, 10 + i / W, ArtRules.BurrowShadowNavy, 112);
+            Assert.IsEmpty(ArtRules.Check("burrow_buildings", W, H, art, new byte[W * H * 4], slices, false));
+        }
+
+        [Test]
         public void OnlyPartTransparentNavyCountsAsShadow()
         {
             var slice = Slice("hex_cottage_red", 0, 0, W, H, W / 2, H);

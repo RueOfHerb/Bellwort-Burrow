@@ -67,7 +67,8 @@ namespace BellwortBurrow.EditorTools
         /// half tile, '.' neither. As with <see cref="Groups"/>, a shape is only laid out when it brings a half look the
         /// shapes before it don't have. "Inside corners" is worked out (<see cref="InsideCorners"/>): every look of a
         /// half tile in the corner between two full tiles that the shapes before it miss, each in the smallest setting
-        /// that gives it.
+        /// that gives it. "Slopes" is worked out the same way for every other look still missing: the half tiles that
+        /// cut 45 degrees along a staircase.
         /// </summary>
         internal static readonly (string name, string[][] shapes)[] HalfGroups =
         {
@@ -75,6 +76,7 @@ namespace BellwortBurrow.EditorTools
             ("Rounded turns", Turns("FFF", "FH.", "F..").Concat(Turns("FFFF", "FFFF", "FFH.", "FF..")).ToArray()),
             ("Dots and joins", new[] { Shape("H"), Shape("FHF"), Shape("F", "H", "F") }),
             ("Inside corners", null),
+            ("Slopes", null),
         };
 
         /// <summary>
@@ -82,14 +84,23 @@ namespace BellwortBurrow.EditorTools
         /// before it don't have, the smallest setting that gives it: the fewest neighbours, then the fewest half ones,
         /// cropped to the tiles that are there.
         /// </summary>
-        static string[][] InsideCorners(HashSet<string> seen)
+        static string[][] InsideCorners(HashSet<string> seen) => Missing(seen, look => OwnQuarters(look) == 3);
+
+        /// <summary>Every half look you'd paint by hand (<see cref="InsideCorners"/>) the shapes before it miss.</summary>
+        static string[][] Slopes(HashSet<string> seen) => Missing(seen, look => look == "lone" || !look.StartsWith("15:"));
+
+        /// <summary>
+        /// For every half look that passes `wanted` and the shapes before it don't have, the smallest setting that gives
+        /// it: the fewest neighbours, then the fewest half ones, cropped to the tiles that are there.
+        /// </summary>
+        static string[][] Missing(HashSet<string> seen, Func<string, bool> wanted)
         {
             var best = new Dictionary<string, (int cost, int number)>();
             for (int number = 0; number < GroundAutoTiles.Neighbourhoods; number++)
             {
                 var around = GroundAutoTiles.NeighbourhoodOf(number);
                 string look = GroundAutoTiles.HalfLook(around);
-                if (seen.Contains("H" + look) || OwnQuarters(look) != 3) continue;
+                if (seen.Contains("H" + look) || !wanted(look)) continue;
                 int cost = around.Count(c => c != '.') * 10 + around.Count(c => c == 'H');
                 if (!best.TryGetValue(look, out var b) || cost < b.cost) best[look] = (cost, number);
             }
@@ -138,9 +149,9 @@ namespace BellwortBurrow.EditorTools
             var spots = new List<(int, int, string)>();
             var seen = new HashSet<string>();
             int top = 0;
-            foreach (var (_, listed) in HalfGroups)
+            foreach (var (name, listed) in HalfGroups)
             {
-                var shapes = listed ?? InsideCorners(seen);
+                var shapes = listed ?? (name == "Slopes" ? Slopes(seen) : InsideCorners(seen));
                 int x = 0, y = top, rowHeight = 0;
                 foreach (var shape in shapes)
                 {
@@ -165,19 +176,22 @@ namespace BellwortBurrow.EditorTools
         /// Each shape cell takes the first piece of its key, from the half set (or, for a full tile the half set has no
         /// piece of, from the full set). Under the shapes wait the half set's other pieces, in a run per key.
         /// </summary>
-        internal static List<(int column, int row, string piece)> HalfSetSpots(string slice, string halfSlice)
+        internal static List<(int column, int row, string piece)> HalfSetSpots(string slice, string halfSlice, Func<string, bool> has = null)
         {
-            var half = GroundAutoTiles.HalfTemplate;
             var pieces = new Dictionary<string, List<string>>();
             var order = new List<string>();
-            for (int row = 0; row < half.Length; row++)
-                for (int column = 0; column < half[row].Length; column++)
-                {
-                    if (half[row][column] == '.') continue;
-                    string key = Key(half, column, row);
-                    if (!pieces.TryGetValue(key, out var list)) { pieces[key] = list = new List<string>(); order.Add(key); }
-                    list.Add(GroundAutoTiles.PieceName(halfSlice, column, row, half));
-                }
+            foreach (var (half, from) in new[] { (GroundAutoTiles.HalfTemplate, halfSlice),
+                                                 (GroundAutoTiles.HalfSlopeTemplate, GroundAutoTiles.SlopeSliceOf(halfSlice)) })
+                for (int row = 0; row < half.Length; row++)
+                    for (int column = 0; column < half[row].Length; column++)
+                    {
+                        if (half[row][column] == '.') continue;
+                        string name = GroundAutoTiles.PieceName(from, column, row, half);
+                        if (has != null && !has(name)) continue;
+                        string key = Key(half, column, row);
+                        if (!pieces.TryGetValue(key, out var list)) { pieces[key] = list = new List<string>(); order.Add(key); }
+                        list.Add(name);
+                    }
             var full = new Dictionary<string, string>();
             var template = GroundAutoTiles.Template;
             for (int row = 0; row < template.Length; row++)
@@ -193,10 +207,14 @@ namespace BellwortBurrow.EditorTools
             var used = new HashSet<string>();
             foreach (var (column, row, key) in shapes)
             {
-                string piece = pieces.TryGetValue(key, out var list) ? list[0] : full.TryGetValue(key, out var f) ? f : null;
+                // a look the sheet has no piece for (painted before half tiles cut 45 degrees) shows its rounded look
+                string rounded = key[0] == 'H' ? "H" + GroundAutoTiles.RoundedLook(key.Substring(1)) : null;
+                string have = pieces.ContainsKey(key) ? key : rounded == null ? null : pieces.ContainsKey(rounded) ? rounded :
+                    order.FirstOrDefault(k => k[0] == 'H' && "H" + GroundAutoTiles.RoundedLook(k.Substring(1)) == rounded);
+                string piece = have != null ? pieces[have][0] : full.TryGetValue(key, out var f) ? f : null;
                 if (piece == null) continue;
                 spots.Add((column, row, piece));
-                if (pieces.ContainsKey(key)) used.Add(key);
+                if (have != null) used.Add(have);
             }
             // The runs: the shapes' keys first, in the order the shapes use them, then the keys no shape uses, whole.
             int x = 0, y = shapes.Count == 0 ? 0 : shapes.Max(s => s.row) + 1 + GroupGap;
@@ -442,10 +460,10 @@ namespace BellwortBurrow.EditorTools
             var shapesBottom = ShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
             var halfShapesBottom = HalfShapeSpots().Select(s => s.row).DefaultIfEmpty(-1).Max();
             var runColumns = new List<List<(int column, int row, string piece)>>();
-            foreach (var (slice, halfSlice, fills) in GroundAutoTiles.TemplateSets())
+            foreach (var (slice, halfSlice, fills) in GroundAutoTiles.TemplateSets(ground))
             {
                 var (shapes, runs) = SplitRuns(SetSpots(slice, fills), shapesBottom);
-                var (halfShapes, halfRuns) = SplitRuns(HalfSetSpots(slice, halfSlice), halfShapesBottom);
+                var (halfShapes, halfRuns) = SplitRuns(HalfSetSpots(slice, halfSlice, tiles.ContainsKey), halfShapesBottom);
                 foreach (var (column, row, piece) in shapes) Put(left + column, row, piece);
                 int halfTop = (shapes.Count == 0 ? 0 : shapes.Max(s => s.row) + 1) + GroupGap + 1;
                 foreach (var (column, row, piece) in halfShapes) Put(left + column, halfTop + row, piece);

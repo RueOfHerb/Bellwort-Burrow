@@ -123,11 +123,11 @@ namespace BellwortBurrow.Tests.Editor
         [Test]
         public void HalfSetSpots_HoldEveryHalfPieceOnceWithItsOwnKey()
         {
-            var half = GroundAutoTiles.HalfTemplate;
             var pieces = new Dictionary<string, string>();
-            for (int row = 0; row < half.Length; row++)
-                for (int column = 0; column < half[row].Length; column++)
-                    if (half[row][column] != '.') pieces[GroundAutoTiles.PieceName("path_half_set", column, row, half)] = GroundPalette.Key(half, column, row);
+            foreach (var (half, slice) in new[] { (GroundAutoTiles.HalfTemplate, "path_half_set"), (GroundAutoTiles.HalfSlopeTemplate, "path_slope_set") })
+                for (int row = 0; row < half.Length; row++)
+                    for (int column = 0; column < half[row].Length; column++)
+                        if (half[row][column] != '.') pieces[GroundAutoTiles.PieceName(slice, column, row, half)] = GroundPalette.Key(half, column, row);
             var spots = GroundPalette.HalfSetSpots("path_set", "path_half_set");
 
             CollectionAssert.IsSubsetOf(pieces.Keys, spots.Select(s => s.piece).Distinct());

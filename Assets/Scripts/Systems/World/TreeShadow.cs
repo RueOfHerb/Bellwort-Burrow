@@ -49,6 +49,14 @@ namespace BellwortBurrow.Systems.World
         [Tooltip("How bright the sun is once it has faded in, as a share of its brightest (0 to 1).")]
         [Range(0f, 1f)] public float sunStart = 0.6f;
 
+        [Header("Shadow curve (see ShadowCurve)")]
+        [Tooltip("The light's elevation at rise and set, in degrees. Above zero, or the shadow would run off forever.")]
+        [Range(1f, 45f)] public float elevationRise = 15f;
+        [Tooltip("The light's elevation at the middle of its run, in degrees.")]
+        [Range(10f, 90f)] public float elevationPeak = 70f;
+        [Tooltip("How far the shadow is pivoted clockwise at rise (and counterclockwise at set), in degrees.")]
+        [Range(0f, 90f)] public float pivotDegrees = 20f;
+
         [Header("Shadow (pixels)")]
         [Tooltip("How wide the trunk's shadow is halfway across the map.")]
         [Min(2)] public int widthMiddle = 240;

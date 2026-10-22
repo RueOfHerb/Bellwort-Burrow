@@ -1,85 +1,188 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
 namespace BellwortBurrow.Tiles
 {
     /// <summary>
-    /// The face of raised ground, a bank's earth or a cliff's stone, seen from the front. Paint it in the rows under a
-    /// Bank Top's front edge, as many rows tall as the bank should be. Each cell picks its piece by which of its four
-    /// sides have more of the same face (so its top row hangs the lip's grass, its bottom row is the foot and its ends
-    /// turn back) and by where it sits on the map: column x mod <see cref="Columns"/> and row y mod <see cref="Rows"/>
-    /// (counted down), its phase. The face's texture is bigger than a tile, so a lump of earth or a stone can run on
-    /// across a seam, and a long face doesn't repeat every tile.
-    /// The pieces are made by setup from a face set on a ground sheet (see GroundAutoTiles.FaceTemplate).
+    /// The face of raised ground, a bank's earth or a cliff's stone, seen from the front. Paint it under the raised
+    /// grass's front edge, three rows tall. Its top row draws the lip, the grass rounding over the edge with a fringe hanging
+    /// from it; its bottom row is the foot.
+    /// Each cell works out its piece by looking up and down its own column, and at its neighbours' columns:
+    /// - Where the face beside it starts a row higher or lower (a step), the block further south is in front, and its
+    ///   end at the step gets a border.
+    /// - A column painted four rows tall, between columns whose tops step one row at a time, is a 45 degree run: the
+    ///   lip crosses its top cell from corner to corner and the foot its bottom cell. Paint a staircase of these to
+    ///   turn a bank 45 degrees.
+    /// - Where a 45 degree run meets a flat run in an inner corner, the flat side gets a crease.
+    /// - An end against open ground is jagged.
+    /// Every look has several variations, picked by where the cell sits, so a long face never repeats.
+    /// The pieces are made by setup from a face set on a ground sheet (see GroundAutoTiles.FacePieceKeys).
     /// </summary>
     [CreateAssetMenu(menuName = "Bellwort Burrow/Face Tile")]
     public class FaceTile : TileBase
     {
-        /// <summary>How many columns and rows of tiles the face's texture spans before it repeats.</summary>
-        public const int Columns = 3, Rows = 2;
+        /// <summary>How many rows a flat face is painted; a 45 degree column is one more.</summary>
+        public const int Rows = 3;
 
-        /// <summary>A side where the face carries on: more of this tile there.</summary>
-        public const int North = 1, South = 2, West = 4, East = 8;
-
-        /// <summary>How many layouts a face has: every mix of the four sides.</summary>
-        public const int Layouts = 16;
-
-        [Tooltip("Every piece, by layout and phase (see Index). Setup fills this in.")]
-        public Sprite[] pieces = new Sprite[Layouts * Columns * Rows];
+        /// <summary>
+        /// The key of each sprite in <see cref="sprites"/>: shape (F flat, D 45 degrees down to the east, U up), row (T
+        /// top, M middle, B bottom, S a face one row tall; for D and U the cell's place down its column, 0 to 3), then
+        /// the west and east sides (c carries on, o open end, b step border, k inner corner crease). A key that comes
+        /// up more than once has variations. Setup fills these in.
+        /// </summary>
+        public string[] keys = new string[0];
+        public Sprite[] sprites = new Sprite[0];
 
         [Tooltip("Shown where a piece is missing.")]
         public Sprite defaultSprite;
 
-        /// <summary>Where a layout's piece at a phase sits in <see cref="pieces"/>.</summary>
-        public static int Index(int layout, int column, int row) => (layout * Rows + row) * Columns + column;
+        Dictionary<string, List<Sprite>> byKey;
 
-        /// <summary>A cell's phase: its column x mod 3 and its row mod 2, rows counted down the map as on the sheet.</summary>
-        public static (int column, int row) Phase(Vector3Int position) => (Mod(position.x, Columns), Mod(-position.y, Rows));
-
-        static int Mod(int a, int b) => ((a % b) + b) % b;
-
-        static readonly (Vector3Int offset, int side)[] Around =
+        /// <summary>A run of this face down one column: its top and bottom cells' y (y up, so top >= bottom).</summary>
+        public readonly struct Run
         {
-            (Vector3Int.up, North), (Vector3Int.down, South), (Vector3Int.left, West), (Vector3Int.right, East),
-        };
-
-        /// <summary>Which sides of a cell have more of this face.</summary>
-        public int LayoutAt(ITilemap tilemap, Vector3Int position)
-        {
-            int layout = 0;
-            foreach (var (offset, side) in Around)
-                if (tilemap.GetTile(position + offset) == this) layout |= side;
-            return layout;
+            public readonly int top, bottom;
+            public Run(int top, int bottom) { this.top = top; this.bottom = bottom; }
+            public int Height => top - bottom + 1;
+            public bool Diagonal => Height == Rows + 1;
         }
 
-        /// <summary>The piece for a layout at a phase, or the nearest stand-in: the same layout at another phase, then the default.</summary>
-        public Sprite PieceFor(int layout, int column, int row)
+        bool IsFace(ITilemap map, int x, int y) => map.GetTile(new Vector3Int(x, y, 0)) == this;
+
+        /// <summary>The run of face through (x, y), or null if that cell isn't this face.</summary>
+        public Run? RunAt(ITilemap map, int x, int y)
         {
-            if (pieces == null || pieces.Length < Layouts * Columns * Rows) return defaultSprite;
-            var piece = pieces[Index(layout, column, row)];
-            if (piece != null) return piece;
-            for (int r = 0; r < Rows; r++)
-                for (int c = 0; c < Columns; c++)
-                    if (pieces[Index(layout, c, r)] != null) return pieces[Index(layout, c, r)];
+            if (!IsFace(map, x, y)) return null;
+            int top = y, bottom = y;
+            while (IsFace(map, x, top + 1)) top++;
+            while (IsFace(map, x, bottom - 1)) bottom--;
+            return new Run(top, bottom);
+        }
+
+        /// <summary>The run in column x beside a run: the first face cell from a row above its top to a row below its foot.</summary>
+        public Run? NeighbourRun(ITilemap map, int x, Run run)
+        {
+            for (int y = run.top + 1; y >= run.bottom - 1; y--)
+                if (IsFace(map, x, y)) return RunAt(map, x, y);
+            return null;
+        }
+
+        /// <summary>
+        /// A cell's piece key (without its variation), and the cell its variation is picked by: its own, or for a 45
+        /// degree column, the column's top, so the four cells of the column agree.
+        /// </summary>
+        public (string key, Vector2Int cell) KeyAt(ITilemap map, Vector3Int position)
+        {
+            int x = position.x, y = position.y;
+            var run = RunAt(map, x, y);
+            if (run == null) return (null, default);
+            var r = run.Value;
+            var west = NeighbourRun(map, x - 1, r);
+            var east = NeighbourRun(map, x + 1, r);
+            if (r.Diagonal)
+            {
+                int down = 0, up = 0;
+                if (west is Run w)
+                {
+                    if ((w.Diagonal && w.top == r.top + 1) || (!w.Diagonal && w.top == r.top)) down++;
+                    if (w.top == r.top - 1) up++;
+                }
+                if (east is Run e)
+                {
+                    if (e.top == r.top - 1) down++;
+                    if ((e.Diagonal && e.top == r.top + 1) || (!e.Diagonal && e.top == r.top)) up++;
+                }
+                char shape = up > down ? 'U' : 'D';
+                char ws = west == null ? 'o' : 'c', es = east == null ? 'o' : 'c';
+                if (ws == 'o' && es == 'o') ws = 'c';
+                return ($"{shape}{(char)('0' + (r.top - y))}{ws}{es}", new Vector2Int(x, r.top));
+            }
+            bool top = y == r.top, bottom = y == r.bottom;
+            char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
+            return ($"F{row}{Side(west, r)}{Side(east, r)}", new Vector2Int(x, y));
+        }
+
+        // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
+        // inner corner at the foot of a run down, or the start of a run up); a border where the flat run beside it
+        // starts higher, so this block is the one in front; otherwise it carries on.
+        static char Side(Run? beside, Run run)
+        {
+            if (beside == null) return 'o';
+            var b = beside.Value;
+            if (b.Diagonal) return b.top == run.top + 1 ? 'k' : 'c';
+            return b.top > run.top ? 'b' : 'c';
+        }
+
+        void Index()
+        {
+            byKey = new Dictionary<string, List<Sprite>>();
+            if (keys == null || sprites == null) return;
+            for (int i = 0; i < keys.Length && i < sprites.Length; i++)
+            {
+                if (sprites[i] == null || string.IsNullOrEmpty(keys[i])) continue;
+                if (!byKey.TryGetValue(keys[i], out var list)) byKey[keys[i]] = list = new List<Sprite>();
+                list.Add(sprites[i]);
+            }
+        }
+
+        void OnValidate() => byKey = null;
+        void OnEnable() => byKey = null;
+
+        /// <summary>The piece for a key at a cell: one of its variations, or the nearest stand-in if it has none.</summary>
+        public Sprite PieceFor(string key, Vector2Int cell)
+        {
+            if (byKey == null) Index();
+            if (key == null) return defaultSprite;
+            foreach (var k in StandIns(key))
+                if (byKey.TryGetValue(k, out var list) && list.Count > 0)
+                    return list[Pick(cell, k[0], list.Count)];
             return defaultSprite;
+        }
+
+        // The key itself, then with its sides plainer, then the plainest piece of its row.
+        static IEnumerable<string> StandIns(string key)
+        {
+            yield return key;
+            char s = key[0], r = key[1], w = key[2], e = key[3];
+            if (w != 'c') yield return $"{s}{r}c{e}";
+            if (e != 'c') yield return $"{s}{r}{w}c";
+            yield return $"{s}{r}cc";
+            if (s != 'F') yield return "FMcc";
+        }
+
+        /// <summary>A cell's variation of a piece: the same every time, and scattered so a face doesn't repeat.</summary>
+        public static int Pick(Vector2Int cell, char shape, int count)
+        {
+            unchecked
+            {
+                uint h = (uint)cell.x * 73856093u ^ (uint)cell.y * 19349663u ^ shape * 83492791u;
+                h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15;
+                return (int)(h % (uint)count);
+            }
         }
 
         public override void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData)
         {
-            var (column, row) = Phase(position);
-            tileData.sprite = PieceFor(LayoutAt(tilemap, position), column, row);
+            var (key, cell) = KeyAt(tilemap, position);
+            tileData.sprite = PieceFor(key, cell);
             tileData.color = Color.white;
             tileData.transform = Matrix4x4.identity;
             tileData.flags = TileFlags.LockTransform | TileFlags.LockColor;
             tileData.colliderType = Tile.ColliderType.None;
         }
 
-        /// <summary>A cell's piece depends on its four sides, so painting or erasing one refreshes the face around it.</summary>
+        /// <summary>
+        /// A cell's piece depends on its column and its neighbours', so painting one refreshes everything around it.
+        /// </summary>
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
-            tilemap.RefreshTile(position);
-            foreach (var (offset, _) in Around)
-                if (tilemap.GetTile(position + offset) == this) tilemap.RefreshTile(position + offset);
+            for (int dx = -2; dx <= 2; dx++)
+                for (int dy = -Rows - 2; dy <= Rows + 2; dy++)
+                {
+                    var p = position + new Vector3Int(dx, dy, 0);
+                    if ((dx == 0 && dy == 0) || tilemap.GetTile(p) != null) tilemap.RefreshTile(p);
+                }
         }
     }
 }
