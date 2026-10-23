@@ -12,6 +12,8 @@ namespace BellwortBurrow.Systems.World
     /// - It sets the zone's global light to the shade: what reaches everywhere, in the shadow or not.
     /// - It makes its own Sprite light over the ground for the moon or the sun, with the shadow painted into its cookie,
     ///   one cookie pixel to a world pixel so the edges stay crisp. That light isn't saved in the scene.
+    /// - The log rests on the stump: with a stump set, the shadow starts at the top of the stump on its southwest side
+    ///   and swings and stretches from there with the light (see <see cref="TreeShadow.FromStump"/>).
     /// - In Play mode the game clock drives it. In the editor, tick Preview to see any hour in the Scene view; the
     ///   global light goes back to how it was when Preview is off.
     /// </summary>
@@ -24,6 +26,14 @@ namespace BellwortBurrow.Systems.World
         [Tooltip("The ground tilemap: the shadow covers its cells.")]
         [SerializeField] Tilemap area;
         [SerializeField] int pixelsPerUnit = 16;
+        [Tooltip("The stump the log rests on. With one set, the shadow starts at the top of the stump, on its southwest " +
+                 "side, and swings and stretches from there through the night (see the settings' From the stump). Leave " +
+                 "empty for a band right across the map.")]
+        [SerializeField] Transform stump;
+        [Tooltip("The middle of the stump's top, in world units from its feet (its pivot), on burrow_stump.")]
+        [SerializeField] Vector2 stumpTop = new(0f, 34.8125f);
+        [Tooltip("The stump's rim as seen from above: half its width and half its depth on screen, in world units.")]
+        [SerializeField] Vector2 stumpRim = new(17.5f, 8.75f);
         [SerializeField] TreeShadowSettings settings = new();
 
         [Header("Editor preview")]
@@ -39,6 +49,7 @@ namespace BellwortBurrow.Systems.World
         BoundsInt cells;
         int lastMinute = -1;
         (int lo, int hi) lastBand = (int.MinValue, int.MinValue);
+        (Vector2Int start, int bearing, int length, int width) lastStrip;
         bool authoredSaved;
         Color authoredColor;
         float authoredIntensity;
@@ -108,6 +119,12 @@ namespace BellwortBurrow.Systems.World
             direct.intensity = sky.directIntensity;
             direct.enabled = sky.directIntensity > 0f;
 
+            if (stump != null)
+            {
+                ShowFromStump(sky);
+            }
+            else
+            {
             // No shadow, or one run off the map: the light gets through everywhere.
             var band = sky.shadow
                 ? TreeShadow.BandAt(sky.travel, cookie.width, cookie.height, settings.widthMiddle, settings.widthEnds)
@@ -119,6 +136,7 @@ namespace BellwortBurrow.Systems.World
                 cookie.Apply(false);
                 lastBand = band;
             }
+            }
 #if UNITY_EDITOR
             // Out of Play mode the lights only rebuild when the editor runs a frame, so ask for one.
             if (!Application.isPlaying)
@@ -127,6 +145,30 @@ namespace BellwortBurrow.Systems.World
                 UnityEditor.SceneView.RepaintAll();
             }
 #endif
+        }
+
+        // The log's shadow from the top of the stump, on its southwest side (Jocelyn, Oct 22).
+        void ShowFromStump(TreeShadow.Sky sky)
+        {
+            (Vector2Int, int, int, int) strip;
+            Vector2 start = default, dir = default;
+            float length = 0f;
+            int across = 0;
+            if (sky.shadow)
+            {
+                (dir, length, across) = TreeShadow.FromStump(sky.travel, settings);
+                var top = ((Vector2)stump.position + stumpTop - (Vector2)direct.transform.position) * pixelsPerUnit;
+                start = TreeShadow.StartOnRim(top, stumpRim * pixelsPerUnit, dir);
+                strip = (Vector2Int.RoundToInt(start), Mathf.RoundToInt(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg * 100f),
+                         Mathf.RoundToInt(length), across);
+            }
+            else strip = (new Vector2Int(int.MinValue, int.MinValue), 0, 0, 0);
+            if (strip == lastStrip) return;
+            if (sky.shadow) TreeShadow.PaintFromStump(pixels, cookie.width, cookie.height, start, dir, length, across);
+            else TreeShadow.Paint(pixels, cookie.width, cookie.height, int.MaxValue / 2, int.MaxValue / 2);
+            cookie.SetPixels32(pixels);
+            cookie.Apply(false);
+            lastStrip = strip;
         }
 
         bool Build()
@@ -161,6 +203,7 @@ namespace BellwortBurrow.Systems.World
             direct.lightCookieSprite = cookieSprite;
             direct.targetSortingLayers = ambient.targetSortingLayers;
             lastBand = (int.MinValue, int.MinValue);
+            lastStrip = default;
             Place();
             return true;
         }
@@ -185,6 +228,7 @@ namespace BellwortBurrow.Systems.World
             pixels = null;
             lastMinute = -1;
             lastBand = (int.MinValue, int.MinValue);
+            lastStrip = default;
         }
 
         void SaveAuthored()

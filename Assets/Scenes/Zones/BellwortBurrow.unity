@@ -157101,6 +157101,9 @@ MonoBehaviour:
   ambient: {fileID: 912518388}
   area: {fileID: 997302232}
   pixelsPerUnit: 16
+  stump: {fileID: 1834681931}
+  stumpTop: {x: 0, y: 34.8125}
+  stumpRim: {x: 17.5, y: 8.75}
   settings:
     moonRises: 19
     moonFull: 1
@@ -157123,8 +157126,10 @@ MonoBehaviour:
     elevationRise: 15
     elevationPeak: 70
     pivotDegrees: 20
-    widthMiddle: 240
-    widthEnds: 360
+    widthMiddle: 560
+    widthEnds: 720
+    logBearing: 243.4
+    lengthAtFortyFive: 2000
   preview: 0
   previewHour: 19
 --- !u!4 &1064144305
@@ -166284,11 +166289,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8541846552475633028, guid: 73700e7330ac0564baa873cd118e5795, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 111
+      value: 105
       objectReference: {fileID: 0}
     - target: {fileID: 8541846552475633028, guid: 73700e7330ac0564baa873cd118e5795, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 55
+      value: 65
       objectReference: {fileID: 0}
     - target: {fileID: 8541846552475633028, guid: 73700e7330ac0564baa873cd118e5795, type: 3}
       propertyPath: m_LocalPosition.z
