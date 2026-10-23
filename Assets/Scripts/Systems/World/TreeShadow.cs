@@ -64,12 +64,10 @@ namespace BellwortBurrow.Systems.World
         [Min(2)] public int widthEnds = 360;
 
         [Header("From the stump (when the clock has a stump)")]
-        [Tooltip("Which way the log runs off the stump at the middle of the night, in degrees (0 is east, 90 north, " +
-                 "180 west, 270 south). The shadow swings round this by Pivot Degrees through the night.")]
+        [Tooltip("Which way the fallen log runs off the stump at the middle of the night, in degrees (0 is east, 90 " +
+                 "north, 180 west, 270 south). The log is overhead, past the map's lower left edge, so its shadow always " +
+                 "runs off the map; it swings round this by Pivot Degrees through the night.")]
         [Range(0f, 360f)] public float logBearing = 243.4f;
-        [Tooltip("How long the shadow is, in pixels, when the light is at 45 degrees. It stretches with the shadow curve: " +
-                 "longest at rise and set, shortest at the middle of the run.")]
-        [Min(16)] public int lengthAtFortyFive = 2000;
     }
 
     /// <summary>
@@ -215,19 +213,21 @@ namespace BellwortBurrow.Systems.World
             }
         }
 
+        /// <summary>Long enough to run off any map: the fallen log reaches past the map's lower left edge.</summary>
+        public const float PastTheMap = 1e6f;
+
         /// <summary>
-        /// The log's shadow when it starts at the stump: the way it points (a unit vector, y up), how long it is and how
-        /// wide, at a point in the light's run (0 at rise, 1 at set). It points along the log at the middle of the run,
-        /// swings clockwise of that at rise and counterclockwise at set, and stretches when the light is low
-        /// (see <see cref="ShadowCurve"/>).
+        /// The fallen log's shadow, from where the log rests on the stump: the way it points (a unit vector, y up), how
+        /// long it is and how wide, at a point in the light's run (0 at rise, 1 at set). The log lies overhead and runs
+        /// on past the map's lower left edge, so the shadow always runs off the map. It points along the log at the middle
+        /// of the run and swings clockwise of that at rise and counterclockwise at set (<see cref="ShadowCurve.AngleAt"/>).
         /// </summary>
         public static (Vector2 dir, float length, int width) FromStump(float travel, TreeShadowSettings s)
         {
             float u = Mathf.Clamp01(travel);
             float bearing = (s.logBearing - ShadowCurve.AngleAt(u, s.pivotDegrees)) * Mathf.Deg2Rad;
             var dir = new Vector2(Mathf.Cos(bearing), Mathf.Sin(bearing));
-            float length = s.lengthAtFortyFive * ShadowCurve.ScaleAt(u, s.elevationRise, s.elevationPeak);
-            return (dir, length, WidthAt(u, s.widthMiddle, s.widthEnds));
+            return (dir, PastTheMap, WidthAt(u, s.widthMiddle, s.widthEnds));
         }
 
         /// <summary>
@@ -241,7 +241,7 @@ namespace BellwortBurrow.Systems.World
         }
 
         /// <summary>
-        /// Paints the log's shadow from the stump into a width by height cookie (row 0 at the bottom): a strip from
+        /// Paints the fallen log's shadow from the stump into a width by height cookie (row 0 at the bottom): a strip from
         /// start, pointing dir, length long and across wide (centred on the line from start), clear in the shadow and
         /// white where the light gets through. Nothing behind start is shaded. Each row is one run with whole-pixel
         /// edges; its long sides carry the same bark wobble and old branch stub as the band's.

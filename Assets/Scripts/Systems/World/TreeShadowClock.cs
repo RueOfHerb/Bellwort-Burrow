@@ -12,8 +12,9 @@ namespace BellwortBurrow.Systems.World
     /// - It sets the zone's global light to the shade: what reaches everywhere, in the shadow or not.
     /// - It makes its own Sprite light over the ground for the moon or the sun, with the shadow painted into its cookie,
     ///   one cookie pixel to a world pixel so the edges stay crisp. That light isn't saved in the scene.
-    /// - The log rests on the stump: with a stump set, the shadow starts at the top of the stump on its southwest side
-    ///   and swings and stretches from there with the light (see <see cref="TreeShadow.FromStump"/>).
+    /// - The fallen log rests on the stump and lies overhead, out of the map, past its lower left edge: with a stump set,
+    ///   the shadow is the log's, starting at the top of the stump on its southwest side, running off the map and
+    ///   swinging with the light (see <see cref="TreeShadow.FromStump"/>).
     /// - In Play mode the game clock drives it. In the editor, tick Preview to see any hour in the Scene view; the
     ///   global light goes back to how it was when Preview is off.
     /// </summary>
@@ -26,9 +27,9 @@ namespace BellwortBurrow.Systems.World
         [Tooltip("The ground tilemap: the shadow covers its cells.")]
         [SerializeField] Tilemap area;
         [SerializeField] int pixelsPerUnit = 16;
-        [Tooltip("The stump the log rests on. With one set, the shadow starts at the top of the stump, on its southwest " +
-                 "side, and swings and stretches from there through the night (see the settings' From the stump). Leave " +
-                 "empty for a band right across the map.")]
+        [Tooltip("The stump the fallen log rests on. With one set, the shadow is the log's: it starts at the top of the " +
+                 "stump, on its southwest side, runs off the map's lower left edge under the log overhead, and swings " +
+                 "through the night (see the settings' From the stump). Leave empty for a band right across the map.")]
         [SerializeField] Transform stump;
         [Tooltip("The middle of the stump's top, in world units from its feet (its pivot), on burrow_stump.")]
         [SerializeField] Vector2 stumpTop = new(0f, 34.8125f);
@@ -147,7 +148,7 @@ namespace BellwortBurrow.Systems.World
 #endif
         }
 
-        // The log's shadow from the top of the stump, on its southwest side (Jocelyn, Oct 22).
+        // The fallen log's shadow from the top of the stump, on its southwest side, under the log overhead (Jocelyn, Oct 22).
         void ShowFromStump(TreeShadow.Sky sky)
         {
             (Vector2Int, int, int, int) strip;

@@ -214,13 +214,26 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
-        public void FromTheStump_ItIsLongestWhenTheLightIsLowAndSwingsThroughTheNight()
+        public void FromTheStump_TheLogsShadowAlwaysRunsOffTheLowerLeftEdge()
+        {
+            // The log lies overhead and reaches past the map's lower left edge, so its shadow never stops short of it.
+            foreach (int minute in new[] { SevenPm + 10, TenPm, 0, TwoAm, FiveAm - 60, SevenAm + 60 })
+            {
+                var pixels = FromTheStump(minute, out _, out _, out _);
+                int onEdge = 0;
+                for (int x = 0; x < BigWidth; x++) if (pixels[x].a == 0) onEdge++;
+                for (int y = 0; y < BigHeight; y++) if (pixels[y * BigWidth].a == 0) onEdge++;
+                Assert.Greater(onEdge, 0, $"the shadow stops short of the lower left edges at minute {minute}");
+            }
+        }
+
+        [Test]
+        public void FromTheStump_ItSwingsThroughTheNight()
         {
             var rise = TreeShadow.FromStump(0.02f, settings);
             var middle = TreeShadow.FromStump(0.5f, settings);
             var set = TreeShadow.FromStump(0.98f, settings);
-            Assert.Greater(rise.length, middle.length);
-            Assert.Greater(set.length, middle.length);
+            Assert.AreEqual(rise.length, middle.length, "it changed length");
             // Clockwise of the log at rise (flatter, toward the west), counterclockwise at set (steeper, toward the south).
             float Angle(Vector2 d) => Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
             Assert.Less(Angle(rise.dir), Angle(middle.dir));
