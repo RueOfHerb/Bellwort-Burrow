@@ -11,7 +11,8 @@ namespace BellwortBurrow.EditorTools
     /// - Everything else: the tiles under its front, from the art itself: how wide it is in the tile above its feet,
     ///   in whole tiles (at least 1). So a cottage roots on 5 or 6 tiles and a boulder on 2.
     /// - Not on the grid: backdrops, things that float (lantern flies, wisps), tree house pieces, which go on a
-    ///   giant tree instead (see <see cref="TreeHouse"/>), and roofs, which go on a house (see <see cref="HouseRoof"/>).
+    ///   giant tree instead (see <see cref="TreeHouse"/>), roofs, which go on a house (see <see cref="HouseRoof"/>), and
+    ///   wall pieces, which go on the great stump (see <see cref="WallPiece"/>).
     /// Plain C# on the sheet's own pixels, so it can be tested without the art package.
     /// </summary>
     public static class Footprints
@@ -24,7 +25,7 @@ namespace BellwortBurrow.EditorTools
         /// <summary>Base tiles for a piece, or 0 for one that doesn't sit on the map grid.</summary>
         public static int TilesWide(string name, bool backdrop, byte[] art, int sheetWidth, int sheetHeight, SheetSlice? slice)
         {
-            if (backdrop || IsTreeHousePiece(name, out _, out _) || IsRoof(name, out _)) return 0;
+            if (backdrop || IsTreeHousePiece(name, out _, out _) || IsRoof(name, out _) || IsWallPiece(name)) return 0;
             if (name.StartsWith("lantern_fly", StringComparison.Ordinal) || name.StartsWith("wisp", StringComparison.Ordinal)) return 0;
             if (name.StartsWith("young_", StringComparison.Ordinal) || name.StartsWith("stump_", StringComparison.Ordinal)) return 1;
             if (IsTreePiece(name)) return 2;
@@ -45,6 +46,12 @@ namespace BellwortBurrow.EditorTools
             part = m.Groups[2].Value == "house" ? TreeHouse.Part.House : m.Groups[2].Value == "room" ? TreeHouse.Part.Room : TreeHouse.Part.Stairs;
             return true;
         }
+
+        /// <summary>A piece that goes on the great stump's wall, like burrow_stump_ladder (see <see cref="WallPiece"/>).</summary>
+        public static bool IsWallPiece(string name) => name.StartsWith("burrow_stump_", StringComparison.Ordinal);
+
+        /// <summary>A building whose walls take wall pieces: the great stump (see <see cref="WallSeat"/>).</summary>
+        public static bool TakesWallPieces(string name) => name == "burrow_stump";
 
         /// <summary>A roof that goes on top of a house, like burrow_home_roof_red; fits is the house size, burrow_home.</summary>
         public static bool IsRoof(string name, out string fits)
