@@ -40,6 +40,21 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void LooseClutterGoesByThePixel_RocksStayOnTheGrid()
+        {
+            foreach (var n in new[] { "burrow_grass_clump_a", "burrow_grass_tall", "burrow_fern", "burrow_bellworts_b",
+                                      "burrow_mushrooms", "burrow_twig", "burrow_bark_chips" })
+            {
+                Assert.IsTrue(Footprints.IsLooseClutter(n), n);
+                Assert.AreEqual(0, Footprints.TilesWide(n, false, null, 0, 0, null), n);
+            }
+            Assert.IsFalse(Footprints.IsLooseClutter("burrow_mossy_rock_a"));
+            Assert.AreEqual(1, Footprints.TilesWide("burrow_mossy_rock_a", false, null, 0, 0, null));
+            Assert.IsFalse(Footprints.IsLooseClutter("tall_grass_a"), "the forest's tall grass stays on the grid");
+            Assert.IsFalse(Footprints.IsLooseClutter("burrow_stump_foot_a"), "foot pieces are wall pieces");
+        }
+
+        [Test]
         public void TreeHousePiecesAreKnownByName()
         {
             Assert.IsTrue(Footprints.IsTreeHousePiece("tree_house_red", out var part, out var fit));

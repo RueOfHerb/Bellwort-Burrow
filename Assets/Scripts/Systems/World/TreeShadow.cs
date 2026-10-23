@@ -62,6 +62,12 @@ namespace BellwortBurrow.Systems.World
         [Min(2)] public int widthMiddle = 240;
         [Tooltip("How wide it is at the ends of its run, in the lower right and upper left, when the light is low.")]
         [Min(2)] public int widthEnds = 360;
+
+        [Header("From the stump (when the clock has a stump)")]
+        [Tooltip("Which way the fallen log runs off the stump at the middle of the night, in degrees (0 is east, 90 " +
+                 "north, 180 west, 270 south). The log is overhead, past the map's lower left edge, so its shadow always " +
+                 "runs off the map; it swings round this by Pivot Degrees through the night.")]
+        [Range(0f, 360f)] public float logBearing = 243.4f;
     }
 
     /// <summary>
@@ -205,6 +211,77 @@ namespace BellwortBurrow.Systems.World
                 for (int x = 0; x < width; x++)
                     pixels[row + x] = x >= from && x <= to ? shade : light;
             }
+        }
+
+        /// <summary>Long enough to run off any map: the fallen log reaches past the map's lower left edge.</summary>
+        public const float PastTheMap = 1e6f;
+
+        /// <summary>
+        /// The fallen log's shadow, from where the log rests on the stump: the way it points (a unit vector, y up), how
+        /// long it is and how wide, at a point in the light's run (0 at rise, 1 at set). The log lies overhead and runs
+        /// on past the map's lower left edge, so the shadow always runs off the map. It points along the log at the middle
+        /// of the run and swings clockwise of that at rise and counterclockwise at set (<see cref="ShadowCurve.AngleAt"/>).
+        /// </summary>
+        public static (Vector2 dir, float length, int width) FromStump(float travel, TreeShadowSettings s)
+        {
+            float u = Mathf.Clamp01(travel);
+            float bearing = (s.logBearing - ShadowCurve.AngleAt(u, s.pivotDegrees)) * Mathf.Deg2Rad;
+            var dir = new Vector2(Mathf.Cos(bearing), Mathf.Sin(bearing));
+            return (dir, PastTheMap, WidthAt(u, s.widthMiddle, s.widthEnds));
+        }
+
+        /// <summary>
+        /// Where the shadow starts on the stump's top, for a top whose middle is at centre (cookie pixels) and whose rim
+        /// is an ellipse with radii (across, deep): the point on the rim the shadow points out of.
+        /// </summary>
+        public static Vector2 StartOnRim(Vector2 centre, Vector2 radii, Vector2 dir)
+        {
+            float r = 1f / Mathf.Sqrt(dir.x * dir.x / (radii.x * radii.x) + dir.y * dir.y / (radii.y * radii.y));
+            return centre + dir * r;
+        }
+
+        /// <summary>
+        /// Paints the fallen log's shadow from the stump into a width by height cookie (row 0 at the bottom): a strip from
+        /// start, pointing dir, length long and across wide (centred on the line from start), clear in the shadow and
+        /// white where the light gets through. Nothing behind start is shaded. Each row is one run with whole-pixel
+        /// edges; its long sides carry the same bark wobble and old branch stub as the band's.
+        /// </summary>
+        public static void PaintFromStump(Color32[] pixels, int width, int height, Vector2 start, Vector2 dir, float length, int across)
+        {
+            var light = new Color32(255, 255, 255, 255);
+            var shade = new Color32(0, 0, 0, 0);
+            dir = dir.normalized;
+            var side = new Vector2(-dir.y, dir.x);
+            float half = across / 2f;
+            for (int y = 0; y < height; y++)
+            {
+                int row = y * width;
+                float dy = y - start.y;
+                float lo = float.NegativeInfinity, hi = float.PositiveInfinity;
+                // along the shadow: 0 to length; across it: within half (and the bark's bulge) of its middle line
+                Clip(dir.x, dy * dir.y, 0f, length, ref lo, ref hi);
+                float mid = float.IsInfinity(lo) || float.IsInfinity(hi) ? 0f : (lo + hi) / 2f;
+                int along = Mathf.RoundToInt(mid * dir.x + dy * dir.y);
+                float left = half + Bark(along, 2.1f, true), right = half + Bark(along, 0.4f, false);
+                Clip(side.x, dy * side.y, -right, left, ref lo, ref hi);
+                int from = lo > hi ? int.MaxValue : Mathf.CeilToInt(start.x + lo);
+                int to = lo > hi ? int.MinValue : Mathf.FloorToInt(start.x + hi);
+                for (int x = 0; x < width; x++)
+                    pixels[row + x] = x >= from && x <= to ? shade : light;
+            }
+        }
+
+        // Narrows [lo, hi] (x measured from the start) to where a * x + b lies between min and max.
+        static void Clip(float a, float b, float min, float max, ref float lo, ref float hi)
+        {
+            if (Mathf.Abs(a) < 1e-6f)
+            {
+                if (b < min || b > max) { lo = 1f; hi = 0f; }
+                return;
+            }
+            float p = (min - b) / a, q = (max - b) / a;
+            lo = Mathf.Max(lo, Mathf.Min(p, q));
+            hi = Mathf.Min(hi, Mathf.Max(p, q));
         }
 
         /// <summary>The first and last pixel of the band in row y (from greater than to when the row misses it).</summary>

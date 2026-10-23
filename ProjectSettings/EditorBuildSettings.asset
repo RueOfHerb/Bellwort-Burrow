@@ -19,7 +19,7 @@ EditorBuildSettings:
     guid: e9fe9a1a1e456ba4aa6e6d4dd9996dc0
   - enabled: 1
     path: Assets/Scenes/Zones/BellwortBurrow.unity
-    guid: a23515bb8c5273b4ca404882f6a949c9
+    guid: 939bc3a986cbc6b47a7a0c579efaea2f
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

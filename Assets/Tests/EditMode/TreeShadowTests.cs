@@ -173,6 +173,93 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.Less(share, 0.45f);
         }
 
+        // The stump's top on the Bellwort Burrow ground, a big map: 140 by 100 tiles.
+        const int BigWidth = 2240, BigHeight = 1600;
+        static readonly Vector2 StumpTop = new(1680f, 1597f), StumpRim = new(280f, 140f);
+
+        Color32[] FromTheStump(int minute, out Vector2 start, out Vector2 dir, out float length)
+        {
+            var sky = At(minute);
+            Assert.IsTrue(sky.shadow, $"no shadow at minute {minute}");
+            int across;
+            (dir, length, across) = TreeShadow.FromStump(sky.travel, settings);
+            start = TreeShadow.StartOnRim(StumpTop, StumpRim, dir);
+            var pixels = new Color32[BigWidth * BigHeight];
+            TreeShadow.PaintFromStump(pixels, BigWidth, BigHeight, start, dir, length, across);
+            return pixels;
+        }
+
+        [Test]
+        public void FromTheStump_TheShadowStartsAtTheTopOnTheSouthwestSideAllNight()
+        {
+            foreach (int minute in new[] { SevenPm + 10, TenPm, 0, TwoAm, FiveAm - 60, SevenAm + 60 })
+            {
+                var pixels = FromTheStump(minute, out var start, out var dir, out _);
+                Assert.Less(dir.x, 0f, $"it doesn't point west at minute {minute}");
+                Assert.Less(dir.y, 0f, $"it doesn't point south at minute {minute}");
+                Assert.Less(start.x, StumpTop.x, "it starts east of the top's middle");
+                Assert.Less(start.y, StumpTop.y, "it starts north of the top's middle");
+                int nearStart = 0, behind = 0;
+                for (int y = 0; y < BigHeight; y++)
+                    for (int x = 0; x < BigWidth; x++)
+                    {
+                        if (pixels[y * BigWidth + x].a != 0) continue;
+                        float along = Vector2.Dot(new Vector2(x, y) - start, dir);
+                        if (along < -1f) behind++;
+                        if (along < 4f) nearStart++;
+                    }
+                Assert.AreEqual(0, behind, $"shaded behind the stump's rim at minute {minute}");
+                Assert.Greater(nearStart, 0, $"the shadow doesn't start at the rim at minute {minute}");
+            }
+        }
+
+        [Test]
+        public void FromTheStump_TheLogsShadowAlwaysRunsOffTheLowerLeftEdge()
+        {
+            // The log lies overhead and reaches past the map's lower left edge, so its shadow never stops short of it.
+            foreach (int minute in new[] { SevenPm + 10, TenPm, 0, TwoAm, FiveAm - 60, SevenAm + 60 })
+            {
+                var pixels = FromTheStump(minute, out _, out _, out _);
+                int onEdge = 0;
+                for (int x = 0; x < BigWidth; x++) if (pixels[x].a == 0) onEdge++;
+                for (int y = 0; y < BigHeight; y++) if (pixels[y * BigWidth].a == 0) onEdge++;
+                Assert.Greater(onEdge, 0, $"the shadow stops short of the lower left edges at minute {minute}");
+            }
+        }
+
+        [Test]
+        public void FromTheStump_ItSwingsThroughTheNight()
+        {
+            var rise = TreeShadow.FromStump(0.02f, settings);
+            var middle = TreeShadow.FromStump(0.5f, settings);
+            var set = TreeShadow.FromStump(0.98f, settings);
+            Assert.AreEqual(rise.length, middle.length, "it changed length");
+            // Clockwise of the log at rise (flatter, toward the west), counterclockwise at set (steeper, toward the south).
+            float Angle(Vector2 d) => Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            Assert.Less(Angle(rise.dir), Angle(middle.dir));
+            Assert.Greater(Angle(set.dir), Angle(middle.dir));
+            Assert.AreEqual(settings.logBearing, Angle(middle.dir) + 360f, 0.01f);
+        }
+
+        [Test]
+        public void FromTheStump_EveryRowIsOneRunAtLeastAsWideAsTheMiddleWidth()
+        {
+            var pixels = FromTheStump(0, out _, out var dir, out _);
+            for (int y = 0; y < BigHeight; y++)
+            {
+                int runs = 0;
+                bool inside = false;
+                for (int x = 0; x < BigWidth; x++)
+                {
+                    bool shaded = pixels[y * BigWidth + x].a == 0;
+                    if (shaded && !inside) runs++;
+                    inside = shaded;
+                }
+                Assert.LessOrEqual(runs, 1, $"row {y} breaks into {runs} runs");
+            }
+            Assert.AreEqual(settings.widthMiddle, TreeShadow.FromStump(0.5f, settings).width);
+        }
+
         [Test]
         public void TheShadowIsWiderAtTheEndsOfItsRun()
         {

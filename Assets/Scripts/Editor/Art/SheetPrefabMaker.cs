@@ -159,12 +159,28 @@ namespace BellwortBurrow.EditorTools
                     foreach (Transform child in root.transform)
                         if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = HouseRoof.SortingOrder + 1;
                 }
+                else if (Footprints.IsWallPiece(pair.Key))
+                {
+                    // A wall piece goes on a building's wall and sorts inside its sorting group (see WallPiece.SortingOrder).
+                    root.AddComponent<WallPiece>();
+                    var wallGroup = root.GetComponent<SortingGroup>();
+                    if (wallGroup != null) Object.DestroyImmediate(wallGroup);
+                    renderer.sortingOrder = WallPiece.SortingOrder;
+                    foreach (Transform child in root.transform)
+                        if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = WallPiece.SortingOrder + 1;
+                }
                 else
                 {
                     SheetSlice? footSlice = slices.TryGetValue(pair.Key, out var found) ? found : (SheetSlice?)null;
                     int tiles = Footprints.TilesWide(pair.Key, backdrop, sheet?.Art, sheet?.Width ?? 0, sheet?.Height ?? 0, footSlice);
                     if (tiles > 0) root.AddComponent<GridFootprint>().tilesWide = tiles;
                     // A house that takes a roof: the roof sorts inside the house, so the house keeps a sorting group.
+                    // A building whose walls take wall pieces: they sort inside it, so it keeps a sorting group.
+                    if (Footprints.TakesWallPieces(pair.Key))
+                    {
+                        root.AddComponent<WallSeat>();
+                        if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
+                    }
                     string seatSize = Footprints.RoofSeatSize(pair.Key, slices.Keys);
                     if (seatSize != null)
                     {
