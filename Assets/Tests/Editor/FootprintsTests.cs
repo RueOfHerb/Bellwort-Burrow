@@ -28,6 +28,50 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void ABeamsDitherStepsGoInItsPrefab_NotPrefabsOfTheirOwn()
+        {
+            Assert.AreEqual("burrow_log_beam_a_dither_08", Footprints.DitherName("burrow_log_beam_a", 8));
+            Assert.IsTrue(Footprints.IsDither("burrow_log_beam_a_dither_08", out var of, out int step));
+            Assert.AreEqual("burrow_log_beam_a", of);
+            Assert.AreEqual(8, step);
+            Assert.IsFalse(Footprints.IsBeam("burrow_log_beam_a_dither_08", out _), "a step isn't a beam of its own");
+            var names = new[] { "burrow_log_support_a", "burrow_log_beam_a", "burrow_log_beam_a_dither_08" };
+            Assert.IsTrue(Footprints.IsPartOfABase("burrow_log_beam_a_dither_08", names));
+        }
+
+        [Test]
+        public void ABeamGoesOnItsBase_NotOnTheGrid()
+        {
+            Assert.IsTrue(Footprints.IsBeam("burrow_log_beam_a", out var baseName));
+            Assert.AreEqual("burrow_log_support_a", baseName);
+            Assert.IsFalse(Footprints.IsBeam("burrow_log_support_a", out _));
+            Assert.AreEqual(0, Footprints.TilesWide("burrow_log_beam_b", false, null, 0, 0, null));
+            var names = new[] { "burrow_log_support_a", "burrow_log_beam_a", "burrow_log_support_b" };
+            Assert.AreEqual("burrow_log_beam_a", Footprints.BeamFor("burrow_log_support_a", names));
+            Assert.IsNull(Footprints.BeamFor("burrow_log_support_b", names), "no beam on the sheet for it");
+            Assert.IsNull(Footprints.BeamFor("burrow_home_red", names));
+            var all = new[] { "burrow_log_support_a", "burrow_log_beam_a", "burrow_log_ring_a" };
+            Assert.AreEqual("burrow_log_ring_a", Footprints.RingBackFor("burrow_log_support_a", all));
+            Assert.IsTrue(Footprints.IsPartOfABase("burrow_log_ring_a", all));
+            Assert.IsTrue(Footprints.IsPartOfABase("burrow_log_beam_a", all));
+            Assert.IsFalse(Footprints.IsPartOfABase("burrow_log_support_a", all), "the base has the prefab");
+            Assert.AreEqual(0, Footprints.TilesWide("burrow_log_ring_a", false, null, 0, 0, null));
+        }
+
+        [Test]
+        public void APartStandsAsHighOnItsBaseAsOnTheSheet()
+        {
+            var slices = new System.Collections.Generic.Dictionary<string, SheetSlice>
+            {
+                ["burrow_log_support_a"] = new SheetSlice { Name = "burrow_log_support_a", X = 176, Y = 501, Width = 64, Height = 11, HasPivot = true, PivotX = 32, PivotY = 11 },
+                ["burrow_log_beam_a"] = new SheetSlice { Name = "burrow_log_beam_a", X = 96, Y = 16, Width = 64, Height = 491, HasPivot = true, PivotX = 32, PivotY = 491 },
+            };
+            Assert.AreEqual(5f / 16f, SheetPrefabMaker.PartRise(slices, "burrow_log_support_a", "burrow_log_beam_a"), 1e-5f,
+                "the beam's foot stands 5 px up, inside the ring");
+            Assert.AreEqual(0f, SheetPrefabMaker.PartRise(slices, "burrow_log_support_a", "missing"));
+        }
+
+        [Test]
         public void SmallThingsRootOnOneTileAndTreesOnTwo()
         {
             Assert.AreEqual(1, Footprints.TilesWide("young_brown", false, null, 0, 0, null));

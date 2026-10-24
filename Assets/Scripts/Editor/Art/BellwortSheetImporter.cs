@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using BellwortBurrow.Systems.World;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;
@@ -17,9 +18,12 @@ namespace BellwortBurrow.EditorTools
     /// - Glow: layers with "glow" in their name. Each slice with glow pixels also gets a "name_glow" sprite
     ///   with the same rect and pivot, meant for an unlit material so it shines through the night.
     /// - Tile Size above 0 cuts each slice into tiles named "name_00", "name_01"... (row by row)
-    ///   and makes a Tile asset for each, ready for the Tile Palette.
+    ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player get a physics shape whose
+    ///   edges are only level, upright or at 45 degrees: the water's from its quarters (<see cref="Colliders.QuarterShape"/>),
+    ///   so half tiles and slopes block as drawn, and the bank and cliff faces' from their keys (<see cref="Colliders.FaceShape"/>),
+    ///   so a 45 degree run blocks along a straight line.
     /// </summary>
-    [ScriptedImporter(1, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
+    [ScriptedImporter(4, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
     public class BellwortSheetImporter : ScriptedImporter
     {
         [Tooltip("Pixels per world unit. 16 means one 16 px tile is one unit.")]
@@ -82,9 +86,41 @@ namespace BellwortBurrow.EditorTools
                 : new Vector2(0.5f, 0f);
 
             ctx.AddObjectToAsset("sprite/" + name, MakeSprite(art, rect, pivot, name));
+            if (Footprints.IsBeam(slice.Name, out _)) ImportDither(ctx, sheet, slice, name, pivot);
 
             if (glow != null && AsepriteSheet.AnyAlpha(sheet.Glow, sheet.Width, slice.X, slice.Y, slice.Width, slice.Height))
                 ctx.AddObjectToAsset("glow/" + name, MakeSprite(glow, rect, pivot, name + "_glow"));
+        }
+
+        /// <summary>
+        /// A beam's dither: the beam again with only some of its pixels, step by step from 1 pixel in 16 to 15 in 16 in a
+        /// 4 by 4 ordered pattern, so it can fade without blending its colours into ones off the palette (see
+        /// <see cref="SeeThrough"/>). The steps sit side by side on a texture of their own, each sprite named like
+        /// burrow_log_beam_a_dither_08 with the beam's pivot.
+        /// </summary>
+        void ImportDither(AssetImportContext ctx, AsepriteSheet sheet, SheetSlice slice, string name, Vector2 pivot)
+        {
+            int w = slice.Width, h = slice.Height, steps = SeeThrough.DitherSteps - 1;
+            var rgba = new byte[w * steps * h * 4];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int source = ((slice.Y + y) * sheet.Width + slice.X + x) * 4;
+                    int threshold = SeeThrough.DitherThreshold(x, h - 1 - y);   // the pattern counts up from the feet
+                    for (int step = 1; step <= steps; step++)
+                    {
+                        if (threshold >= step) continue;
+                        int target = (y * w * steps + (step - 1) * w + x) * 4;
+                        for (int c = 0; c < 4; c++) rgba[target + c] = sheet.Art[source + c];
+                    }
+                }
+            var texture = MakeTexture(rgba, w * steps, h, name + "_dither");
+            ctx.AddObjectToAsset("dither texture/" + name, texture);
+            for (int step = 1; step <= steps; step++)
+            {
+                string stepName = Footprints.DitherName(name, step);
+                ctx.AddObjectToAsset("sprite/" + stepName, MakeSprite(texture, new Rect((step - 1) * w, 0, w, h), pivot, stepName));
+            }
         }
 
         void ImportTiles(AssetImportContext ctx, AsepriteSheet sheet, SheetSlice slice, Texture2D art, HashSet<string> usedNames)
@@ -106,6 +142,8 @@ namespace BellwortBurrow.EditorTools
                     string name = Unique(count == 1 ? slice.Name : slice.Name + "_" + index.ToString(digits), usedNames);
                     var rect = new Rect(x, sheet.Height - y - tileSize, tileSize, tileSize);
                     var sprite = MakeSprite(art, rect, new Vector2(0.5f, 0.5f), name);
+                    var shape = TileShape(sheet, slice.Name, x, y, index);
+                    if (shape != null) sprite.OverridePhysicsShape(shape);
                     ctx.AddObjectToAsset("sprite/" + name, sprite);
 
                     var tile = ScriptableObject.CreateInstance<Tile>();
@@ -117,9 +155,22 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
+        /// <summary>The physics shape for a tile that blocks the player, or null for one that doesn't.</summary>
+        List<Vector2[]> TileShape(AsepriteSheet sheet, string slice, int x, int y, int index)
+        {
+            if (Colliders.IsBlockingGroundSlice(slice))
+                return Colliders.QuarterShape((px, py) => sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] > 127, tileSize);
+            if (Colliders.IsFaceSlice(slice))
+            {
+                var keys = GroundAutoTiles.FacePieceKeys();
+                return Colliders.FaceShape(index < keys.Count ? keys[index] : null, tileSize);
+            }
+            return null;
+        }
+
         Sprite MakeSprite(Texture2D texture, Rect rect, Vector2 pivot, string name)
         {
-            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
+            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, false);
             sprite.name = name;
             return sprite;
         }
