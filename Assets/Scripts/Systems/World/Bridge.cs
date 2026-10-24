@@ -17,6 +17,9 @@ namespace BellwortBurrow.Systems.World
     ///   on the deck under it: a player on the deck is behind the near rail and in front of the far one, and a player
     ///   on the grass beside the bridge is in front of the near rail and behind the far one. The strips are made when the
     ///   bridge is enabled and never saved; the rails' pictures are slices of their own on the bridge's sheet.
+    /// - A deck that rises (an arch, or ramps at the ends) carries whoever is on it up and down with it: as a walker
+    ///   moves along the deck, it moves up the screen by however much higher the deck stands where it got to
+    ///   (<see cref="incline"/>), so it climbs and comes down with the deck instead of walking flat across it.
     /// </summary>
     [ExecuteAlways]
     [DisallowMultipleComponent]
@@ -48,11 +51,18 @@ namespace BellwortBurrow.Systems.World
         public Material unlitMaterial;
         [Tooltip("The Tilemaps this bridge crosses: whoever is on the deck walks through their colliders.")]
         public string[] crosses = { "Water" };
+        [Tooltip("The way along the deck, end to end, on the ground (a unit direction).")]
+        public Vector2 inclineAxis = Vector2.right;
+        [Tooltip("How high the deck stands along it: x is how far along the deck (from the bridge's feet, along the " +
+                 "axis), y how high it stands there, both in units. Empty for a level deck.")]
+        public Vector2[] incline = Array.Empty<Vector2>();
 
         readonly List<GameObject> strips = new List<GameObject>();
         readonly List<Sprite> cutSprites = new List<Sprite>();
         readonly List<Collider2D> ground = new List<Collider2D>();
         readonly HashSet<Collider2D> walkers = new HashSet<Collider2D>();
+        // How high each walker on the deck has been carried, in units.
+        readonly Dictionary<Collider2D, float> carried = new Dictionary<Collider2D, float>();
         bool stale;
 
         // How many decks each walker is on, across every bridge, so stepping off one onto another keeps them across.
@@ -80,6 +90,11 @@ namespace BellwortBurrow.Systems.World
             if (!stale) return;
             stale = false;
             BuildRails();
+        }
+
+        void FixedUpdate()
+        {
+            if (Application.isPlaying) Carry();
         }
 
         void OnTriggerEnter2D(Collider2D other) => Step(other, true);
@@ -113,11 +128,44 @@ namespace BellwortBurrow.Systems.World
         {
             if (!Walks(walker)) return;
             if (on ? !walkers.Add(walker) : !walkers.Remove(walker)) return;
+            if (on) carried[walker] = HeightUnder(walker.attachedRigidbody.position, null);
+            else carried.Remove(walker);
             Decks.TryGetValue(walker, out int count);
             count = Mathf.Max(0, count + (on ? 1 : -1));
             if (count == 0) Decks.Remove(walker); else Decks[walker] = count;
             foreach (var collider in ground)
                 if (collider != null) Physics2D.IgnoreCollision(walker, collider, count > 0);
+        }
+
+        /// <summary>
+        /// Carries every walker on the deck up or down by how much the deck's height changed under it since the last
+        /// step, so it climbs and comes down with the deck. Runs every physics step while playing.
+        /// </summary>
+        public void Carry()
+        {
+            if (incline == null || incline.Length < 2) return;
+            foreach (var walker in new List<Collider2D>(walkers))
+            {
+                if (walker == null || !carried.TryGetValue(walker, out float was)) continue;
+                var body = walker.attachedRigidbody;
+                float now = HeightUnder(body.position, was);
+                if (Mathf.Approximately(now, was)) continue;
+                body.position += Vector2.up * (now - was);
+                carried[walker] = now;
+            }
+        }
+
+        /// <summary>
+        /// How high the deck stands under a position, in units. The position is where the walker shows, already carried
+        /// up by <paramref name="lifted"/> (when it isn't known, it's worked out from the deck).
+        /// </summary>
+        float HeightUnder(Vector2 position, float? lifted)
+        {
+            if (incline == null || incline.Length < 2) return 0f;
+            Vector2 axis = inclineAxis.sqrMagnitude > 0f ? inclineAxis.normalized : Vector2.right;
+            Vector2 local = position - (Vector2)transform.position;
+            float h = lifted ?? HeightAt(incline, Vector2.Dot(local, axis));
+            return HeightAt(incline, Vector2.Dot(local - Vector2.up * h, axis));
         }
 
         /// <summary>Whether a walker is on this bridge's deck.</summary>

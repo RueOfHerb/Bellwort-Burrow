@@ -177,6 +177,24 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void TheIncline_IsHowHighTheDeckStandsAlongIt()
+        {
+            var straight = Straight;
+            Assert.AreEqual(Vector2.right, straight.InclineAxis);
+            foreach (var p in straight.Incline())
+                Assert.AreEqual(straight.Height(p.x), p.y, 1e-4f);
+
+            var trestle = Trestle;
+            var incline = trestle.Incline();
+            for (int i = 1; i < incline.Length; i++) Assert.Greater(incline[i].x, incline[i - 1].x, "along the deck, in order");
+            foreach (float k in new[] { -48f, -39f, 0f, 20f, 39f, 48f })
+            {
+                float along = Vector2.Dot(trestle.At(k, 0f, 0f), trestle.InclineAxis);
+                Assert.AreEqual(trestle.DeckHeight(k), Bridge.HeightAt(incline, along), 1e-3f, $"k {k}");
+            }
+        }
+
+        [Test]
         public void ALevelStraightDeck_KeepsItsCornersOnly()
         {
             var level = new Bridges.StraightDeck(-10f, 10f, 2f, 20f, 0f);

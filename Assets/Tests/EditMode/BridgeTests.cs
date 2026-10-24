@@ -116,6 +116,54 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void OnARisingDeck_TheWalkerIsCarriedUpAndDownWithIt()
+        {
+            var walker = Walker();
+            var body = walker.attachedRigidbody;
+            var bridge = MakeBridge();
+            bridge.inclineAxis = Vector2.right;
+            bridge.incline = new[] { new Vector2(0f, 0f), new Vector2(2f, 1f), new Vector2(4f, 0f) };
+
+            body.position = Vector2.zero;
+            bridge.Step(walker, true);
+            body.position = new Vector2(1f, 0f);
+            bridge.Carry();
+            Assert.AreEqual(0.5f, body.position.y, 1e-4f, "half way up the rise");
+            bridge.Carry();
+            Assert.AreEqual(0.5f, body.position.y, 1e-4f, "standing still, it stays put");
+            body.position = new Vector2(2f, body.position.y + 0.25f);
+            bridge.Carry();
+            Assert.AreEqual(1.25f, body.position.y, 1e-4f, "at the top, a little further across");
+            body.position = new Vector2(4f, body.position.y);
+            bridge.Carry();
+            Assert.AreEqual(0.25f, body.position.y, 1e-4f, "down again at the far end");
+
+            bridge.Step(walker, false);
+            body.position = new Vector2(2f, body.position.y);
+            bridge.Carry();
+            Assert.AreEqual(0.25f, body.position.y, 1e-4f, "off the deck, nothing carries it");
+        }
+
+        [Test]
+        public void OnADiagonalDeck_TheWalkerIsCarriedByHowFarAlongItIs()
+        {
+            var walker = Walker();
+            var body = walker.attachedRigidbody;
+            var bridge = MakeBridge();
+            bridge.inclineAxis = new Vector2(1f, -1f);
+            bridge.incline = new[] { new Vector2(0f, 0f), new Vector2(Mathf.Sqrt(2f), 1f) };
+
+            body.position = Vector2.zero;
+            bridge.Step(walker, true);
+            // One step southeast on the ground, (1, -1), climbs a unit: it shows at (1, 0).
+            body.position = new Vector2(1f, -1f);
+            bridge.Carry();
+            Assert.AreEqual(0f, body.position.y, 1e-4f);
+            bridge.Carry();
+            Assert.AreEqual(0f, body.position.y, 1e-4f, "no creeping while it stands there");
+        }
+
+        [Test]
         public void RailStrips_SortByWhereTheRailStandsUnderThem()
         {
             // A 16 by 16 rail with its feet at the bottom middle, standing on a line from (-0.5, 0.5) to (0.5, 0.25).

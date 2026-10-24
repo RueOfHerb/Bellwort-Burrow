@@ -41,6 +41,10 @@ namespace BellwortBurrow.EditorTools
             Vector2[] NearFoot();
             /// <summary>Where the far rail stands on the deck, end to end.</summary>
             Vector2[] FarFoot();
+            /// <summary>The way along the deck on the ground, end to end (a unit direction).</summary>
+            Vector2 InclineAxis { get; }
+            /// <summary>How high the deck stands along it: x how far along (from the feet, along the axis), y how high.</summary>
+            Vector2[] Incline();
         }
 
         /// <summary>
@@ -116,6 +120,15 @@ namespace BellwortBurrow.EditorTools
             public Vector2[] FarSide() => FarSide(FarInset, EndGap);
             public Vector2[] NearFoot() => RailFoot(-HalfWidth + RailInset);
             public Vector2[] FarFoot() => RailFoot(HalfWidth - RailInset);
+
+            /// <summary>Along k, southeast: one step of k is one pixel right and one down on the ground.</summary>
+            public Vector2 InclineAxis => new Vector2(1f, -1f).normalized;
+            public Vector2[] Incline()
+            {
+                var axis = InclineAxis;
+                var middle = Middle;
+                return Knots(Length).Select(k => new Vector2(Vector2.Dot(middle + new Vector2(k, -k), axis), DeckHeight(k))).ToArray();
+            }
         }
 
         /// <summary>
@@ -173,6 +186,8 @@ namespace BellwortBurrow.EditorTools
             public Vector2[] FarSide() => Line(Far - FarInsetPixels);
             public Vector2[] NearFoot() => Line(Near);
             public Vector2[] FarFoot() => Line(Far);
+            public Vector2 InclineAxis => Vector2.right;
+            public Vector2[] Incline() => Along().Select(x => new Vector2(x, Height(x))).ToArray();
         }
 
         /// <summary>The bridges setup knows how to put together, by slice name, in the art's own pixels.</summary>
@@ -257,6 +272,8 @@ namespace BellwortBurrow.EditorTools
             bridge.stripWidth = StripWidth;
             bridge.litMaterial = lit;
             bridge.unlitMaterial = unlit;
+            bridge.inclineAxis = shape.InclineAxis;
+            bridge.incline = Units(shape.Incline());
             bridge.nearRail = MakeRail(name + NearRailSuffix, shape.NearFoot(), sprites, sheet, slices);
             bridge.farRail = MakeRail(name + FarRailSuffix, shape.FarFoot(), sprites, sheet, slices);
 
