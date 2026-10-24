@@ -34,6 +34,7 @@ namespace BellwortBurrow.EditorTools
                 foreach (var name in sprites.Keys)
                 {
                     if (name.EndsWith("_glow") && sprites.ContainsKey(name.Substring(0, name.Length - 5))) continue;
+                    if (Footprints.IsPartOfABase(name, sprites.Keys)) continue; // in its base's prefab
                     if (File.Exists($"{folder}/{name}.prefab")) continue;
                     missing++;
                     if (example == null) example = name;

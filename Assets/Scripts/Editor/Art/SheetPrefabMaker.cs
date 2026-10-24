@@ -17,6 +17,9 @@ namespace BellwortBurrow.EditorTools
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
     /// - Where it meets the map: a <see cref="GridFootprint"/> with the base tiles it is rooted on, so it snaps to the
     ///   grid (see <see cref="Footprints"/>), or, for a tree house piece, a <see cref="TreeHouse"/> that puts it on a giant tree.
+    /// - A log support in three parts (burrow_log_ring_a, burrow_log_beam_a, burrow_log_support_a): one prefab, the base
+    ///   in front with the ring's far half behind and the beam between, standing down inside the ring, with a
+    ///   <see cref="SeeThrough"/> so it fades while the player is behind it and the ring doesn't.
     /// - A solid piece (the great stump, the Burrow's homes and rocks, see <see cref="Colliders"/>) gets a polygon collider
     ///   round the ground it stands on, so the player walks round it.
     /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
@@ -81,6 +84,32 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
+        /// <summary>A child renderer showing one part of a piece, its feet <paramref name="rise"/> units above the piece's.</summary>
+        static GameObject AddPart(GameObject root, string name, Sprite sprite, int order, float rise, Material lit)
+        {
+            var part = new GameObject(name);
+            part.transform.SetParent(root.transform, false);
+            part.transform.localPosition = new Vector3(0f, rise, 0f);
+            var renderer = part.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.spriteSortPoint = SpriteSortPoint.Pivot;
+            renderer.sortingOrder = order;
+            if (lit != null) renderer.sharedMaterial = lit;
+            return part;
+        }
+
+        /// <summary>
+        /// How far a part's feet stand above its base's, in units: the parts stand side by side on the sheet, each as high
+        /// above the ground line as it goes on the base (its feet row's distance above the base's feet row).
+        /// </summary>
+        internal static float PartRise(Dictionary<string, SheetSlice> slices, string baseName, string partName)
+        {
+            if (!slices.TryGetValue(baseName, out var b) || !slices.TryGetValue(partName, out var p)) return 0f;
+            int baseFeet = b.Y + (b.HasPivot ? b.PivotY : b.Height);
+            int partFeet = p.Y + (p.HasPivot ? p.PivotY : p.Height);
+            return (baseFeet - partFeet) / ArtLibrary.PixelsPerUnit;
+        }
+
         /// <summary>Makes a prefab per sprite on the sheet. Prefabs changed by hand are added to <paramref name="kept"/> instead.</summary>
         public static int Make(string sheetPath, List<string> kept)
         {
@@ -110,6 +139,7 @@ namespace BellwortBurrow.EditorTools
             foreach (var pair in sprites)
             {
                 if (pair.Key.EndsWith("_glow") && sprites.ContainsKey(pair.Key.Substring(0, pair.Key.Length - 5))) continue;
+                if (Footprints.IsPartOfABase(pair.Key, sprites.Keys)) continue; // it goes in its base's prefab
 
                 string prefabPath = $"{folder}/{pair.Key}.prefab";
                 if (!GeneratedAssets.CanOverwrite(prefabPath)) { kept.Add(prefabPath); continue; }
@@ -182,6 +212,19 @@ namespace BellwortBurrow.EditorTools
                     if (Footprints.TakesWallPieces(pair.Key))
                     {
                         root.AddComponent<WallSeat>();
+                        if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
+                    }
+                    // A base whose beam is on the sheet (a log support): three parts stacked into one, all sorting by the
+                    // base's feet. Behind, the far half of its ring; then the beam, standing down inside the ring, which
+                    // turns see-through when the player walks behind it; in front, the base itself, the ring's near half.
+                    string beamName = Footprints.BeamFor(pair.Key, sprites.Keys);
+                    if (beamName != null)
+                    {
+                        string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
+                        if (ringName != null) AddPart(root, "Ring back", sprites[ringName], 0, PartRise(slices, pair.Key, ringName), lit);
+                        var beam = AddPart(root, "Beam", sprites[beamName], 1, PartRise(slices, pair.Key, beamName), lit);
+                        beam.AddComponent<SeeThrough>();
+                        renderer.sortingOrder = 2;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
                     string seatSize = Footprints.RoofSeatSize(pair.Key, slices.Keys);
