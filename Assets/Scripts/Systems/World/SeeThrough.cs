@@ -24,7 +24,7 @@ namespace BellwortBurrow.Systems.World
         [Tooltip("How much of the beam shows once the player is further north (0 gone, 1 solid).")]
         [Range(0f, 1f)] public float seeThroughAlpha = 0f;
         [Tooltip("How many tiles north of the back of the piece (the far edge of its collider) the player walks before the beam is gone.")]
-        [Min(0f)] public float fadeAfterTiles = 2f;
+        [Min(0f)] public float fadeAfterTiles = 16f;
         [Tooltip("How long it takes to fade out or back in, in seconds.")]
         [Min(0f)] public float fadeTime = 0.2f;
 
