@@ -28,6 +28,18 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void ABeamsDitherStepsGoInItsPrefab_NotPrefabsOfTheirOwn()
+        {
+            Assert.AreEqual("burrow_log_beam_a_dither_08", Footprints.DitherName("burrow_log_beam_a", 8));
+            Assert.IsTrue(Footprints.IsDither("burrow_log_beam_a_dither_08", out var of, out int step));
+            Assert.AreEqual("burrow_log_beam_a", of);
+            Assert.AreEqual(8, step);
+            Assert.IsFalse(Footprints.IsBeam("burrow_log_beam_a_dither_08", out _), "a step isn't a beam of its own");
+            var names = new[] { "burrow_log_support_a", "burrow_log_beam_a", "burrow_log_beam_a_dither_08" };
+            Assert.IsTrue(Footprints.IsPartOfABase("burrow_log_beam_a_dither_08", names));
+        }
+
+        [Test]
         public void ABeamGoesOnItsBase_NotOnTheGrid()
         {
             Assert.IsTrue(Footprints.IsBeam("burrow_log_beam_a", out var baseName));

@@ -234,7 +234,7 @@ namespace BellwortBurrow.EditorTools
                         string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
                         if (ringName != null) AddPart(root, "Ring back", sprites[ringName], 0, PartRise(slices, pair.Key, ringName), lit);
                         var beam = AddPart(root, "Beam", sprites[beamName], 2, PartRise(slices, pair.Key, beamName), lit);
-                        beam.AddComponent<SeeThrough>();
+                        beam.AddComponent<SeeThrough>().dither = Footprints.DitherFor(beamName, sprites);
                         renderer.sortingOrder = 1;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
