@@ -17,9 +17,10 @@ namespace BellwortBurrow.EditorTools
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
     /// - Where it meets the map: a <see cref="GridFootprint"/> with the base tiles it is rooted on, so it snaps to the
     ///   grid (see <see cref="Footprints"/>), or, for a tree house piece, a <see cref="TreeHouse"/> that puts it on a giant tree.
-    /// - A log support in three parts (burrow_log_ring_a, burrow_log_beam_a, burrow_log_support_a): one prefab, the base
-    ///   in front with the ring's far half behind and the beam between, standing down inside the ring, with a
-    ///   <see cref="SeeThrough"/> so it fades while the player is behind it and the ring doesn't.
+    /// - A log support in three parts (burrow_log_ring_a, burrow_log_beam_a, burrow_log_support_a): one prefab, the ring's
+    ///   far half behind, the base (the logs' stubs with their cut ends and the ring's near half), and the beam over it,
+    ///   its foot covering the cut ends, with a <see cref="SeeThrough"/> so it fades while the player is behind it and
+    ///   the stubs and the ring stay solid.
     /// - A solid piece (the great stump, the Burrow's homes and rocks, see <see cref="Colliders"/>) gets a polygon collider
     ///   round the ground it stands on, so the player walks round it.
     /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
@@ -215,16 +216,17 @@ namespace BellwortBurrow.EditorTools
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
                     // A base whose beam is on the sheet (a log support): three parts stacked into one, all sorting by the
-                    // base's feet. Behind, the far half of its ring; then the beam, standing down inside the ring, which
-                    // turns see-through when the player walks behind it; in front, the base itself, the ring's near half.
+                    // base's feet. Behind, the far half of its ring; then the base itself, the stubs of the logs with their
+                    // cut ends and the ring's near half; over it the beam, its foot covering the cut ends, which turns
+                    // see-through when the player walks behind it, so the stubs show and stay solid.
                     string beamName = Footprints.BeamFor(pair.Key, sprites.Keys);
                     if (beamName != null)
                     {
                         string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
                         if (ringName != null) AddPart(root, "Ring back", sprites[ringName], 0, PartRise(slices, pair.Key, ringName), lit);
-                        var beam = AddPart(root, "Beam", sprites[beamName], 1, PartRise(slices, pair.Key, beamName), lit);
+                        var beam = AddPart(root, "Beam", sprites[beamName], 2, PartRise(slices, pair.Key, beamName), lit);
                         beam.AddComponent<SeeThrough>();
-                        renderer.sortingOrder = 2;
+                        renderer.sortingOrder = 1;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
                     string seatSize = Footprints.RoofSeatSize(pair.Key, slices.Keys);
