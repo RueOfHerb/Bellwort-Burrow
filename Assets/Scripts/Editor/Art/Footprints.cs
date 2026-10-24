@@ -85,9 +85,13 @@ namespace BellwortBurrow.EditorTools
             return m.Success;
         }
 
-        /// <summary>A part of a base kept in the base's own prefab (its beam or the far half of its ring), so no prefab of its own.</summary>
+        /// <summary>
+        /// A part of a base kept in the base's own prefab (its beam or the far half of its ring, or a bridge's rail, see
+        /// <see cref="Bridges"/>), so no prefab of its own.
+        /// </summary>
         public static bool IsPartOfABase(string name, ICollection<string> names) =>
-            (IsBeam(name, out var b) && names.Contains(b)) || (IsRingBack(name, out var r) && names.Contains(r));
+            (IsBeam(name, out var b) && names.Contains(b)) || (IsRingBack(name, out var r) && names.Contains(r)) ||
+            (Bridges.IsRail(name, out var bridge) && names.Contains(bridge));
 
         /// <summary>The beam that goes on a base, like burrow_log_beam_a on burrow_log_support_a, or null.</summary>
         public static string BeamFor(string baseName, ICollection<string> names) => PartFor(baseName, "_beam_", names);

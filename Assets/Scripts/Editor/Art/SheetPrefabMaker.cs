@@ -21,6 +21,9 @@ namespace BellwortBurrow.EditorTools
     ///   far half behind, the base (the logs' stubs with their cut ends and the ring's near half), and the beam over it,
     ///   its foot covering the cut ends, with a <see cref="SeeThrough"/> so it fades while the player is behind it and
     ///   the stubs and the ring stay solid.
+    /// - A bridge (see <see cref="Bridges"/>) gets a <see cref="Bridge"/>: its deck draws flat under the player, its rails
+    ///   (slices of their own beside it) stand on it as strips that sort by where they stand, its lanterns light it, and
+    ///   colliders let the player walk over the water on its deck and stop them stepping off its sides.
     /// - A solid piece (the great stump, the Burrow's homes and rocks, see <see cref="Colliders"/>) gets a polygon collider
     ///   round the ground it stands on, so the player walks round it.
     /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
@@ -192,6 +195,12 @@ namespace BellwortBurrow.EditorTools
                     renderer.sortingOrder = HouseRoof.SortingOrder;
                     foreach (Transform child in root.transform)
                         if (child.TryGetComponent<SpriteRenderer>(out var childRenderer)) childRenderer.sortingOrder = HouseRoof.SortingOrder + 1;
+                }
+                else if (Bridges.IsBridge(pair.Key))
+                {
+                    // A bridge: its deck lies flat under the player, its rails stand as strips that sort by where they
+                    // stand, and colliders let the player across the water on the deck and nowhere else (see Bridges).
+                    Bridges.Dress(root, renderer, pair.Key, sprites, sheet, slices, lit, unlit);
                 }
                 else if (Footprints.IsWallPiece(pair.Key))
                 {
