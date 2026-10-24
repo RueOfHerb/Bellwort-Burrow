@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -130,10 +131,81 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// Ground tiles that block the player: the water, full and half (Burrow Water, Burrow Water Half). Its sprites
-        /// carry a physics shape traced from their pixels, so a half tile blocks only the half it fills.
+        /// Ground tiles that block the player: the water, full and half (Burrow Water, Burrow Water Half). Its tiles
+        /// carry a physics shape made of quarters (<see cref="QuarterShape"/>), so a half tile blocks only the half it
+        /// fills and a slope cuts at 45 degrees.
         /// </summary>
         public static bool IsBlockingGroundSlice(string sliceName) =>
             !string.IsNullOrEmpty(sliceName) && sliceName.StartsWith("water_", StringComparison.Ordinal);
+
+        /// <summary>A raised ground's face set (bank_face_set, cliff_face_set), whose tiles block by <see cref="FaceShape"/>.</summary>
+        public static bool IsFaceSlice(string sliceName) =>
+            sliceName == "bank_face_set" || sliceName == "cliff_face_set";
+
+        // ---- Tile shapes: every edge level, upright or at 45 degrees -------------------------------------------------
+
+        /// <summary>
+        /// A ground tile's physics shape from its picture, made of its four quarters (8 px squares for a 16 px tile), each
+        /// whole, empty, or cut corner to corner into a triangle, the way the ground sets are drawn (half tiles fill
+        /// quarters; slopes cut a quarter or a tile corner to corner). So the shapes only have level, upright and
+        /// 45 degree edges, and the tiles' merged collider runs in clean straight lines. A ragged edge or a pebble or two
+        /// past the edge doesn't move it. <paramref name="opaque"/> says whether pixel (x, y) is drawn, y counted from the
+        /// tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
+        /// </summary>
+        public static List<Vector2[]> QuarterShape(Func<int, int, bool> opaque, int size)
+        {
+            int q = size / 2;
+            var shapes = new List<Vector2[]>();
+            for (int qy = 0; qy < 2; qy++)
+                for (int qx = 0; qx < 2; qx++)
+                {
+                    // the quarter's corners, y up
+                    float x0 = qx * q, x1 = x0 + q, y1 = size - qy * q, y0 = y1 - q;
+                    int all = 0, ul = 0, lr = 0, ur = 0, ll = 0, nul = 0, nlr = 0, nur = 0, nll = 0;
+                    for (int y = 0; y < q; y++)
+                        for (int x = 0; x < q; x++)
+                        {
+                            bool on = opaque(qx * q + x, qy * q + y);
+                            if (on) all++;
+                            // pixel centre against the quarter's diagonals (y down inside the quarter)
+                            float fx = x + 0.5f, fy = y + 0.5f;
+                            if (fx + fy < q) { nul++; if (on) ul++; } else if (fx + fy > q) { nlr++; if (on) lr++; }
+                            if (fx > fy) { nur++; if (on) ur++; } else if (fx < fy) { nll++; if (on) ll++; }
+                        }
+                    float cover = all / (float)(q * q);
+                    if (cover >= 0.75f) { shapes.Add(new[] { new Vector2(x0, y0), new Vector2(x1, y0), new Vector2(x1, y1), new Vector2(x0, y1) }); continue; }
+                    if (cover <= 0.25f) continue;
+                    // a triangle: one half of the quarter drawn and the other not
+                    float fUL = ul / (float)nul, fLR = lr / (float)nlr, fUR = ur / (float)nur, fLL = ll / (float)nll;
+                    var best = new[]
+                    {
+                        (fUL - fLR, new[] { new Vector2(x0, y0), new Vector2(x1, y1), new Vector2(x0, y1) }),   // upper left
+                        (fLR - fUL, new[] { new Vector2(x0, y0), new Vector2(x1, y0), new Vector2(x1, y1) }),   // lower right
+                        (fUR - fLL, new[] { new Vector2(x0, y1), new Vector2(x1, y0), new Vector2(x1, y1) }),   // upper right
+                        (fLL - fUR, new[] { new Vector2(x0, y0), new Vector2(x1, y0), new Vector2(x0, y1) }),   // lower left
+                    }.OrderByDescending(b => b.Item1).First();
+                    if (best.Item1 >= 0.5f) shapes.Add(best.Item2);
+                    else if (cover >= 0.5f) shapes.Add(new[] { new Vector2(x0, y0), new Vector2(x1, y0), new Vector2(x1, y1), new Vector2(x0, y1) });
+                }
+            return shapes;
+        }
+
+        /// <summary>
+        /// A face piece's physics shape from its key (<see cref="FaceTile.keys"/>), in pixels from the tile's bottom
+        /// left corner, y up. A flat face blocks its whole tile. A 45 degree column blocks between its lip and its foot:
+        /// its top cell below the lip, which crosses it corner to corner, its bottom cell above the foot, its middle cells
+        /// whole. So a 45 degree run of bank blocks along a straight 45 degree line, not in steps.
+        /// </summary>
+        public static List<Vector2[]> FaceShape(string key, int size)
+        {
+            Vector2 bl = new Vector2(0, 0), br = new Vector2(size, 0), tr = new Vector2(size, size), tl = new Vector2(0, size);
+            var whole = new List<Vector2[]> { new[] { bl, br, tr, tl } };
+            if (string.IsNullOrEmpty(key) || key.Length < 2 || key[0] == 'F') return whole;
+            bool down = key[0] == 'D';      // down to the east: the lip runs from the top left to the bottom right
+            char place = key[1];
+            if (place == '0') return new List<Vector2[]> { down ? new[] { bl, br, tl } : new[] { bl, br, tr } };   // below the lip
+            if (place == '3') return new List<Vector2[]> { down ? new[] { tl, br, tr } : new[] { tl, bl, tr } };   // above the foot
+            return whole;
+        }
     }
 }

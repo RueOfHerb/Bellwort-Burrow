@@ -17,11 +17,12 @@ namespace BellwortBurrow.EditorTools
     /// - Glow: layers with "glow" in their name. Each slice with glow pixels also gets a "name_glow" sprite
     ///   with the same rect and pivot, meant for an unlit material so it shines through the night.
     /// - Tile Size above 0 cuts each slice into tiles named "name_00", "name_01"... (row by row)
-    ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player (the water, see
-    ///   <see cref="Colliders.IsBlockingGroundSlice"/>) get a physics shape traced from their pixels, so a Tilemap Collider
-    ///   follows the drawn water, half tiles included.
+    ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player get a physics shape whose
+    ///   edges are only level, upright or at 45 degrees: the water's from its quarters (<see cref="Colliders.QuarterShape"/>),
+    ///   so half tiles and slopes block as drawn, and the bank and cliff faces' from their keys (<see cref="Colliders.FaceShape"/>),
+    ///   so a 45 degree run blocks along a straight line.
     /// </summary>
-    [ScriptedImporter(2, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
+    [ScriptedImporter(3, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
     public class BellwortSheetImporter : ScriptedImporter
     {
         [Tooltip("Pixels per world unit. 16 means one 16 px tile is one unit.")]
@@ -107,7 +108,9 @@ namespace BellwortBurrow.EditorTools
                     int index = row * columns + column;
                     string name = Unique(count == 1 ? slice.Name : slice.Name + "_" + index.ToString(digits), usedNames);
                     var rect = new Rect(x, sheet.Height - y - tileSize, tileSize, tileSize);
-                    var sprite = MakeSprite(art, rect, new Vector2(0.5f, 0.5f), name, Colliders.IsBlockingGroundSlice(slice.Name));
+                    var sprite = MakeSprite(art, rect, new Vector2(0.5f, 0.5f), name);
+                    var shape = TileShape(sheet, slice.Name, x, y, index);
+                    if (shape != null) sprite.OverridePhysicsShape(shape);
                     ctx.AddObjectToAsset("sprite/" + name, sprite);
 
                     var tile = ScriptableObject.CreateInstance<Tile>();
@@ -119,10 +122,22 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        Sprite MakeSprite(Texture2D texture, Rect rect, Vector2 pivot, string name, bool physicsShape = false)
+        /// <summary>The physics shape for a tile that blocks the player, or null for one that doesn't.</summary>
+        List<Vector2[]> TileShape(AsepriteSheet sheet, string slice, int x, int y, int index)
         {
-            // A physics shape is traced from the sprite's pixels only where something collides with it.
-            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, physicsShape);
+            if (Colliders.IsBlockingGroundSlice(slice))
+                return Colliders.QuarterShape((px, py) => sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] > 127, tileSize);
+            if (Colliders.IsFaceSlice(slice))
+            {
+                var keys = GroundAutoTiles.FacePieceKeys();
+                return Colliders.FaceShape(index < keys.Count ? keys[index] : null, tileSize);
+            }
+            return null;
+        }
+
+        Sprite MakeSprite(Texture2D texture, Rect rect, Vector2 pivot, string name)
+        {
+            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, false);
             sprite.name = name;
             return sprite;
         }

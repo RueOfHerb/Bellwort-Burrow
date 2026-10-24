@@ -136,7 +136,7 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
-        public void ABankFace_CollidesAsWholeTiles_UnlessMadeOpen()
+        public void ABankFace_CollidesByItsShape_UnlessMadeOpen()
         {
             var grid = new GameObject("Grid", typeof(Grid));
             var layer = new GameObject("Banks", typeof(Tilemap));
@@ -146,7 +146,7 @@ namespace BellwortBurrow.Tests.Editor
             try
             {
                 map.SetTile(Vector3Int.zero, face);
-                Assert.AreEqual(Tile.ColliderType.Grid, map.GetColliderType(Vector3Int.zero));
+                Assert.AreEqual(Tile.ColliderType.Sprite, map.GetColliderType(Vector3Int.zero));
                 face.solid = false;
                 map.RefreshTile(Vector3Int.zero);
                 Assert.AreEqual(Tile.ColliderType.None, map.GetColliderType(Vector3Int.zero));
@@ -156,6 +156,67 @@ namespace BellwortBurrow.Tests.Editor
                 Object.DestroyImmediate(face);
                 Object.DestroyImmediate(grid);
             }
+        }
+
+        // ---- Tile shapes ---------------------------------------------------------------------------------------------
+
+        static void AssertCleanEdges(List<Vector2[]> shapes, int size)
+        {
+            foreach (var shape in shapes)
+                for (int i = 0; i < shape.Length; i++)
+                {
+                    Vector2 a = shape[i], b = shape[(i + 1) % shape.Length], d = b - a;
+                    Assert.IsTrue(d.x == 0 || d.y == 0 || Mathf.Abs(d.x) == Mathf.Abs(d.y), $"edge {a} to {b} isn't level, upright or 45 degrees");
+                    Assert.IsTrue(a.x >= 0 && a.x <= size && a.y >= 0 && a.y <= size, $"{a} is outside the tile");
+                }
+        }
+
+        static float Area(List<Vector2[]> shapes)
+        {
+            float area = 0;
+            foreach (var s in shapes)
+            {
+                float twice = 0;
+                for (int i = 0; i < s.Length; i++) { var a = s[i]; var b = s[(i + 1) % s.Length]; twice += a.x * b.y - b.x * a.y; }
+                area += Mathf.Abs(twice) / 2;
+            }
+            return area;
+        }
+
+        [Test]
+        public void AWaterTile_BlocksByQuarters_WithCleanEdges()
+        {
+            // full water, with a ragged edge and a stray pebble: still the whole tile
+            var full = Colliders.QuarterShape((x, y) => !(x == 0 && y < 3) && !(x == 9 && y == 9), 16);
+            AssertCleanEdges(full, 16);
+            Assert.AreEqual(256, Area(full));
+
+            // the bottom half drawn: the two lower quarters
+            var half = Colliders.QuarterShape((x, y) => y >= 8, 16);
+            AssertCleanEdges(half, 16);
+            Assert.AreEqual(128, Area(half));
+            Assert.IsTrue(half.SelectMany(s => s).All(v => v.y <= 8), "only the lower half blocks");
+
+            // a 45 degree slope drawn below the line from the top left to the bottom right
+            var slope = Colliders.QuarterShape((x, y) => x <= y, 16);
+            AssertCleanEdges(slope, 16);
+            Assert.AreEqual(128, Area(slope));
+
+            // nothing drawn, nothing blocks
+            Assert.AreEqual(0, Colliders.QuarterShape((x, y) => false, 16).Count);
+        }
+
+        [Test]
+        public void EveryFacePiece_BlocksWithCleanEdges_AndASlopeAlongItsLip()
+        {
+            foreach (var key in GroundAutoTiles.FacePieceKeys())
+                AssertCleanEdges(Colliders.FaceShape(key, 16), 16);
+            Assert.AreEqual(256, Area(Colliders.FaceShape("FTcc", 16)), "a flat face blocks its whole tile");
+            Assert.AreEqual(128, Area(Colliders.FaceShape("D0cc", 16)), "the top of a slope blocks below its lip");
+            Assert.AreEqual(128, Area(Colliders.FaceShape("U3cc", 16)), "the bottom of a slope blocks above its foot");
+            Assert.AreEqual(256, Area(Colliders.FaceShape("D1cc", 16)));
+            Assert.IsTrue(Colliders.IsFaceSlice("bank_face_set") && Colliders.IsFaceSlice("cliff_face_set"));
+            Assert.IsFalse(Colliders.IsFaceSlice("water_set"));
         }
     }
 }
