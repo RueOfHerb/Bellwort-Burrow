@@ -15,10 +15,10 @@ namespace BellwortBurrow.EditorTools
     ///   The rails don't get prefabs of their own: they go on the bridge, cut into strips that sort by where they stand.
     /// - Its shape is known from how it was drawn (<see cref="Shapes"/>): a <see cref="DiagonalDeck"/> on the 45 degree
     ///   from northwest to southeast, flat over the water and ramping down to the banks at both ends, or a
-    ///   <see cref="StraightDeck"/> straight across, west to east. Setup gives the prefab a trigger over the walkway
-    ///   between its sides (whoever is on it walks over the water), a solid near side from the deck's edge down to the
-    ///   ground (no stepping off it, and no walking onto its face from outside), a solid line along the far rail, and
-    ///   open ends.
+    ///   <see cref="StraightDeck"/> straight across, west to east, level or arching over the water. Setup gives the
+    ///   prefab a trigger over the walkway between its sides (whoever is on it walks over the water), a solid near side
+    ///   from the deck's edge down to the ground (no stepping off it, and no walking onto its face from outside), a solid
+    ///   line along the far rail, and open ends.
     /// Plain C# apart from <see cref="Dress"/>, so the shapes can be tested without the art package.
     /// </summary>
     public static class Bridges
@@ -120,8 +120,11 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// A deck straight across, west to east, as drawn: from Left to Right, its near (south) rail standing on Near and
-        /// its far (north) rail on Far, in pixels from the feet (y up), and its face and footings reaching down to Bottom.
-        /// The ends are open, where the deck sits on the banks.
+        /// its far (north) rail on Far at the ends, in pixels from the feet (y up), and its face and footings reaching down
+        /// to Bottom. It can arch over the water: along it the deck stands <see cref="Height"/> pixels higher than at the
+        /// ends, nothing at the ends and Rise at the middle, rising and falling along (1 - cos) so it leaves and meets the
+        /// banks gently. Everything on it (the walkway, the sides, where the rails stand) follows the rise. The ends are
+        /// open, where the deck sits on the banks.
         /// </summary>
         public sealed class StraightDeck : IBridgeShape
         {
@@ -131,23 +134,45 @@ namespace BellwortBurrow.EditorTools
             public const float FarInsetPixels = 2f;
             /// <summary>How far inside the side lines the walkway stops, in pixels.</summary>
             public const float GapPixels = 1f;
+            /// <summary>How far apart the points along a curved line are, in pixels.</summary>
+            public const float StepPixels = 4f;
 
-            public readonly float Left, Right, Near, Far, Bottom;
+            public readonly float Left, Right, Near, Far, Bottom, Rise;
 
-            public StraightDeck(float left, float right, float near, float far, float bottom)
+            public StraightDeck(float left, float right, float near, float far, float bottom, float rise = 0f)
             {
-                Left = left; Right = right; Near = near; Far = far; Bottom = bottom;
+                Left = left; Right = right; Near = near; Far = far; Bottom = bottom; Rise = rise;
             }
 
-            static Vector2[] Box(float left, float right, float low, float high) =>
-                new[] { new Vector2(left, high), new Vector2(right, high), new Vector2(right, low), new Vector2(left, low) };
+            /// <summary>How much higher the deck stands at x than at its ends, in pixels.</summary>
+            public float Height(float x)
+            {
+                float u = Mathf.Clamp01((x - Left) / (Right - Left));
+                return Rise * (1f - Mathf.Cos(2f * Mathf.PI * u)) / 2f;
+            }
 
-            public Vector2[] Deck() => Box(Left, Right, Near, Far);
-            public Vector2[] Walkway() => Box(Left, Right, Near + NearInsetPixels + GapPixels, Far - FarInsetPixels - GapPixels);
-            public Vector2[] NearSide() => Box(Left, Right, Bottom, Near + NearInsetPixels);
-            public Vector2[] FarSide() => new[] { new Vector2(Left, Far - FarInsetPixels), new Vector2(Right, Far - FarInsetPixels) };
-            public Vector2[] NearFoot() => new[] { new Vector2(Left, Near), new Vector2(Right, Near) };
-            public Vector2[] FarFoot() => new[] { new Vector2(Left, Far), new Vector2(Right, Far) };
+            /// <summary>The x values along the deck, end to end, StepPixels apart (just the ends when it's level).</summary>
+            IEnumerable<float> Along()
+            {
+                if (Rise == 0f) { yield return Left; yield return Right; yield break; }
+                int n = Mathf.Max(1, Mathf.CeilToInt((Right - Left) / StepPixels));
+                for (int i = 0; i <= n; i++) yield return Mathf.Lerp(Left, Right, i / (float)n);
+            }
+
+            /// <summary>A line along the deck, offset pixels over the line the near rail stands on at the ends.</summary>
+            Vector2[] Line(float over) => Along().Select(x => new Vector2(x, over + Height(x))).ToArray();
+
+            /// <summary>A band between two lines along the deck: the upper line left to right, then the lower back.</summary>
+            static Vector2[] Band(Vector2[] upper, Vector2[] lower) => upper.Concat(lower.Reverse()).ToArray();
+
+            static Vector2[] Level(Vector2[] line, float y) => line.Select(p => new Vector2(p.x, y)).ToArray();
+
+            public Vector2[] Deck() => Band(Line(Far), Line(Near));
+            public Vector2[] Walkway() => Band(Line(Far - FarInsetPixels - GapPixels), Line(Near + NearInsetPixels + GapPixels));
+            public Vector2[] NearSide() { var top = Line(Near + NearInsetPixels); return Band(top, Level(top, Bottom)); }
+            public Vector2[] FarSide() => Line(Far - FarInsetPixels);
+            public Vector2[] NearFoot() => Line(Near);
+            public Vector2[] FarFoot() => Line(Far);
         }
 
         /// <summary>The bridges setup knows how to put together, by slice name, in the art's own pixels.</summary>
@@ -155,9 +180,9 @@ namespace BellwortBurrow.EditorTools
         {
             // tmp/art-2.31 trestle bridge/trestle.py: middle 1 px left of and 61 px above its feet, K 48, S 9, SPAN 30, Z 13.
             ["burrow_bridge_trestle"] = new DiagonalDeck(new Vector2(-1f, 61f), 48f, 9f, 30f, 13f),
-            // tmp/art-2.36 straight bridge/straight.py: the deck 192 px long, the far rail standing 54.5 px over the feet
-            // and the near rail 23.5 (its deck rows 0 and 31), the footings' foot 10.
-            ["burrow_bridge_straight"] = new StraightDeck(-96f, 96f, 23.5f, 54.5f, 10f),
+            // tmp/art-2.37 arched bridge/arch.py: the deck 192 px long, at its ends the far rail standing 41.5 px over the
+            // feet and the near rail 10.5 (on the grass, rows 13 and 44), the face's foot 10, arching 20 px up at the middle.
+            ["burrow_bridge_straight"] = new StraightDeck(-96f, 96f, 10.5f, 41.5f, 10f, 20f),
         };
 
         /// <summary>How far in from the near edge a player's feet stop, in steps across (about 3 px).</summary>
