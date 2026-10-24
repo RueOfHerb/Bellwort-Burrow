@@ -9,20 +9,20 @@ namespace BellwortBurrow.Tests.EditMode
         const float Back = 10f, Top = 41f, After = 2f;
 
         [Test]
-        public void JustNorthOfIt_ThePillarIsSeeThrough()
+        public void JustNorthOfIt_TheBeamIsSeeThrough()
         {
             Assert.AreEqual(SeeThrough.Look.SeeThrough, SeeThrough.LookFor(11.5f, Back, Top, After), "a tile and a half in");
         }
 
         [Test]
-        public void PastTheTiles_ThePillarIsGone_AllTheWayUpToItsTop()
+        public void PastTheTiles_TheBeamIsGone_AllTheWayUpToItsTop()
         {
             Assert.AreEqual(SeeThrough.Look.Gone, SeeThrough.LookFor(12.5f, Back, Top, After), "past two tiles");
             Assert.AreEqual(SeeThrough.Look.Gone, SeeThrough.LookFor(40f, Back, Top, After), "just under its top");
         }
 
         [Test]
-        public void SouthOfItOrAboveItsTop_ThePillarIsSolid()
+        public void SouthOfItOrAboveItsTop_TheBeamIsSolid()
         {
             Assert.AreEqual(SeeThrough.Look.Solid, SeeThrough.LookFor(9f, Back, Top, After), "in front of the support");
             Assert.AreEqual(SeeThrough.Look.Solid, SeeThrough.LookFor(42f, Back, Top, After), "past its top");
