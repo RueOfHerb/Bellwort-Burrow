@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -15,15 +16,18 @@ namespace BellwortBurrow.Tiles
     ///   lip crosses its top cell from corner to corner and the foot its bottom cell. Paint a staircase of these to
     ///   turn a bank 45 degrees.
     /// - Where a 45 degree run meets a flat run in an inner corner, the flat side gets a crease.
-    /// - An end against open ground is jagged.
+    /// - An end against open ground is jagged; an end against steps cut into it (<see cref="StepsTile"/>) gets a border.
     /// Every look has several variations, picked by where the cell sits, so a long face never repeats.
     /// The pieces are made by setup from a face set on a ground sheet (see GroundAutoTiles.FacePieceKeys).
     /// </summary>
     [CreateAssetMenu(menuName = "Bellwort Burrow/Face Tile")]
     public class FaceTile : TileBase
     {
-        /// <summary>How many rows a flat face is painted; a 45 degree column is one more.</summary>
+        /// <summary>How many rows a flat face is painted by default; a 45 degree column is one more.</summary>
         public const int Rows = 3;
+
+        [Tooltip("How many rows a flat run is painted (a 45 degree column is one more): 3 for a bank or cliff, 2 for a steep slope.")]
+        [Min(1)] public int rows = Rows;
 
         /// <summary>
         /// The key of each sprite in <see cref="sprites"/>: shape (F flat, D 45 degrees down to the east, U up), row (T
@@ -48,25 +52,32 @@ namespace BellwortBurrow.Tiles
         public readonly struct Run
         {
             public readonly int top, bottom;
-            public Run(int top, int bottom) { this.top = top; this.bottom = bottom; }
+            readonly int rows;
+            public Run(int top, int bottom, int rows = Rows) { this.top = top; this.bottom = bottom; this.rows = rows; }
             public int Height => top - bottom + 1;
-            public bool Diagonal => Height == Rows + 1;
+            public bool Diagonal => Height == rows + 1;
         }
 
-        bool IsFace(ITilemap map, int x, int y) => map.GetTile(new Vector3Int(x, y, 0)) == this;
+        bool IsFace(Func<Vector3Int, TileBase> map, int x, int y) => map(new Vector3Int(x, y, 0)) == this;
+
+        static Func<Vector3Int, TileBase> Reader(ITilemap map) => p => map.GetTile(p);
 
         /// <summary>The run of face through (x, y), or null if that cell isn't this face.</summary>
-        public Run? RunAt(ITilemap map, int x, int y)
+        public Run? RunAt(ITilemap map, int x, int y) => RunAt(Reader(map), x, y);
+
+        public Run? RunAt(Func<Vector3Int, TileBase> map, int x, int y)
         {
             if (!IsFace(map, x, y)) return null;
             int top = y, bottom = y;
             while (IsFace(map, x, top + 1)) top++;
             while (IsFace(map, x, bottom - 1)) bottom--;
-            return new Run(top, bottom);
+            return new Run(top, bottom, rows);
         }
 
         /// <summary>The run in column x beside a run: the first face cell from a row above its top to a row below its foot.</summary>
-        public Run? NeighbourRun(ITilemap map, int x, Run run)
+        public Run? NeighbourRun(ITilemap map, int x, Run run) => NeighbourRun(Reader(map), x, run);
+
+        public Run? NeighbourRun(Func<Vector3Int, TileBase> map, int x, Run run)
         {
             for (int y = run.top + 1; y >= run.bottom - 1; y--)
                 if (IsFace(map, x, y)) return RunAt(map, x, y);
@@ -77,7 +88,10 @@ namespace BellwortBurrow.Tiles
         /// A cell's piece key (without its variation), and the cell its variation is picked by: its own, or for a 45
         /// degree column, the column's top, so the four cells of the column agree.
         /// </summary>
-        public (string key, Vector2Int cell) KeyAt(ITilemap map, Vector3Int position)
+        public (string key, Vector2Int cell) KeyAt(ITilemap map, Vector3Int position) => KeyAt(Reader(map), position);
+
+        /// <summary>The same, reading the cells through <paramref name="map"/> (a Tilemap's GetTile at run time).</summary>
+        public (string key, Vector2Int cell) KeyAt(Func<Vector3Int, TileBase> map, Vector3Int position)
         {
             int x = position.x, y = position.y;
             var run = RunAt(map, x, y);
@@ -105,7 +119,9 @@ namespace BellwortBurrow.Tiles
             }
             bool top = y == r.top, bottom = y == r.bottom;
             char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
-            return ($"F{row}{Side(west, r)}{Side(east, r)}", new Vector2Int(x, y));
+            char westSide = west == null && map(new Vector3Int(x - 1, y, 0)) is StepsTile ? 'b' : Side(west, r);
+            char eastSide = east == null && map(new Vector3Int(x + 1, y, 0)) is StepsTile ? 'b' : Side(east, r);
+            return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, y));
         }
 
         // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
@@ -183,7 +199,7 @@ namespace BellwortBurrow.Tiles
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
             for (int dx = -2; dx <= 2; dx++)
-                for (int dy = -Rows - 2; dy <= Rows + 2; dy++)
+                for (int dy = -rows - 2; dy <= rows + 2; dy++)
                 {
                     var p = position + new Vector3Int(dx, dy, 0);
                     if ((dx == 0 && dy == 0) || tilemap.GetTile(p) != null) tilemap.RefreshTile(p);

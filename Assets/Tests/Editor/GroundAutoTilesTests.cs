@@ -253,8 +253,10 @@ namespace BellwortBurrow.Tests.Editor
                 var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" }.ToList();
                 if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
                 if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
-                if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face" });
+                if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face", "Mossy Cliff Face", "Root Bank Face",
+                    "Grass Slope", "Steep Grass Slope", "Stone Steps", "Log Steps" });
                 if (ground.Banks && ground.Water) kinds.Add("Waterfall");
+                if (ground.Banks) kinds.Add("Ramp");
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))
                     Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");

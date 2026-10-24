@@ -1,0 +1,144 @@
+using System.Collections.Generic;
+using BellwortBurrow.EditorTools;
+using BellwortBurrow.Tiles;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.Tilemaps;
+
+namespace BellwortBurrow.Tests.Editor
+{
+    public class SlopeAndStepsTests
+    {
+        GameObject grid;
+        Tilemap tilemap;
+        Texture2D texture;
+        readonly List<Object> made = new List<Object>();
+
+        [SetUp]
+        public void SetUp()
+        {
+            grid = new GameObject("Grid", typeof(Grid));
+            var layer = new GameObject("Banks", typeof(Tilemap), typeof(TilemapRenderer));
+            layer.transform.SetParent(grid.transform);
+            tilemap = layer.GetComponent<Tilemap>();
+            texture = new Texture2D(16, 16);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (var thing in made) if (thing != null) Object.DestroyImmediate(thing);
+            made.Clear();
+            Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(grid);
+        }
+
+        Sprite Named(string name)
+        {
+            var sprite = Sprite.Create(texture, new Rect(0, 0, 16, 16), Vector2.zero, 16);
+            sprite.name = name;
+            made.Add(sprite);
+            return sprite;
+        }
+
+        T Face<T>(int rows) where T : FaceTile
+        {
+            var face = ScriptableObject.CreateInstance<T>();
+            made.Add(face);
+            var keys = GroundAutoTiles.FacePieceKeys();
+            var sprites = new Sprite[keys.Count];
+            for (int i = 0; i < keys.Count; i++) sprites[i] = Named(keys[i] + " #" + i);
+            face.keys = keys.ToArray();
+            face.sprites = sprites;
+            face.rows = rows;
+            return face;
+        }
+
+        StepsTile Steps()
+        {
+            var steps = ScriptableObject.CreateInstance<StepsTile>();
+            made.Add(steps);
+            steps.sprites = new Sprite[12];
+            foreach (char row in StepsTile.PieceRows)
+                foreach (char side in StepsTile.PieceSides)
+                    steps.sprites[StepsTile.IndexOf(row, side)] = Named($"{row}{side}");
+            return steps;
+        }
+
+        void Column(TileBase tile, int x, int top, int height)
+        {
+            for (int y = top; y > top - height; y--) tilemap.SetTile(new Vector3Int(x, y, 0), tile);
+        }
+
+        string KeyOf(int x, int y) => tilemap.GetSprite(new Vector3Int(x, y, 0)).name.Split(' ')[0];
+
+        [Test]
+        public void ASteepSlope_IsTwoRowsWithALipAndAFoot()
+        {
+            var slope = Face<SlopeTile>(2);
+            for (int x = 0; x < 3; x++) Column(slope, x, 0, 2);
+            Assert.AreEqual("FToc", KeyOf(0, 0));
+            Assert.AreEqual("FBcc", KeyOf(1, -1));
+        }
+
+        [Test]
+        public void ASteepSlope_TurnsFortyFiveDegreesInColumnsOfThree()
+        {
+            var slope = Face<SlopeTile>(2);
+            Column(slope, 0, 0, 2);       // flat
+            Column(slope, 1, 0, 3);       // 45 degree column, down to the east
+            Column(slope, 2, -1, 3);
+            Column(slope, 3, -2, 2);      // flat again, a row lower
+            Assert.AreEqual('D', KeyOf(1, 0)[0], "a column one taller than the slope is a 45 degree run");
+            Assert.AreEqual("D0", KeyOf(1, 0).Substring(0, 2));
+            Assert.AreEqual("D2", KeyOf(1, -2).Substring(0, 2));
+        }
+
+        [Test]
+        public void ASlope_SaysWhichWayIsUphill_ScaledByHowSteep()
+        {
+            var slope = Face<SlopeTile>(3);
+            slope.steepness = 0.6f;
+            for (int x = 0; x < 3; x++) Column(slope, x, 0, 3);
+            Vector2 up = slope.Uphill(tilemap, new Vector3Int(1, -1, 0));
+            Assert.AreEqual(0f, up.x, 1e-5f);
+            Assert.AreEqual(0.6f, up.y, 1e-5f);
+            Assert.AreEqual(Vector2.zero, slope.Uphill(tilemap, new Vector3Int(5, 5, 0)), "not a slope cell");
+            Assert.AreEqual(0.6f, slope.UphillFor("D1cc").magnitude, 1e-5f);
+            Assert.Less(slope.UphillFor("D1cc").x, 0f, "a run down to the east rises to the north-west");
+            Assert.Greater(slope.UphillFor("U1cc").x, 0f, "a run up to the east rises to the north-east");
+        }
+
+        [Test]
+        public void ASlopeDoesNotBlock_AFaceDoes()
+        {
+            var slope = Face<SlopeTile>(3);
+            Assert.IsFalse(slope.solid);
+            Assert.IsTrue(Face<FaceTile>(3).solid);
+        }
+
+        [TestCase(false, true, false, true, 'T', 'l')]
+        [TestCase(true, true, true, true, 'M', 'm')]
+        [TestCase(true, false, true, false, 'B', 'r')]
+        [TestCase(false, true, false, false, 'T', 's')]
+        public void StepsPickTheirPiece_ByWhatIsAroundThem(bool n, bool s, bool w, bool e, char row, char side)
+        {
+            Assert.AreEqual((row, side), StepsTile.PieceFor(n, s, w, e));
+        }
+
+        [Test]
+        public void StepsCutIntoAFace_BorderItAndGoUphill()
+        {
+            var face = Face<FaceTile>(3);
+            var steps = Steps();
+            Column(face, 0, 0, 3);
+            Column(steps, 1, 0, 3); Column(steps, 2, 0, 3);
+            Column(face, 3, 0, 3);
+            Assert.AreEqual("FTob", KeyOf(0, 0), "the face west of the steps gets a border on its east");
+            Assert.AreEqual("FBbo", KeyOf(3, -2), "and the face east of them on its west");
+            Assert.AreEqual("Tl", tilemap.GetSprite(new Vector3Int(1, 0, 0)).name);
+            Assert.AreEqual("Br", tilemap.GetSprite(new Vector3Int(2, -2, 0)).name);
+            Assert.AreEqual(Vector2.up, steps.Uphill(tilemap, new Vector3Int(1, -1, 0)));
+        }
+    }
+}

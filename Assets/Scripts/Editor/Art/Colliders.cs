@@ -138,9 +138,9 @@ namespace BellwortBurrow.EditorTools
         public static bool IsBlockingGroundSlice(string sliceName) =>
             !string.IsNullOrEmpty(sliceName) && sliceName.StartsWith("water_", StringComparison.Ordinal);
 
-        /// <summary>A raised ground's face set (bank_face_set, cliff_face_set), whose tiles block by <see cref="FaceShape"/>.</summary>
+        /// <summary>A raised ground's face set (bank_face_set, cliff_face_set and the rest of GroundAutoTiles.Faces), whose tiles block by <see cref="FaceShape"/>.</summary>
         public static bool IsFaceSlice(string sliceName) =>
-            sliceName == "bank_face_set" || sliceName == "cliff_face_set";
+            Array.Exists(GroundAutoTiles.Faces, f => f.slice == sliceName);
 
         // ---- Tile shapes: every edge level, upright or at 45 degrees -------------------------------------------------
 
