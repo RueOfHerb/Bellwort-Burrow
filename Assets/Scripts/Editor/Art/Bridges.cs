@@ -13,10 +13,12 @@ namespace BellwortBurrow.EditorTools
     /// - A bridge's sheet has three slices the same size with the same feet: the bridge itself (deck, legs, the shade
     ///   under it), &lt;bridge&gt;_near_rail and &lt;bridge&gt;_far_rail (each rail with its corner posts and lanterns).
     ///   The rails don't get prefabs of their own: they go on the bridge, cut into strips that sort by where they stand.
-    /// - Its shape is known from how it was drawn (<see cref="Shapes"/>): a deck on the 45 degree from northwest to
-    ///   southeast, flat over the water and ramping down to the banks at both ends. Setup gives the prefab a trigger over
-    ///   the deck (whoever is on it walks over the water), a solid near side from the deck's edge down to the ground (no
-    ///   stepping off it, and no walking onto its face from outside), a solid line along the far rail, and open ends.
+    /// - Its shape is known from how it was drawn (<see cref="Shapes"/>): a <see cref="DiagonalDeck"/> on the 45 degree
+    ///   from northwest to southeast, flat over the water and ramping down to the banks at both ends, or a
+    ///   <see cref="StraightDeck"/> straight across, west to east. Setup gives the prefab a trigger over the walkway
+    ///   between its sides (whoever is on it walks over the water), a solid near side from the deck's edge down to the
+    ///   ground (no stepping off it, and no walking onto its face from outside), a solid line along the far rail, and
+    ///   open ends.
     /// Plain C# apart from <see cref="Dress"/>, so the shapes can be tested without the art package.
     /// </summary>
     public static class Bridges
@@ -24,13 +26,30 @@ namespace BellwortBurrow.EditorTools
         public const string NearRailSuffix = "_near_rail";
         public const string FarRailSuffix = "_far_rail";
 
+        /// <summary>A bridge's shape as drawn, in pixels from its feet, y up.</summary>
+        public interface IBridgeShape
+        {
+            /// <summary>The whole deck as seen from above.</summary>
+            Vector2[] Deck();
+            /// <summary>Where a walker counts as on the bridge: inside both side lines, end to end (the trigger).</summary>
+            Vector2[] Walkway();
+            /// <summary>The near side, solid: from just inside the deck's near edge down to the ground under it.</summary>
+            Vector2[] NearSide();
+            /// <summary>The far side, a solid line just inside the deck's far edge.</summary>
+            Vector2[] FarSide();
+            /// <summary>Where the near rail stands on the deck, end to end.</summary>
+            Vector2[] NearFoot();
+            /// <summary>Where the far rail stands on the deck, end to end.</summary>
+            Vector2[] FarFoot();
+        }
+
         /// <summary>
         /// A deck on the 45 degree, northwest to southeast, as drawn: along it k runs northwest (-) to southeast (+), across
         /// it s runs southwest (-) to northeast (+), one pixel each way per step of either, and a point on the ground sits
         /// at Middle + (k + s, s - k) pixels from the feet (y up). The deck stands Height pixels over the ground for
         /// |k| up to Span, and ramps down to the ground at |k| = Length.
         /// </summary>
-        public sealed class DiagonalDeck
+        public sealed class DiagonalDeck : IBridgeShape
         {
             public readonly Vector2 Middle;
             public readonly float Length, HalfWidth, Span, Height;
@@ -91,13 +110,54 @@ namespace BellwortBurrow.EditorTools
 
             /// <summary>Where a rail stands on the deck, s across (near -, far +), end to end.</summary>
             public Vector2[] RailFoot(float s) => Knots(Length).Select(k => OnDeck(k, s)).ToArray();
+
+            public Vector2[] Walkway() => Walkway(NearInset, FarInset, WalkwayGap);
+            public Vector2[] NearSide() => NearSide(NearInset, EndGap);
+            public Vector2[] FarSide() => FarSide(FarInset, EndGap);
+            public Vector2[] NearFoot() => RailFoot(-HalfWidth + RailInset);
+            public Vector2[] FarFoot() => RailFoot(HalfWidth - RailInset);
+        }
+
+        /// <summary>
+        /// A deck straight across, west to east, as drawn: from Left to Right, its near (south) rail standing on Near and
+        /// its far (north) rail on Far, in pixels from the feet (y up), and its face and footings reaching down to Bottom.
+        /// The ends are open, where the deck sits on the banks.
+        /// </summary>
+        public sealed class StraightDeck : IBridgeShape
+        {
+            /// <summary>How far in from the near rail a player's feet stop, in pixels.</summary>
+            public const float NearInsetPixels = 3f;
+            /// <summary>How far in from the far rail a player's feet stop, in pixels.</summary>
+            public const float FarInsetPixels = 2f;
+            /// <summary>How far inside the side lines the walkway stops, in pixels.</summary>
+            public const float GapPixels = 1f;
+
+            public readonly float Left, Right, Near, Far, Bottom;
+
+            public StraightDeck(float left, float right, float near, float far, float bottom)
+            {
+                Left = left; Right = right; Near = near; Far = far; Bottom = bottom;
+            }
+
+            static Vector2[] Box(float left, float right, float low, float high) =>
+                new[] { new Vector2(left, high), new Vector2(right, high), new Vector2(right, low), new Vector2(left, low) };
+
+            public Vector2[] Deck() => Box(Left, Right, Near, Far);
+            public Vector2[] Walkway() => Box(Left, Right, Near + NearInsetPixels + GapPixels, Far - FarInsetPixels - GapPixels);
+            public Vector2[] NearSide() => Box(Left, Right, Bottom, Near + NearInsetPixels);
+            public Vector2[] FarSide() => new[] { new Vector2(Left, Far - FarInsetPixels), new Vector2(Right, Far - FarInsetPixels) };
+            public Vector2[] NearFoot() => new[] { new Vector2(Left, Near), new Vector2(Right, Near) };
+            public Vector2[] FarFoot() => new[] { new Vector2(Left, Far), new Vector2(Right, Far) };
         }
 
         /// <summary>The bridges setup knows how to put together, by slice name, in the art's own pixels.</summary>
-        public static readonly IReadOnlyDictionary<string, DiagonalDeck> Shapes = new Dictionary<string, DiagonalDeck>
+        public static readonly IReadOnlyDictionary<string, IBridgeShape> Shapes = new Dictionary<string, IBridgeShape>
         {
             // tmp/art-2.31 trestle bridge/trestle.py: middle 1 px left of and 61 px above its feet, K 48, S 9, SPAN 30, Z 13.
             ["burrow_bridge_trestle"] = new DiagonalDeck(new Vector2(-1f, 61f), 48f, 9f, 30f, 13f),
+            // tmp/art-2.36 straight bridge/straight.py: the deck 192 px long, the far rail standing 54.5 px over the feet
+            // and the near rail 23.5 (its deck rows 0 and 31), the footings' foot 10.
+            ["burrow_bridge_straight"] = new StraightDeck(-96f, 96f, 23.5f, 54.5f, 10f),
         };
 
         /// <summary>How far in from the near edge a player's feet stop, in steps across (about 3 px).</summary>
@@ -172,8 +232,8 @@ namespace BellwortBurrow.EditorTools
             bridge.stripWidth = StripWidth;
             bridge.litMaterial = lit;
             bridge.unlitMaterial = unlit;
-            bridge.nearRail = MakeRail(name + NearRailSuffix, shape.RailFoot(-shape.HalfWidth + RailInset), sprites, sheet, slices);
-            bridge.farRail = MakeRail(name + FarRailSuffix, shape.RailFoot(shape.HalfWidth - RailInset), sprites, sheet, slices);
+            bridge.nearRail = MakeRail(name + NearRailSuffix, shape.NearFoot(), sprites, sheet, slices);
+            bridge.farRail = MakeRail(name + FarRailSuffix, shape.FarFoot(), sprites, sheet, slices);
 
             // The lanterns on the rails light the deck, from the bridge (the rails share its feet).
             if (sheet != null)
@@ -188,14 +248,14 @@ namespace BellwortBurrow.EditorTools
             var deck = root.AddComponent<PolygonCollider2D>();
             deck.isTrigger = true;
             deck.pathCount = 1;
-            deck.SetPath(0, Units(shape.Walkway(NearInset, FarInset, WalkwayGap)));
+            deck.SetPath(0, Units(shape.Walkway()));
 
             var near = root.AddComponent<PolygonCollider2D>();
             near.pathCount = 1;
-            near.SetPath(0, Units(shape.NearSide(NearInset, EndGap)));
+            near.SetPath(0, Units(shape.NearSide()));
 
             var far = root.AddComponent<EdgeCollider2D>();
-            far.points = Units(shape.FarSide(FarInset, EndGap));
+            far.points = Units(shape.FarSide());
 
             SheetSlice? footSlice = slices.TryGetValue(name, out var found) ? found : (SheetSlice?)null;
             int tiles = Footprints.TilesWide(name, false, sheet?.Art, sheet?.Width ?? 0, sheet?.Height ?? 0, footSlice);

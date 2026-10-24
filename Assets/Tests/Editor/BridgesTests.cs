@@ -8,7 +8,8 @@ namespace BellwortBurrow.Tests.Editor
 {
     public class BridgesTests
     {
-        static Bridges.DiagonalDeck Trestle => Bridges.Shapes["burrow_bridge_trestle"];
+        static Bridges.DiagonalDeck Trestle => (Bridges.DiagonalDeck)Bridges.Shapes["burrow_bridge_trestle"];
+        static Bridges.StraightDeck Straight => (Bridges.StraightDeck)Bridges.Shapes["burrow_bridge_straight"];
 
         [Test]
         public void TheTrestleIsABridge_ItsRailsGoOnIt()
@@ -118,6 +119,46 @@ namespace BellwortBurrow.Tests.Editor
             var slice = new SheetSlice { Name = "rail", X = 0, Y = 0, Width = w, Height = h };
             CollectionAssert.AreEqual(new[] { 0, 4, 8 }, Bridges.Strips(art, glow, w, h, slice, 4));
             CollectionAssert.AreEqual(new[] { 0, 8 }, Bridges.Strips(art, null, w, h, slice, 4));
+        }
+
+        [Test]
+        public void TheStraightBridgeIsABridge_ItsRailsGoOnIt()
+        {
+            Assert.IsTrue(Bridges.IsBridge("burrow_bridge_straight"));
+            Assert.IsTrue(Bridges.IsRail("burrow_bridge_straight_near_rail", out var near));
+            Assert.AreEqual("burrow_bridge_straight", near);
+            Assert.IsTrue(Bridges.IsRail("burrow_bridge_straight_far_rail", out var far));
+            Assert.AreEqual("burrow_bridge_straight", far);
+        }
+
+        [Test]
+        public void TheStraightBridge_FitsItsSlice_KeepsThePlayerOnTheDeck_AndSortsTheRails()
+        {
+            // The slice is 196 by 79 with its feet at 98, 79: x from -98 to 98, y from 0 to 79 around the feet.
+            var shape = Straight;
+            foreach (var p in shape.Deck().Concat(shape.NearSide()).Concat(shape.FarSide()))
+            {
+                Assert.That(p.x, Is.InRange(-98f, 98f), $"{p} sits outside the slice");
+                Assert.That(p.y, Is.InRange(0f, 79f), $"{p} sits outside the slice");
+            }
+            var deck = shape.Deck();
+            var walkway = shape.Walkway();
+            float walkLow = walkway.Min(p => p.y), walkHigh = walkway.Max(p => p.y);
+            float nearTop = shape.NearSide().Max(p => p.y), farLine = shape.FarSide()[0].y;
+            // The walkway sits inside the deck and inside both side lines, so leaning on a rail from outside never counts.
+            Assert.Greater(walkLow, nearTop);
+            Assert.Less(walkHigh, farLine);
+            Assert.GreaterOrEqual(walkLow, deck.Min(p => p.y));
+            Assert.LessOrEqual(walkHigh, deck.Max(p => p.y));
+            // Room for the player's feet between the sides: their capsule is 6 px tall.
+            Assert.Greater(farLine - nearTop - 6f, 12f, "a band for the feet at least 12 px deep");
+            // On the deck the player is behind the near rail (their feet stop above where it stands) and in front of the
+            // far rail (their head, 6 px over their feet, stops below where it stands).
+            Assert.Greater(nearTop, shape.NearFoot()[0].y);
+            Assert.Less(farLine - 6f, shape.FarFoot()[0].y);
+            // Both ends are open: the sides run end to end, and nothing closes the ends.
+            Assert.AreEqual(shape.Left, shape.FarSide()[0].x);
+            Assert.AreEqual(shape.Right, shape.FarSide()[1].x);
         }
 
         static bool Inside(Vector2[] polygon, Vector2 p)
