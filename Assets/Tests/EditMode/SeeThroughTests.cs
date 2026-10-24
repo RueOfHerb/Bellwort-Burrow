@@ -17,6 +17,13 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void JustBehindIt_ItWaitsTheTilesBeforeFading()
+        {
+            Assert.IsFalse(SeeThrough.IsBehind(new Vector2(10f, 11.5f), 10f, Beam, 0.75f, 2f), "a tile and a half in: still solid");
+            Assert.IsTrue(SeeThrough.IsBehind(new Vector2(10f, 12.5f), 10f, Beam, 0.75f, 2f), "past two tiles: it fades");
+        }
+
+        [Test]
         public void InFront_ToTheSide_OrAboveIt_LeavesItSolid()
         {
             Assert.IsFalse(SeeThrough.IsBehind(new Vector2(10f, 9f), 10f, Beam, 0.75f), "in front of the support");
