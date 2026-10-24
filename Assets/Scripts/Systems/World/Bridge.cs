@@ -19,11 +19,13 @@ namespace BellwortBurrow.Systems.World
     ///   bridge is enabled and never saved; the rails' pictures are slices of their own on the bridge's sheet.
     /// - A deck that rises (an arch, or ramps at the ends) carries whoever is on it up and down with it: as a walker
     ///   moves along the deck, it moves up the screen by however much higher the deck stands where it got to
-    ///   (<see cref="incline"/>), so it climbs and comes down with the deck instead of walking flat across it.
+    ///   (<see cref="incline"/>), so it climbs and comes down with the deck instead of walking flat across it. It also
+    ///   counts as an incline (<see cref="IIncline"/>): walking up the arch is a little slower and down it a little
+    ///   quicker, by how steep the deck is there.
     /// </summary>
     [ExecuteAlways]
     [DisallowMultipleComponent]
-    public sealed class Bridge : MonoBehaviour
+    public sealed class Bridge : MonoBehaviour, IIncline
     {
         /// <summary>Over the ground tilemaps (down to Tufts and Crop Circles at -10), under everything that stands (0).</summary>
         public const int DeckSortingOrder = -9;
@@ -73,12 +75,14 @@ namespace BellwortBurrow.Systems.World
 
         void OnEnable()
         {
+            InclineWalker.Register(this);
             BuildRails();
             if (Application.isPlaying) FindGround();
         }
 
         void OnDisable()
         {
+            InclineWalker.Unregister(this);
             foreach (var walker in new List<Collider2D>(walkers)) Step(walker, false);
             ClearRails();
         }
@@ -166,6 +170,24 @@ namespace BellwortBurrow.Systems.World
             Vector2 local = position - (Vector2)transform.position;
             float h = lifted ?? HeightAt(incline, Vector2.Dot(local, axis));
             return HeightAt(incline, Vector2.Dot(local - Vector2.up * h, axis));
+        }
+
+        /// <summary>
+        /// On the deck, uphill is along the deck toward where it stands higher, as long as the rise per unit along it
+        /// (1 for 45 degrees). A level deck, or a level stretch of one, is level ground: the slopes under it don't count.
+        /// </summary>
+        public bool TryGetUphill(Collider2D walker, Vector2 feet, out Vector2 uphill)
+        {
+            uphill = Vector2.zero;
+            if (walker == null || !walkers.Contains(walker)) return false;
+            if (incline == null || incline.Length < 2) return true;
+            Vector2 axis = inclineAxis.sqrMagnitude > 0f ? inclineAxis.normalized : Vector2.right;
+            carried.TryGetValue(walker, out float lifted);
+            float x = Vector2.Dot(feet - (Vector2)transform.position - Vector2.up * lifted, axis);
+            const float step = 1f / 32f;
+            float rise = (HeightAt(incline, x + step) - HeightAt(incline, x - step)) / (2f * step);
+            uphill = Vector2.ClampMagnitude(axis * rise, 1f);
+            return true;
         }
 
         /// <summary>Whether a walker is on this bridge's deck.</summary>
