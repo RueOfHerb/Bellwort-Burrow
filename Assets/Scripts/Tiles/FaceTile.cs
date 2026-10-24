@@ -34,6 +34,10 @@ namespace BellwortBurrow.Tiles
                  "strip that crosses the seams (the root bank's roots).")]
         public bool stripLooks;
 
+        [Tooltip("Faces of the same family join up as one face where they meet (Bank Face and Root Bank Face, Cliff Face " +
+                 "and Mossy Cliff Face), so you can paint one into the other. Empty: joins only itself.")]
+        public string family = "";
+
         /// <summary>
         /// The key of each sprite in <see cref="sprites"/>: shape (F flat, D 45 degrees down to the east, U up), row (T
         /// top, M middle, B bottom, S a face one row tall; for D and U the cell's place down its column, 0 to 3), then
@@ -63,7 +67,12 @@ namespace BellwortBurrow.Tiles
             public bool Diagonal => Height == rows + 1;
         }
 
-        bool IsFace(Func<Vector3Int, TileBase> map, int x, int y) => map(new Vector3Int(x, y, 0)) == this;
+        bool IsFace(Func<Vector3Int, TileBase> map, int x, int y) => Joins(map(new Vector3Int(x, y, 0)));
+
+        /// <summary>Whether a tile carries this face on: this tile, or a face of the same family and height.</summary>
+        public bool Joins(TileBase tile) =>
+            tile == this || (tile is FaceTile other && !(other is SlopeTile) && !(this is SlopeTile) &&
+                             !string.IsNullOrEmpty(family) && other.family == family && other.rows == rows);
 
         static Func<Vector3Int, TileBase> Reader(ITilemap map) => p => map.GetTile(p);
 

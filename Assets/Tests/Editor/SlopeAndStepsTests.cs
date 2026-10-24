@@ -138,6 +138,21 @@ namespace BellwortBurrow.Tests.Editor
                             int.Parse(endFoot.Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FBoc"), "an end keeps one look down its column");
         }
 
+        [Test]
+        public void FacesOfOneFamily_JoinWhereTheyMeet_OthersDoNot()
+        {
+            var bank = Face<FaceTile>(3); bank.family = "bank";
+            var roots = Face<FaceTile>(3); roots.family = "bank";
+            var cliff = Face<FaceTile>(3); cliff.family = "cliff";
+            Column(bank, 0, 0, 3); Column(bank, 1, 0, 3);
+            Column(roots, 2, 0, 3); Column(roots, 3, 0, 3);
+            Column(cliff, 4, 0, 3);
+            Assert.AreEqual("FTcc", KeyOf(1, 0), "the bank carries on into the roots");
+            Assert.AreEqual("FTcc", KeyOf(2, 0), "the roots carry on from the bank");
+            Assert.AreEqual("FTco", KeyOf(3, 0), "the roots end against the cliff");
+            Assert.AreEqual("FToo", KeyOf(4, 0), "the cliff stands on its own");
+        }
+
         [TestCase(false, true, false, true, 'T', 'l')]
         [TestCase(true, true, true, true, 'M', 'm')]
         [TestCase(true, false, true, false, 'B', 'r')]

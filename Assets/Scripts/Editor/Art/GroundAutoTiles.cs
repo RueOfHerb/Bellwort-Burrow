@@ -142,6 +142,9 @@ namespace BellwortBurrow.EditorTools
             ("Root Bank Face", "root_bank_face_set"),
         };
 
+        /// <summary>Which faces join up as one face where they meet (<see cref="FaceTile.family"/>), so one paints into the other.</summary>
+        internal static string FamilyOf(string kind) => kind.Contains("Bank") ? "bank" : kind.Contains("Cliff") ? "cliff" : "";
+
         /// <summary>
         /// Faces whose looks are drawn as one strip along the face (<see cref="FaceTile.stripLooks"/>): the root bank's
         /// roots run across the seams between its plain pieces.
@@ -357,7 +360,7 @@ namespace BellwortBurrow.EditorTools
                 {
                     string facePath = ground.Tile(kind);
                     if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
-                    else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, t => t.stripLooks = StripFaces.Contains(kind))) written.Add(facePath);
+                    else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, t => { t.stripLooks = StripFaces.Contains(kind); t.family = FamilyOf(kind); })) written.Add(facePath);
                 }
                 foreach (var (kind, slice, rows, steepness) in Slopes)
                 {
