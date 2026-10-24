@@ -117,6 +117,27 @@ namespace BellwortBurrow.Tests.Editor
             Assert.IsTrue(Face<FaceTile>(3).solid);
         }
 
+        [Test]
+        public void AStripFace_TakesItsLooksInOrderAlongTheFace_TheSameDownEachColumn()
+        {
+            var face = Face<FaceTile>(3);
+            face.stripLooks = true;
+            for (int x = -2; x < 16; x++) Column(face, x, 0, 3);
+            string Look(int x, int y) => tilemap.GetSprite(new Vector3Int(x, y, 0)).name;
+            int count = GroundAutoTiles.FacePieceKeys().FindAll(k => k == "FTcc").Count;
+            for (int x = -1; x < 15; x++)
+            {
+                int v = ((x % count) + count) % count;
+                StringAssert.StartsWith("FTcc", Look(x, 0));
+                Assert.AreEqual(v, int.Parse(Look(x, 0).Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FTcc"), $"column {x}'s top is look {v}");
+                Assert.AreEqual(v, int.Parse(Look(x, -1).Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FMcc"), $"column {x}'s middle matches its top");
+                Assert.AreEqual(v, int.Parse(Look(x, -2).Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FBcc"), $"column {x}'s foot matches its top");
+            }
+            string end = Look(-2, 0), endFoot = Look(-2, -2);
+            Assert.AreEqual(int.Parse(end.Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FToc"),
+                            int.Parse(endFoot.Split('#')[1]) - GroundAutoTiles.FacePieceKeys().IndexOf("FBoc"), "an end keeps one look down its column");
+        }
+
         [TestCase(false, true, false, true, 'T', 'l')]
         [TestCase(true, true, true, true, 'M', 'm')]
         [TestCase(true, false, true, false, 'B', 'r')]

@@ -143,6 +143,12 @@ namespace BellwortBurrow.EditorTools
         };
 
         /// <summary>
+        /// Faces whose looks are drawn as one strip along the face (<see cref="FaceTile.stripLooks"/>): the root bank's
+        /// roots run across the seams between its plain pieces.
+        /// </summary>
+        internal static readonly string[] StripFaces = { "Root Bank Face" };
+
+        /// <summary>
         /// Raised ground's slopes, walked up instead of climbed: each kind, its set (laid out like a face set, in
         /// <see cref="FacePieceKeys"/> order), how many rows a flat run is painted and how steep it is (sys-7).
         /// </summary>
@@ -351,7 +357,7 @@ namespace BellwortBurrow.EditorTools
                 {
                     string facePath = ground.Tile(kind);
                     if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
-                    else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, null)) written.Add(facePath);
+                    else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, t => t.stripLooks = StripFaces.Contains(kind))) written.Add(facePath);
                 }
                 foreach (var (kind, slice, rows, steepness) in Slopes)
                 {

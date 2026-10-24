@@ -29,6 +29,11 @@ namespace BellwortBurrow.Tiles
         [Tooltip("How many rows a flat run is painted (a 45 degree column is one more): 3 for a bank or cliff, 2 for a steep slope.")]
         [Min(1)] public int rows = Rows;
 
+        [Tooltip("Pieces pick their look by column, the same all the way down it, and a flat run carrying on both ways " +
+                 "takes its looks in order along the face (column x mod how many it has), so its looks can be drawn as one " +
+                 "strip that crosses the seams (the root bank's roots).")]
+        public bool stripLooks;
+
         /// <summary>
         /// The key of each sprite in <see cref="sprites"/>: shape (F flat, D 45 degrees down to the east, U up), row (T
         /// top, M middle, B bottom, S a face one row tall; for D and U the cell's place down its column, 0 to 3), then
@@ -121,7 +126,7 @@ namespace BellwortBurrow.Tiles
             char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
             char westSide = west == null && map(new Vector3Int(x - 1, y, 0)) is StepsTile ? 'b' : Side(west, r);
             char eastSide = east == null && map(new Vector3Int(x + 1, y, 0)) is StepsTile ? 'b' : Side(east, r);
-            return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, y));
+            return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, stripLooks ? r.top : y));
         }
 
         // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
@@ -157,7 +162,9 @@ namespace BellwortBurrow.Tiles
             if (key == null) return defaultSprite;
             foreach (var k in StandIns(key))
                 if (byKey.TryGetValue(k, out var list) && list.Count > 0)
-                    return list[Pick(cell, k[0], list.Count)];
+                    return list[stripLooks && k[0] == 'F' && k[2] == 'c' && k[3] == 'c' && k[1] != 'S'
+                        ? ((cell.x % list.Count) + list.Count) % list.Count
+                        : Pick(cell, k[0], list.Count)];
             return defaultSprite;
         }
 
