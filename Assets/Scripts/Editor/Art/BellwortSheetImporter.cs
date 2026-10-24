@@ -17,9 +17,11 @@ namespace BellwortBurrow.EditorTools
     /// - Glow: layers with "glow" in their name. Each slice with glow pixels also gets a "name_glow" sprite
     ///   with the same rect and pivot, meant for an unlit material so it shines through the night.
     /// - Tile Size above 0 cuts each slice into tiles named "name_00", "name_01"... (row by row)
-    ///   and makes a Tile asset for each, ready for the Tile Palette.
+    ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player (the water, see
+    ///   <see cref="Colliders.IsBlockingGroundSlice"/>) get a physics shape traced from their pixels, so a Tilemap Collider
+    ///   follows the drawn water, half tiles included.
     /// </summary>
-    [ScriptedImporter(1, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
+    [ScriptedImporter(2, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
     public class BellwortSheetImporter : ScriptedImporter
     {
         [Tooltip("Pixels per world unit. 16 means one 16 px tile is one unit.")]
@@ -105,7 +107,7 @@ namespace BellwortBurrow.EditorTools
                     int index = row * columns + column;
                     string name = Unique(count == 1 ? slice.Name : slice.Name + "_" + index.ToString(digits), usedNames);
                     var rect = new Rect(x, sheet.Height - y - tileSize, tileSize, tileSize);
-                    var sprite = MakeSprite(art, rect, new Vector2(0.5f, 0.5f), name);
+                    var sprite = MakeSprite(art, rect, new Vector2(0.5f, 0.5f), name, Colliders.IsBlockingGroundSlice(slice.Name));
                     ctx.AddObjectToAsset("sprite/" + name, sprite);
 
                     var tile = ScriptableObject.CreateInstance<Tile>();
@@ -117,9 +119,10 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        Sprite MakeSprite(Texture2D texture, Rect rect, Vector2 pivot, string name)
+        Sprite MakeSprite(Texture2D texture, Rect rect, Vector2 pivot, string name, bool physicsShape = false)
         {
-            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
+            // A physics shape is traced from the sprite's pixels only where something collides with it.
+            var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, physicsShape);
             sprite.name = name;
             return sprite;
         }

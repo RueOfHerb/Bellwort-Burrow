@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BellwortBurrow.Systems.World;
 using UnityEditor;
 using UnityEngine;
@@ -16,6 +17,8 @@ namespace BellwortBurrow.EditorTools
     /// - Bright spots on the glow become point lights (see <see cref="GlowLights"/>).
     /// - Where it meets the map: a <see cref="GridFootprint"/> with the base tiles it is rooted on, so it snaps to the
     ///   grid (see <see cref="Footprints"/>), or, for a tree house piece, a <see cref="TreeHouse"/> that puts it on a giant tree.
+    /// - A solid piece (the great stump, the Burrow's homes and rocks, see <see cref="Colliders"/>) gets a polygon collider
+    ///   round the ground it stands on, so the player walks round it.
     /// - A backdrop (a sheet in Assets/Art/Backdrops) sits in a sorting group at <see cref="BackdropSortingOrder"/>, so in
     ///   every scene it draws behind the characters and props and in front of the ground tiles, with nothing to set per scene.
     ///   Its glow stays bright but casts no lights: a far painting should not light the ground you walk on.
@@ -186,6 +189,18 @@ namespace BellwortBurrow.EditorTools
                     {
                         root.AddComponent<RoofSeat>().size = seatSize;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
+                    }
+                }
+
+                // Something the player walks round: a collider on the ground it stands on, worked out from its pixels.
+                if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
+                {
+                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice);
+                    if (shape != null)
+                    {
+                        var collider = root.AddComponent<PolygonCollider2D>();
+                        collider.pathCount = 1;
+                        collider.SetPath(0, shape.Select(p => p / ArtLibrary.PixelsPerUnit).ToArray());
                     }
                 }
 

@@ -83,6 +83,8 @@ namespace BellwortBurrow.EditorTools
         {
             public string Kind, Slice, HalfSlice;
             public string[] Fills; // extra full pieces, picked at random alongside the template's full pieces
+            /// <summary>Blocks the player: its tiles collide by their sprites' traced shapes (the water).</summary>
+            public bool Blocks;
             /// <summary>The half tiles that cut 45 degrees, painted from <see cref="HalfSlopeTemplate"/>.</summary>
             public string SlopeSlice => SlopeSliceOf(HalfSlice);
         }
@@ -114,7 +116,7 @@ namespace BellwortBurrow.EditorTools
         /// </summary>
         static readonly HalfPair[] WaterPairs =
         {
-            new HalfPair { Kind = "Water", Slice = "water_set", HalfSlice = "water_half_set", Fills = new string[0] },
+            new HalfPair { Kind = "Water", Slice = "water_set", HalfSlice = "water_half_set", Fills = new string[0], Blocks = true },
         };
 
         /// <summary>The full and half grounds a sheet has, in the order its tile palette lays them out.</summary>
@@ -682,14 +684,17 @@ namespace BellwortBurrow.EditorTools
         static List<(uint key, int[] conditions)> fullRules;
         static List<(string key, int[] conditions)> halfRules;
 
-        static RuleTile.TilingRule PathRule(int[] conditions, List<Sprite> pieces) => new RuleTile.TilingRule
+        /// <summary>How a pair's tiles collide: by their sprites' traced shapes when it blocks the player, else not at all.</summary>
+        internal static Tile.ColliderType ColliderFor(bool blocks) => blocks ? Tile.ColliderType.Sprite : Tile.ColliderType.None;
+
+        static RuleTile.TilingRule PathRule(int[] conditions, List<Sprite> pieces, Tile.ColliderType collider) => new RuleTile.TilingRule
         {
             m_Neighbors = new List<int>(conditions),
             m_NeighborPositions = new List<Vector3Int>(RulePositions),
             m_Sprites = pieces.ToArray(),
             m_Output = pieces.Count > 1 ? RuleTile.TilingRuleOutput.OutputSprite.Random : RuleTile.TilingRuleOutput.OutputSprite.Single,
             m_PerlinScale = 0.5f,
-            m_ColliderType = Tile.ColliderType.None,
+            m_ColliderType = collider,
             m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
         };
 
@@ -749,10 +754,11 @@ namespace BellwortBurrow.EditorTools
             var pathTile = ScriptableObject.CreateInstance<PathRuleTile>();
             pathTile.name = fullName;
             pathTile.m_DefaultSprite = full[Full][0];
-            pathTile.m_DefaultColliderType = Tile.ColliderType.None;
+            var collider = ColliderFor(pair.Blocks);
+            pathTile.m_DefaultColliderType = collider;
             pathTile.m_TilingRules = new List<RuleTile.TilingRule>();
             foreach (var (layout, conditions) in fullRules ??= PathRules<uint>(FullLayout))
-                if (full.TryGetValue(layout, out var pieces)) pathTile.m_TilingRules.Add(PathRule(conditions, pieces));
+                if (full.TryGetValue(layout, out var pieces)) pathTile.m_TilingRules.Add(PathRule(conditions, pieces, collider));
             if (full.Count < LayoutCount)
                 Debug.LogWarning($"Bellwort Burrow: {fullName} has {full.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
 
@@ -760,7 +766,7 @@ namespace BellwortBurrow.EditorTools
             halfTile.name = halfName;
             var facingWest = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
             halfTile.m_DefaultSprite = half.TryGetValue(HalfLook(facingWest), out var west) ? west[0] : full[Full][0];
-            halfTile.m_DefaultColliderType = Tile.ColliderType.None;
+            halfTile.m_DefaultColliderType = collider;
             halfTile.m_TilingRules = new List<RuleTile.TilingRule>();
             // A look the sheet has no piece for (a sheet painted before half tiles cut 45 degrees) takes the pieces of
             // its rounded look, or of any look with the same rounded look: on such a sheet they're all drawn rounded.
@@ -770,7 +776,7 @@ namespace BellwortBurrow.EditorTools
             foreach (var (look, conditions) in halfRules ??= PathRules<string>(HalfLook))
             {
                 if (!half.TryGetValue(look, out var pieces) && !byRounded.TryGetValue(RoundedLook(look), out pieces)) continue;
-                halfTile.m_TilingRules.Add(PathRule(conditions, pieces));
+                halfTile.m_TilingRules.Add(PathRule(conditions, pieces, collider));
             }
             if (slopePieces == 0)
                 Debug.Log($"Bellwort Burrow: {ground.Sheet} has no {pair.SlopeSlice}, so {halfName} keeps its rounded corners where it would cut 45 degrees.");

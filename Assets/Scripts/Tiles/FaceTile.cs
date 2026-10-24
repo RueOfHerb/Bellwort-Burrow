@@ -37,6 +37,10 @@ namespace BellwortBurrow.Tiles
         [Tooltip("Shown where a piece is missing.")]
         public Sprite defaultSprite;
 
+        [Tooltip("The player can't walk through the face: each cell collides as a whole tile. A stair or ramp up the bank, " +
+                 "painted in place of the face cells it climbs, lets them through there.")]
+        public bool solid = true;
+
         Dictionary<string, List<Sprite>> byKey;
 
         /// <summary>A run of this face down one column: its top and bottom cells' y (y up, so top >= bottom).</summary>
@@ -169,7 +173,7 @@ namespace BellwortBurrow.Tiles
             tileData.color = Color.white;
             tileData.transform = Matrix4x4.identity;
             tileData.flags = TileFlags.LockTransform | TileFlags.LockColor;
-            tileData.colliderType = Tile.ColliderType.None;
+            tileData.colliderType = solid ? Tile.ColliderType.Grid : Tile.ColliderType.None;
         }
 
         /// <summary>
