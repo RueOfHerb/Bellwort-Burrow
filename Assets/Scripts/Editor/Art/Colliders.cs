@@ -7,7 +7,8 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// Which placeable pieces the player walks round instead of through, and the shape of the ground each one stands on.
-    /// - Solid: the great stump, the Burrow's homes and cottages, and its mossy rocks. Not solid: roofs (they sit on a
+    /// - Solid: the great stump, the Burrow's homes and cottages, its mossy rocks, and the fallen log's supports and the
+    ///   benches beside them. Not solid: roofs (they sit on a
     ///   home), the stump's wall pieces (its ladder, lantern and foot growth) and the loose ground clutter.
     /// - The shape is the piece's footprint, worked out from the sheet's own pixels (<see cref="AsepriteSheet.Solid"/>,
     ///   which leaves out shadows, steps, stairs and foot growth): its front edge follows the lowest solid pixel of every
@@ -18,7 +19,7 @@ namespace BellwortBurrow.EditorTools
     /// </summary>
     public static class Colliders
     {
-        static readonly Regex SolidPiece = new Regex(@"^burrow_(stump$|nook_|home_|cottage_|mossy_rock)");
+        static readonly Regex SolidPiece = new Regex(@"^burrow_(stump$|nook_|home_|cottage_|mossy_rock|log_support|log_bench)");
 
         /// <summary>How deep the ground under a piece is, as a share of its width, at the least.</summary>
         public const float FootprintDepth = 0.5f;

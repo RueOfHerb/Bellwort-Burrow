@@ -19,6 +19,8 @@ namespace BellwortBurrow.Tests.Editor
             Assert.IsTrue(Colliders.IsSolid("burrow_nook_untinted"));
             Assert.IsTrue(Colliders.IsSolid("burrow_cottage_brown"));
             Assert.IsTrue(Colliders.IsSolid("burrow_mossy_rock_a"));
+            Assert.IsTrue(Colliders.IsSolid("burrow_log_support_a"), "the log's supports stand on their stone ring");
+            Assert.IsTrue(Colliders.IsSolid("burrow_log_bench_b"));
 
             Assert.IsFalse(Colliders.IsSolid("burrow_home_roof_red"), "roofs sit on a home");
             Assert.IsFalse(Colliders.IsSolid("burrow_stump_ladder"), "wall pieces go on the stump");
