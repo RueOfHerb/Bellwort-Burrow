@@ -138,9 +138,13 @@ namespace BellwortBurrow.EditorTools
         public static bool IsBlockingGroundSlice(string sliceName) =>
             !string.IsNullOrEmpty(sliceName) && sliceName.StartsWith("water_", StringComparison.Ordinal);
 
-        /// <summary>A raised ground's face set (bank_face_set, cliff_face_set), whose tiles block by <see cref="FaceShape"/>.</summary>
+        /// <summary>A raised ground's face set (bank_face_set, cliff_face_set and the rest of GroundAutoTiles.Faces), whose tiles block by <see cref="FaceShape"/>.</summary>
         public static bool IsFaceSlice(string sliceName) =>
-            sliceName == "bank_face_set" || sliceName == "cliff_face_set";
+            Array.Exists(GroundAutoTiles.Faces, f => f.slice == sliceName);
+
+        /// <summary>A ramp's slice (GroundAutoTiles.Ramps), whose tiles block by <see cref="CutShape"/>: everything but the walkway.</summary>
+        public static bool IsRampSlice(string sliceName) =>
+            Array.Exists(GroundAutoTiles.Ramps, r => r.slice == sliceName);
 
         // ---- Tile shapes: every edge level, upright or at 45 degrees -------------------------------------------------
 
@@ -206,6 +210,106 @@ namespace BellwortBurrow.EditorTools
             if (place == '0') return new List<Vector2[]> { down ? new[] { bl, br, tl } : new[] { bl, br, tr } };   // below the lip
             if (place == '3') return new List<Vector2[]> { down ? new[] { tl, br, tr } : new[] { tl, bl, tr } };   // above the foot
             return whole;
+        }
+
+        /// <summary>
+        /// The physics shape of a ramp's tile: its solid pixels, in bands. Down each column of the tile the solid pixels
+        /// come in runs; runs that line up from column to column make a band, and each band is a polygon whose top and
+        /// bottom edges follow the runs as straight lines (the pixel steps smoothed out to within a pixel), so a walker
+        /// slides along a ramp's edge rather than catching on it. <paramref name="solid"/> says whether pixel (x, y)
+        /// blocks, y counted from the tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
+        /// </summary>
+        public static List<Vector2[]> CutShape(Func<int, int, bool> solid, int size)
+        {
+            var shapes = new List<Vector2[]>();
+            var open = new List<(List<Vector2> top, List<Vector2> bottom, int a, int b)>();
+            void Close((List<Vector2> top, List<Vector2> bottom, int a, int b) band)
+            {
+                var top = Simplify(band.top, 0.9f);
+                var bottom = Simplify(band.bottom, 0.9f);
+                // round the band: west to east along its top, then back west along its bottom, flipped to y up
+                var polygon = new List<Vector2>();
+                foreach (var p in top) polygon.Add(new Vector2(p.x, size - p.y));
+                for (int i = bottom.Count - 1; i >= 0; i--) polygon.Add(new Vector2(bottom[i].x, size - bottom[i].y));
+                var clean = Tidy(polygon);
+                if (clean.Count < 3 || Mathf.Abs(Area(clean)) < 2f) return;
+                if (Area(clean) < 0) clean.Reverse();        // counter-clockwise, like the quarter shapes
+                shapes.Add(clean.ToArray());
+            }
+            for (int x = 0; x <= size; x++)
+            {
+                var runs = new List<(int a, int b)>();
+                if (x < size)
+                    for (int y = 0; y < size; y++)
+                        if (solid(x, y))
+                        {
+                            int a = y;
+                            while (y + 1 < size && solid(x, y + 1)) y++;
+                            runs.Add((a, y + 1));
+                        }
+                var next = new List<(List<Vector2> top, List<Vector2> bottom, int a, int b)>();
+                var used = new bool[runs.Count];
+                foreach (var band in open)
+                {
+                    int match = -1, matches = 0;
+                    for (int i = 0; i < runs.Count; i++)
+                        if (runs[i].a < band.b && runs[i].b > band.a) { match = i; matches++; }
+                    bool alone = matches == 1 && !used[match] && open.Count(o => runs[match].a < o.b && runs[match].b > o.a) == 1;
+                    if (alone)
+                    {
+                        var r = runs[match];
+                        band.top.Add(new Vector2(x, r.a)); band.top.Add(new Vector2(x + 1, r.a));
+                        band.bottom.Add(new Vector2(x, r.b)); band.bottom.Add(new Vector2(x + 1, r.b));
+                        next.Add((band.top, band.bottom, r.a, r.b));
+                        used[match] = true;
+                    }
+                    else Close(band);
+                }
+                for (int i = 0; i < runs.Count; i++)
+                    if (!used[i])
+                    {
+                        var r = runs[i];
+                        next.Add((new List<Vector2> { new Vector2(x, r.a), new Vector2(x + 1, r.a) },
+                                  new List<Vector2> { new Vector2(x, r.b), new Vector2(x + 1, r.b) }, r.a, r.b));
+                    }
+                open = next;
+            }
+            foreach (var band in open) Close(band);
+            return shapes;
+        }
+
+        /// <summary>A polygon without repeated points or points on a straight line between their neighbours.</summary>
+        static List<Vector2> Tidy(List<Vector2> polygon)
+        {
+            var points = new List<Vector2>();
+            foreach (var p in polygon)
+                if (points.Count == 0 || (p - points[points.Count - 1]).sqrMagnitude > 1e-6f) points.Add(p);
+            while (points.Count > 1 && (points[0] - points[points.Count - 1]).sqrMagnitude <= 1e-6f) points.RemoveAt(points.Count - 1);
+            bool changed = true;
+            while (changed && points.Count >= 3)
+            {
+                changed = false;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    var a = points[(i + points.Count - 1) % points.Count];
+                    var b = points[i];
+                    var c = points[(i + 1) % points.Count];
+                    float cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                    if (Mathf.Abs(cross) < 1e-4f) { points.RemoveAt(i); changed = true; break; }
+                }
+            }
+            return points;
+        }
+
+        static float Area(List<Vector2> polygon)
+        {
+            float sum = 0;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i]; var b = polygon[(i + 1) % polygon.Count];
+                sum += a.x * b.y - b.x * a.y;
+            }
+            return sum / 2f;
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using BellwortBurrow.Systems.World;
+using BellwortBurrow.Tiles;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;
@@ -160,6 +161,15 @@ namespace BellwortBurrow.EditorTools
         {
             if (Colliders.IsBlockingGroundSlice(slice))
                 return Colliders.QuarterShape((px, py) => sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] > 127, tileSize);
+            if (Colliders.IsRampSlice(slice))
+            {
+                // a ramp lies on its own Tilemap over a bank, its bottom rows on the bank's face rows: there the bank shows
+                // through round the ramp and blocks; above them the hill top shows through and is walked on
+                int at = sheet.Slices.FindIndex(sl => sl.Name == slice);
+                int faceTop = at >= 0 ? sheet.Slices[at].Y + sheet.Slices[at].Height - FaceTile.Rows * tileSize : int.MaxValue;
+                return Colliders.CutShape((px, py) => sheet.Solid[(y + py) * sheet.Width + x + px]
+                                                      || (y + py >= faceTop && sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] == 0), tileSize);
+            }
             if (Colliders.IsFaceSlice(slice))
             {
                 var keys = GroundAutoTiles.FacePieceKeys();

@@ -34,6 +34,9 @@ namespace BellwortBurrow.EditorTools
     ///   front edge (the raised ground itself is plain Grass), painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
     ///   read their own column and their neighbours' to draw the lip and foot, step borders, 45 degree runs, inner
     ///   corner creases and open ends, each look in several variations (<see cref="FacePieceKeys"/>).
+    ///   Mossy Cliff Face and Root Bank Face are the same faces overgrown: moss, hanging vines and ferns on the stone, the
+    ///   great tree's roots through the earth.
+    /// - Stone Steps and Log Steps (<see cref="Steps"/>): painted in place of the face cells they climb (<see cref="StepsTile"/>).
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
     /// (see <see cref="GeneratedAssets"/>).
@@ -132,7 +135,61 @@ namespace BellwortBurrow.EditorTools
         {
             ("Bank Face", "bank_face_set"),
             ("Cliff Face", "cliff_face_set"),
+            ("Mossy Cliff Face", "mossy_cliff_face_set"),
+            ("Root Bank Face", "root_bank_face_set"),
         };
+
+        /// <summary>Which faces join up as one face where they meet (<see cref="FaceTile.family"/>), so one paints into the other.</summary>
+        internal static string FamilyOf(string kind) => kind.Contains("Bank") ? "bank" : kind.Contains("Cliff") ? "cliff" : "";
+
+        /// <summary>
+        /// Faces whose looks are drawn as one strip along the face (<see cref="FaceTile.stripLooks"/>): the root bank's
+        /// roots run across the seams between its plain pieces.
+        /// </summary>
+        internal static readonly string[] StripFaces = { "Root Bank Face" };
+
+        /// <summary>
+        /// Steps cut up through a bank or cliff: each kind and its set, 4 by 3 tiles, rows top, middle and bottom, each
+        /// row the left end, the middle, the right end and a single (<see cref="StepsTile"/>).
+        /// </summary>
+        internal static readonly (string kind, string slice)[] Steps =
+        {
+            ("Stone Steps", "stone_steps_set"),
+            ("Log Steps", "log_steps_set"),
+        };
+
+        /// <summary>A ramp cut into a bank or cliff (<see cref="RampTile"/>): its slice, one picture of the whole ramp, and how it climbs.</summary>
+        internal struct Ramp
+        {
+            public string kind, slice;
+            public int columns, rows, landing;
+            public Vector2 uphill;
+            public float steepness, lift;
+
+            public Ramp(string kind, string slice, int columns, int rows, Vector2 uphill, float steepness, float lift, int landing)
+            {
+                this.kind = kind; this.slice = slice; this.columns = columns; this.rows = rows;
+                this.uphill = uphill; this.steepness = steepness; this.lift = lift; this.landing = landing;
+            }
+        }
+
+        /// <summary>
+        /// The ramps, earth with log edges cut into a bank and stone with stone curbs cut into a cliff, each climbing the
+        /// face's 3 rows with a walkway 3 tiles wide between its edges, as wide as the steps: north straight into the hill
+        /// (4 by 7 cells, the cut 3 and a half tiles wide in the middle, 4 tiles of run), and east and west along the face
+        /// (6 by 7 cells, cut 3 and a half tiles in: a level landing at the low end where the mouth opens, then 5 tiles of
+        /// slope).
+        /// </summary>
+        internal static readonly Ramp[] Ramps =
+        {
+            new Ramp("Earth Ramp North", "earth_ramp_n", 4, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Earth Ramp East", "earth_ramp_e", 6, 7, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Earth Ramp West", "earth_ramp_w", 6, 7, Vector2.left, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp North", "stone_ramp_n", 4, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Stone Ramp East", "stone_ramp_e", 6, 7, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp West", "stone_ramp_w", 6, 7, Vector2.left, 0.6f, 0.6f, 1),
+        };
+
 
         /// <summary>The face sets' slices: 17 by 16 tiles, the pieces laid in <see cref="FacePieceKeys"/> order, 17 to a row.</summary>
         public const int FaceSetColumns = 17, FaceSetRows = 16;
@@ -317,7 +374,19 @@ namespace BellwortBurrow.EditorTools
                 {
                     string facePath = ground.Tile(kind);
                     if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
-                    else if (MakeFaceTile(ground, slice, sprites, facePath)) written.Add(facePath);
+                    else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, t => { t.stripLooks = StripFaces.Contains(kind); t.family = FamilyOf(kind); })) written.Add(facePath);
+                }
+                foreach (var (kind, slice) in Steps)
+                {
+                    string stepsPath = ground.Tile(kind);
+                    if (!GeneratedAssets.CanOverwrite(stepsPath)) kept.Add(stepsPath);
+                    else if (MakeStepsTile(ground, slice, sprites, stepsPath)) written.Add(stepsPath);
+                }
+                foreach (var ramp in Ramps)
+                {
+                    string rampPath = ground.Tile(ramp.kind);
+                    if (!GeneratedAssets.CanOverwrite(rampPath)) kept.Add(rampPath);
+                    else if (MakeRampTile(ground, ramp, sprites, rampPath)) written.Add(rampPath);
                 }
                 if (ground.Water)
                 {
@@ -344,6 +413,8 @@ namespace BellwortBurrow.EditorTools
             }
             if (!ground.Banks) yield break;
             foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
+            foreach (var (kind, _) in Steps) yield return ground.Tile(kind);
+            foreach (var ramp in Ramps) yield return ground.Tile(ramp.kind);
             if (ground.Water) yield return ground.Tile("Waterfall");
         }
 
@@ -839,7 +910,8 @@ namespace BellwortBurrow.EditorTools
         /// Makes a Bank Face or Cliff Face: a Face Tile holding every piece of the face set with its key
         /// (<see cref="FacePieceKeys"/>), the set's tiles read row by row from the top left.
         /// </summary>
-        static bool MakeFaceTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
+        static bool MakeFaceTile<T>(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path, Action<T> setUp)
+            where T : FaceTile
         {
             string name = Path.GetFileNameWithoutExtension(path);
             var all = FacePieceKeys();
@@ -861,15 +933,82 @@ namespace BellwortBurrow.EditorTools
             if (missing > 0)
                 Debug.LogWarning($"Bellwort Burrow: {name} lacks {missing} of its {all.Count} pieces; is {slice} {FaceSetColumns} by {FaceSetRows} tiles, laid out in FacePieceKeys order?");
 
-            var tile = ScriptableObject.CreateInstance<FaceTile>();
+            var tile = ScriptableObject.CreateInstance<T>();
             tile.name = name;
             tile.keys = keys.ToArray();
             tile.sprites = pieces.ToArray();
             int plain = keys.IndexOf("FMcc");
+            if (plain < 0) plain = keys.IndexOf("FTcc");
             tile.defaultSprite = plain >= 0 ? pieces[plain] : pieces[0];
+            setUp?.Invoke(tile);
             SaveKeepingId(tile, path);
             return true;
         }
+
+        /// <summary>
+        /// Makes Stone Steps or Log Steps: a Steps Tile holding the set's pieces, rows top, middle, bottom, each row left
+        /// end, middle, right end, single (<see cref="StepsTile.PieceFor"/>).
+        /// </summary>
+        static bool MakeStepsTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
+        {
+            var template = SideRowTemplate;
+            var pieces = new Sprite[StepsTile.PieceRows.Length * StepsTile.PieceSides.Length];
+            int found = 0;
+            foreach (char row in StepsTile.PieceRows)
+                foreach (char side in StepsTile.PieceSides)
+                    if (sprites.TryGetValue(PieceName(slice, StepsTile.PieceSides.IndexOf(side), StepsTile.PieceRows.IndexOf(row), template), out var p))
+                    {
+                        pieces[StepsTile.IndexOf(row, side)] = p;
+                        found++;
+                    }
+            if (found == 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {slice} slice.");
+                return false;
+            }
+            var tile = ScriptableObject.CreateInstance<StepsTile>();
+            tile.name = Path.GetFileNameWithoutExtension(path);
+            tile.sprites = pieces;
+            tile.steepness = 1f;
+            SaveKeepingId(tile, path);
+            return true;
+        }
+
+        /// <summary>Makes a ramp: a Ramp Tile holding its slice's pieces, row by row from the top, and how it climbs.</summary>
+        static bool MakeRampTile(GroundSheet ground, Ramp ramp, Dictionary<string, Sprite> sprites, string path)
+        {
+            var template = Enumerable.Repeat(new string('#', ramp.columns), ramp.rows).ToArray();
+            var pieces = new Sprite[ramp.columns * ramp.rows];
+            int found = 0;
+            for (int row = 0; row < ramp.rows; row++)
+                for (int column = 0; column < ramp.columns; column++)
+                    if (sprites.TryGetValue(PieceName(ramp.slice, column, row, template), out var p))
+                    {
+                        pieces[row * ramp.columns + column] = p;
+                        found++;
+                    }
+            if (found == 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {ramp.slice} slice.");
+                return false;
+            }
+            var tile = ScriptableObject.CreateInstance<RampTile>();
+            tile.name = Path.GetFileNameWithoutExtension(path);
+            tile.columns = ramp.columns;
+            tile.rows = ramp.rows;
+            tile.sprites = pieces;
+            tile.uphill = ramp.uphill;
+            tile.steepness = ramp.steepness;
+            tile.lift = ramp.lift;
+            tile.landing = ramp.landing;
+            tile.stretches = ramp.uphill == Vector2.up;     // the North ramps paint any width and length
+            tile.faceRows = 3;
+            SaveKeepingId(tile, path);
+            return true;
+        }
+
+        /// <summary>The layout of a set in rows top, middle, bottom and sides left, middle, right, single: the waterfall, the steps, the ramp.</summary>
+        static readonly string[] SideRowTemplate = { "####", "####", "####" };
 
         // ---- Waterfall ----------------------------------------------------------------------------------------------
         /// <summary>
@@ -897,14 +1036,22 @@ namespace BellwortBurrow.EditorTools
         /// on a Tilemap of its own above Banks, with the creek's Water painted straight on underneath. Each cell picks
         /// its piece from <see cref="WaterfallPiece"/>, one rule for each way its four sides can be.
         /// </summary>
-        static bool MakeWaterfallTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path)
+        static bool MakeWaterfallTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path) =>
+            MakeSideRowTile(ground, WaterfallSlice, sprites, path);
+
+        /// <summary>
+        /// A Rule Tile that picks its piece by whether it carries on above, below, west and east (<see cref="WaterfallPiece"/>),
+        /// from a set laid out in rows top, middle, bottom and sides left end, middle, right end, single: the Waterfall
+        /// and the steps' layout.
+        /// </summary>
+        static bool MakeSideRowTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
         {
-            var template = new[] { new string('#', WaterfallSides.Length), new string('#', WaterfallSides.Length), new string('#', WaterfallSides.Length) };
+            var template = SideRowTemplate;
             Sprite Piece(char row, char side) =>
-                sprites.TryGetValue(PieceName(WaterfallSlice, WaterfallSides.IndexOf(side), WaterfallRows.IndexOf(row), template), out var p) ? p : null;
+                sprites.TryGetValue(PieceName(slice, WaterfallSides.IndexOf(side), WaterfallRows.IndexOf(row), template), out var p) ? p : null;
             if (Piece('M', 'm') == null)
             {
-                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {WaterfallSlice} slice.");
+                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {slice} slice.");
                 return false;
             }
             var tile = AssetDatabase.LoadAssetAtPath<RuleTile>(path);
