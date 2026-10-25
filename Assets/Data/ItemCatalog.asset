@@ -12,4 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a0129b9bf54c4074d84b78dfd251cc22, type: 3}
   m_Name: ItemCatalog
   m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.ItemCatalog
-  items: []
+  items:
+  - {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
+  - {fileID: 11400000, guid: 35eaf111d78c3ed4b8d282860f6aac42, type: 2}
+  - {fileID: 11400000, guid: bd95061e1493b9743abd6cdb96ca1d94, type: 2}
