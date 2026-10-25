@@ -126,8 +126,6 @@ namespace BellwortBurrow.Tests.Editor
         public void TheWaterBlocks_OtherGroundDoesNot()
         {
             Assert.IsTrue(Colliders.IsBlockingGroundSlice("water_set"));
-            Assert.IsTrue(Colliders.IsBlockingGroundSlice("water_half_set"));
-            Assert.IsTrue(Colliders.IsBlockingGroundSlice("water_slope_set"));
             Assert.IsFalse(Colliders.IsBlockingGroundSlice("path_set"));
             Assert.IsFalse(Colliders.IsBlockingGroundSlice("waterfall_set"), "the waterfall goes over a face, which blocks");
             Assert.IsFalse(Colliders.IsBlockingGroundSlice("grass_00"));

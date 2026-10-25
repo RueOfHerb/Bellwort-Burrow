@@ -5,7 +5,6 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using BellwortBurrow.EditorTools;
-using BellwortBurrow.Tiles;
 
 namespace BellwortBurrow.Tests.Editor
 {
@@ -111,77 +110,6 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual("path_set_018", GroundAutoTiles.PieceName("path_set", 1, 1, GroundAutoTiles.Template));
         }
 
-        [Test]
-        public void FullLayout_AmongFullTilesIsTheLayout()
-        {
-            foreach (var around in EveryNeighbourhood())
-            {
-                var types = new char[8];
-                for (int i = 0; i < 8; i++) types[i] = (around & RuleOrder[i]) != 0 ? 'F' : '.';
-                Assert.AreEqual(GroundAutoTiles.LayoutOf(around), GroundAutoTiles.FullLayout(types), $"neighbourhood {around}");
-            }
-        }
-
-        [TestCase('.', '.', 'F', '.', 1 | 4)]       // full path to the west: the left half
-        [TestCase('F', '.', '.', '.', 1 | 2)]       // to the north: the top half
-        [TestCase('F', '.', '.', 'F', 1 | 2 | 8)]   // north and east: all but the bottom left
-        [TestCase('.', '.', 'F', 'F', 15)]          // both sides: all of it
-        [TestCase('H', 'H', 'H', 'H', 0)]           // only half path beside it: a lone dot
-        public void Quarters_HalfTurnsTowardFullPath(char n, char s, char w, char e, int expected)
-        {
-            Assert.AreEqual(expected, GroundAutoTiles.Quarters('H', n, s, w, e));
-        }
-
-        [Test]
-        public void HalfTemplate_HoldsEveryLook()
-        {
-            // The half template and the slope template together hold every look.
-            var every = new HashSet<string>();
-            for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++) every.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
-            Assert.AreEqual(GroundAutoTiles.HalfLookCount, every.Count);
-            var have = new HashSet<string>();
-            foreach (var t in new[] { GroundAutoTiles.HalfTemplate, GroundAutoTiles.HalfSlopeTemplate })
-            {
-                for (int row = 0; row < t.Length; row++)
-                    Assert.AreEqual(t[0].Length, t[row].Length, $"row {row} is a different length");
-                for (int row = 0; row < t.Length; row++)
-                    for (int column = 0; column < t[row].Length; column++)
-                        if (t[row][column] == 'H') have.Add(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row)));
-            }
-            foreach (var look in every) Assert.IsTrue(have.Contains(look), $"the half templates lack look {look}");
-        }
-
-        [Test]
-        public void HalfTemplate_AloneHasARoundedPieceForEveryLook()
-        {
-            // A sheet painted before half tiles cut 45 degrees has only the half set: every look's rounded look still
-            // comes up on it, under its own key or a sloped one, so its half tiles keep the corners they had.
-            var t = GroundAutoTiles.HalfTemplate;
-            var rounded = new HashSet<string>();
-            for (int row = 0; row < t.Length; row++)
-                for (int column = 0; column < t[row].Length; column++)
-                    if (t[row][column] == 'H') rounded.Add(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.Around(t, column, row))));
-            for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++)
-            {
-                string look = GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(GroundAutoTiles.NeighbourhoodOf(i)));
-                Assert.IsTrue(rounded.Contains(look), $"no rounded piece for {look}");
-            }
-        }
-
-        [Test]
-        public void HalfLook_AHalfTileAlongAStaircaseCutsAtFortyFiveDegrees()
-        {
-            // A half tile beside the full tiles of a 45 degree run, the staircase carrying on below it, cuts its outer
-            // corner on a slope; a half tile at the end of a straight path keeps its rounded corners.
-            //   . . .        . . .
-            //   F H .        F H .
-            //   F F H        . . .
-            var along = new[] { '.', '.', '.', 'F', '.', 'F', 'F', 'H' };   // NW N NE W E SW S SE
-            var end = new[] { '.', '.', '.', 'F', '.', '.', '.', '.' };
-            StringAssert.Contains("|", GroundAutoTiles.HalfLook(along));
-            Assert.AreEqual(GroundAutoTiles.RoundedLook(GroundAutoTiles.HalfLook(end)), GroundAutoTiles.HalfLook(end));
-        }
-
         [TestCase(false, true, false, true, 'T', 'l')]
         [TestCase(false, true, true, true, 'T', 'm')]
         [TestCase(true, true, true, false, 'M', 'r')]
@@ -194,65 +122,16 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual((row, side), GroundAutoTiles.WaterfallPiece(n, s, w, e));
         }
 
-        static void EveryNeighbourhoodMatchesOnlyRulesForItsPiece<T>(Func<char[], T> keyOf)
-        {
-            var rules = GroundAutoTiles.PathRules(keyOf);
-            var lets = rules.Select(r => r.conditions.Select(GroundAutoTiles.TypesOf).ToArray()).ToArray();
-            for (int i = 0; i < GroundAutoTiles.Neighbourhoods; i++)
-            {
-                var around = GroundAutoTiles.NeighbourhoodOf(i);
-                int matched = 0;
-                for (int r = 0; r < lets.Length; r++)
-                {
-                    bool ok = true;
-                    for (int k = 0; k < 8 && ok; k++) ok = lets[r][k].IndexOf(around[k]) >= 0;
-                    if (!ok) continue;
-                    matched++;
-                    // rules may overlap, but only rules with the same piece
-                    Assert.AreEqual(keyOf(around), rules[r].key, $"neighbourhood {new string(around)} matches a rule for another piece");
-                }
-                Assert.Greater(matched, 0, $"neighbourhood {new string(around)} matches no rule");
-            }
-        }
-
         [Test]
-        public void PathRules_EveryNeighbourhoodGetsItsOwnPiece()
-        {
-            EveryNeighbourhoodMatchesOnlyRulesForItsPiece<uint>(GroundAutoTiles.FullLayout);
-            EveryNeighbourhoodMatchesOnlyRulesForItsPiece<string>(GroundAutoTiles.HalfLook);
-        }
-
-        [Test]
-        public void PathRuleTile_TellsFullHalfAndNoPathApart()
-        {
-            var full = ScriptableObject.CreateInstance<PathRuleTile>();
-            var half = ScriptableObject.CreateInstance<PathRuleTile>();
-            var other = ScriptableObject.CreateInstance<Tile>();
-            full.fullPath = half.fullPath = full;
-            full.halfPath = half.halfPath = half;
-            foreach (var (condition, types) in new[] { (0, "FH."), (3, "F"), (4, "H"), (5, "."), (6, "FH"), (7, "H."), (8, "F.") })
-            {
-                Assert.AreEqual(types, GroundAutoTiles.TypesOf(condition));
-                Assert.AreEqual(types.Contains('F'), condition == 0 || full.RuleMatch(condition, full), $"condition {condition} on full path");
-                Assert.AreEqual(types.Contains('H'), condition == 0 || full.RuleMatch(condition, half), $"condition {condition} on half path");
-                Assert.AreEqual(types.Contains('.'), condition == 0 || full.RuleMatch(condition, other), $"condition {condition} on another tile");
-                Assert.AreEqual(types.Contains('.'), condition == 0 || full.RuleMatch(condition, null), $"condition {condition} on an empty cell");
-            }
-            UnityEngine.Object.DestroyImmediate(full);
-            UnityEngine.Object.DestroyImmediate(half);
-            UnityEngine.Object.DestroyImmediate(other);
-        }
-
-        [Test]
-        public void EveryGroundSheet_MakesGrassAndAFullAndHalfPathAndDeerTrail()
+        public void EveryGroundSheet_MakesGrassAPathAndADeerTrail()
         {
             var every = new HashSet<string>();
             foreach (var ground in GroundAutoTiles.Sheets)
             {
                 var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
-                var kinds = new[] { "Grass", "Path", "Path Half", "Deer Trail", "Deer Trail Half" }.ToList();
-                if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
-                if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
+                var kinds = new[] { "Grass", "Path", "Deer Trail" }.ToList();
+                if (ground.Stone) kinds.Add("Flagstones");
+                if (ground.Water) kinds.Add("Water");
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face", "Mossy Cliff Face", "Root Bank Face",
                     "Stone Steps", "Log Steps", "Earth Ramp North", "Earth Ramp East", "Earth Ramp West",
                     "Stone Ramp North", "Stone Ramp East", "Stone Ramp West" });

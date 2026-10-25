@@ -131,9 +131,8 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// Ground tiles that block the player: the water, full and half (Burrow Water, Burrow Water Half). Its tiles
-        /// carry a physics shape made of quarters (<see cref="QuarterShape"/>), so a half tile blocks only the half it
-        /// fills and a slope cuts at 45 degrees.
+        /// Ground tiles that block the player: the water (Burrow Water). Its tiles carry a physics shape made of
+        /// quarters (<see cref="QuarterShape"/>), so a slope piece cuts at 45 degrees.
         /// </summary>
         public static bool IsBlockingGroundSlice(string sliceName) =>
             !string.IsNullOrEmpty(sliceName) && sliceName.StartsWith("water_", StringComparison.Ordinal);
@@ -150,8 +149,8 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// A ground tile's physics shape from its picture, made of its four quarters (8 px squares for a 16 px tile), each
-        /// whole, empty, or cut corner to corner into a triangle, the way the ground sets are drawn (half tiles fill
-        /// quarters; slopes cut a quarter or a tile corner to corner). So the shapes only have level, upright and
+        /// whole, empty, or cut corner to corner into a triangle, the way the ground sets are drawn (a slope cuts a
+        /// tile corner to corner, through two quarters). So the shapes only have level, upright and
         /// 45 degree edges, and the tiles' merged collider runs in clean straight lines. A ragged edge or a pebble or two
         /// past the edge doesn't move it. <paramref name="opaque"/> says whether pixel (x, y) is drawn, y counted from the
         /// tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
