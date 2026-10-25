@@ -175,17 +175,17 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// The ramps, earth with log edges cut into a bank and stone with stone curbs cut into a cliff, each climbing the
-        /// face's 3 rows: north straight into the hill (2 by 7 cells, 4 tiles of run), and east and west along the face
-        /// (6 by 5 cells: a level landing at the low end where the mouth opens, then 5 tiles of slope).
+        /// face's 3 rows, 3 tiles wide: north straight into the hill (3 by 7 cells, 4 tiles of run), and east and west along
+        /// the face (6 by 6 cells: a level landing at the low end where the mouth opens, then 5 tiles of slope).
         /// </summary>
         internal static readonly Ramp[] Ramps =
         {
-            new Ramp("Earth Ramp North", "earth_ramp_n", 2, 7, Vector2.up, 0.75f, 0f, 0),
-            new Ramp("Earth Ramp East", "earth_ramp_e", 6, 5, Vector2.right, 0.6f, 0.6f, 1),
-            new Ramp("Earth Ramp West", "earth_ramp_w", 6, 5, Vector2.left, 0.6f, 0.6f, 1),
-            new Ramp("Stone Ramp North", "stone_ramp_n", 2, 7, Vector2.up, 0.75f, 0f, 0),
-            new Ramp("Stone Ramp East", "stone_ramp_e", 6, 5, Vector2.right, 0.6f, 0.6f, 1),
-            new Ramp("Stone Ramp West", "stone_ramp_w", 6, 5, Vector2.left, 0.6f, 0.6f, 1),
+            new Ramp("Earth Ramp North", "earth_ramp_n", 3, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Earth Ramp East", "earth_ramp_e", 6, 6, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Earth Ramp West", "earth_ramp_w", 6, 6, Vector2.left, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp North", "stone_ramp_n", 3, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Stone Ramp East", "stone_ramp_e", 6, 6, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp West", "stone_ramp_w", 6, 6, Vector2.left, 0.6f, 0.6f, 1),
         };
 
 

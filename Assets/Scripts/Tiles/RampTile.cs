@@ -17,10 +17,10 @@ namespace BellwortBurrow.Tiles
     public class RampTile : TileBase, IInclineTile
     {
         [Tooltip("The ramp's size in cells.")]
-        public int columns = 6, rows = 5;
+        public int columns = 6, rows = 6;
 
         [Tooltip("The pieces, row by row from the top, each row west to east. Setup fills these in.")]
-        public Sprite[] sprites = new Sprite[30];
+        public Sprite[] sprites = new Sprite[36];
 
         [Tooltip("Which way is up the ramp, on the ground: north (0, 1), east (1, 0) or west (-1, 0).")]
         public Vector2 uphill = Vector2.up;

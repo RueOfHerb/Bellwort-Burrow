@@ -136,6 +136,9 @@ namespace BellwortBurrow.Tiles
             char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
             char westSide = west == null ? Cut(map(new Vector3Int(x - 1, y, 0))) : Side(west, r);
             char eastSide = east == null ? Cut(map(new Vector3Int(x + 1, y, 0))) : Side(east, r);
+            // a lone 45 degree column between two flat runs is a jog in the bank, not a corner: no crease beside it
+            if (westSide == 'k' && !Turns(map, x - 2, west.Value)) westSide = 'c';
+            if (eastSide == 'k' && !Turns(map, x + 2, east.Value)) eastSide = 'c';
             return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, stripLooks ? r.top : y));
         }
 
@@ -144,7 +147,8 @@ namespace BellwortBurrow.Tiles
         static char Cut(TileBase beside) => beside is StepsTile ? 'b' : beside is RampTile ? 'c' : 'o';
 
         // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
-        // inner corner at the foot of a run down, or the start of a run up); a border where the flat run beside it
+        // inner corner at the foot of a run down, or the start of a run up; a lone 45 degree column is only a jog, so
+        // KeyAt leaves its crease out); a border where the flat run beside it
         // starts higher, so this block is the one in front; otherwise it carries on.
         static char Side(Run? beside, Run run)
         {
@@ -153,6 +157,9 @@ namespace BellwortBurrow.Tiles
             if (b.Diagonal) return b.top == run.top + 1 ? 'k' : 'c';
             return b.top > run.top ? 'b' : 'c';
         }
+
+        // Whether the 45 degree run beside carries on past it: the column beyond is 45 degrees too.
+        bool Turns(Func<Vector3Int, TileBase> map, int x, Run beside) => NeighbourRun(map, x, beside) is Run b && b.Diagonal;
 
         void Index()
         {

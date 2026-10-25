@@ -108,6 +108,17 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual("FToo", KeyOf(4, 0), "the cliff stands on its own");
         }
 
+        [Test]
+        public void ALone45DegreeColumn_IsAJogInTheBank_WithNoCreaseBesideIt()
+        {
+            var face = Face<FaceTile>(3);
+            Column(face, 0, 0, 3); Column(face, 1, 0, 3);
+            Column(face, 2, 0, 4);
+            Column(face, 3, -1, 3); Column(face, 4, -1, 3);
+            Assert.AreEqual("FTcc", KeyOf(3, -1), "the flat run after the jog carries straight on from it");
+            Assert.AreEqual("FTcc", KeyOf(1, 0), "and the one before it");
+        }
+
         [TestCase(false, true, false, true, 'T', 'l')]
         [TestCase(true, true, true, true, 'M', 'm')]
         [TestCase(true, false, true, false, 'B', 'r')]
