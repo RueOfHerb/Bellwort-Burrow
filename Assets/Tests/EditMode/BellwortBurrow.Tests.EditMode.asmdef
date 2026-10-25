@@ -8,7 +8,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "BellwortBurrow.Player",
-        "BellwortBurrow.Tiles"
+        "BellwortBurrow.Tiles",
+        "BellwortBurrow.UI"
     ],
     "includePlatforms": [
         "Editor"
