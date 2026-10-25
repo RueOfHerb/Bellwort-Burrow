@@ -246,6 +246,9 @@ namespace BellwortBurrow.EditorTools
                     }
                 }
 
+                // Something the player can pick: the Forage Table says which pieces, and what they give (sys-8).
+                if (!backdrop) Foraging.Dress(root, pair.Key);
+
                 // Something the player walks round: a collider on the ground it stands on, worked out from its pixels.
                 if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
                 {

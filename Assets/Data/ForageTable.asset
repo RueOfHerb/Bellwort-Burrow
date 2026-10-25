@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9226167fdf651947bef8f23fde60682, type: 3}
+  m_Name: ForageTable
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.ForageTable
+  rows:
+  - slice: burrow_bellworts
+    item: {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
+    amount: 1
+    respawnDays: 1
+  - slice: burrow_bellworts_b
+    item: {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
+    amount: 1
+    respawnDays: 1
+  - slice: burrow_grass_tall
+    item: {fileID: 11400000, guid: 35eaf111d78c3ed4b8d282860f6aac42, type: 2}
+    amount: 1
+    respawnDays: 1
+  - slice: burrow_mossy_rock_a
+    item: {fileID: 11400000, guid: bd95061e1493b9743abd6cdb96ca1d94, type: 2}
+    amount: 1
+    respawnDays: 1
+  - slice: burrow_mossy_rock_b
+    item: {fileID: 11400000, guid: bd95061e1493b9743abd6cdb96ca1d94, type: 2}
+    amount: 1
+    respawnDays: 1
