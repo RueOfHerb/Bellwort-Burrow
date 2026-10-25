@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Bellwort.uss?fileID=7433441132597879392&amp;guid=ae573b2ef7677e84f8c3fe914c3d18ad&amp;type=3#Bellwort"/>
+    <Style src="Hud.uss"/>
+    <ui:VisualElement name="hud" picking-mode="Ignore" class="hud">
+        <ui:VisualElement name="clock" picking-mode="Ignore" class="hud__clock">
+            <ui:Label name="day" text="Day 1" picking-mode="Ignore" class="hud__day"/>
+            <ui:Label name="time" text="7:00 PM" picking-mode="Ignore" class="hud__time"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="inventory" picking-mode="Ignore" class="hud__inventory">
+            <ui:VisualElement name="slot-0" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-1" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-2" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-3" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-4" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-5" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-6" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+            <ui:VisualElement name="slot-7" picking-mode="Ignore" class="hud__slot"><ui:Image name="icon" picking-mode="Ignore" class="hud__icon"/><ui:Label name="short" picking-mode="Ignore" class="hud__short"/><ui:Label name="count" picking-mode="Ignore" class="hud__count"/></ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
