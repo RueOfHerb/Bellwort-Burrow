@@ -37,7 +37,7 @@ namespace BellwortBurrow.Player
         {
             Vector2 input = move != null ? move.ReadValue<Vector2>() : moveInput;
             Vector2 walk = Vector2.ClampMagnitude(input, 1f);
-            body.linearVelocity = walk * (moveSpeed * incline.SpeedFor(walk));
+            body.linearVelocity = incline.VelocityFor(walk, moveSpeed);
         }
     }
 }

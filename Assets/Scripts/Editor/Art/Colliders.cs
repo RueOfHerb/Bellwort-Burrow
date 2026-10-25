@@ -142,6 +142,10 @@ namespace BellwortBurrow.EditorTools
         public static bool IsFaceSlice(string sliceName) =>
             Array.Exists(GroundAutoTiles.Faces, f => f.slice == sliceName);
 
+        /// <summary>A ramp's slice (GroundAutoTiles.Ramps), whose tiles block by <see cref="CutShape"/>: everything but the walkway.</summary>
+        public static bool IsRampSlice(string sliceName) =>
+            Array.Exists(GroundAutoTiles.Ramps, r => r.slice == sliceName);
+
         // ---- Tile shapes: every edge level, upright or at 45 degrees -------------------------------------------------
 
         /// <summary>
@@ -206,6 +210,92 @@ namespace BellwortBurrow.EditorTools
             if (place == '0') return new List<Vector2[]> { down ? new[] { bl, br, tl } : new[] { bl, br, tr } };   // below the lip
             if (place == '3') return new List<Vector2[]> { down ? new[] { tl, br, tr } : new[] { tl, bl, tr } };   // above the foot
             return whole;
+        }
+
+        /// <summary>
+        /// The physics shape of a ramp's tile: everything but its walkway. In each column of the tile the walkway is one
+        /// run of pixels (or none); the shape is what lies above it and what lies below it, two polygons whose edges
+        /// follow the walkway's edges as straight lines (the pixel steps smoothed out to within a pixel), so a walker
+        /// slides along a ramp's edge rather than catching on it. <paramref name="solid"/> says whether pixel (x, y) blocks,
+        /// y counted from the tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
+        /// </summary>
+        public static List<Vector2[]> CutShape(Func<int, int, bool> solid, int size)
+        {
+            var top = new float[size];      // where the walkway starts in each column, from the top; size where there's none
+            var bottom = new float[size];   // and where it ends
+            bool any = false;
+            for (int x = 0; x < size; x++)
+            {
+                int first = -1, last = -1;
+                for (int y = 0; y < size; y++)
+                    if (!solid(x, y)) { if (first < 0) first = y; last = y; }
+                if (first < 0) { top[x] = bottom[x] = size; continue; }
+                any = true;
+                top[x] = first;
+                bottom[x] = last + 1;
+            }
+            var shapes = new List<Vector2[]>();
+            if (!any)
+            {
+                shapes.Add(new[] { new Vector2(0, 0), new Vector2(size, 0), new Vector2(size, size), new Vector2(0, size) });
+                return shapes;
+            }
+            // each edge as a line of points west to east (pixel corners, y down), smoothed
+            List<Vector2> Edge(float[] at)
+            {
+                var points = new List<Vector2>();
+                for (int x = 0; x < size; x++) { points.Add(new Vector2(x, at[x])); points.Add(new Vector2(x + 1, at[x])); }
+                return Simplify(points, 0.9f);
+            }
+            Vector2 Up(Vector2 p) => new Vector2(p.x, size - p.y);
+            // above the walkway: the tile's top edge, then the walkway's top edge back west; counter-clockwise, y up
+            var above = new List<Vector2> { Up(new Vector2(0, 0)) };
+            above.AddRange(Edge(top).Select(Up));
+            above.Add(Up(new Vector2(size, 0)));
+            // below it: the walkway's bottom edge east, then the tile's bottom edge back west
+            var below = new List<Vector2> { Up(new Vector2(0, size)), Up(new Vector2(size, size)) };
+            var lower = Edge(bottom); lower.Reverse();
+            below.AddRange(lower.Select(Up));
+            foreach (var shape in new[] { above, below })
+            {
+                var clean = Tidy(shape);
+                if (clean.Count >= 3 && Mathf.Abs(Area(clean)) >= 2f) shapes.Add(clean.ToArray());
+            }
+            return shapes;
+        }
+
+        /// <summary>A polygon without repeated points or points on a straight line between their neighbours.</summary>
+        static List<Vector2> Tidy(List<Vector2> polygon)
+        {
+            var points = new List<Vector2>();
+            foreach (var p in polygon)
+                if (points.Count == 0 || (p - points[points.Count - 1]).sqrMagnitude > 1e-6f) points.Add(p);
+            while (points.Count > 1 && (points[0] - points[points.Count - 1]).sqrMagnitude <= 1e-6f) points.RemoveAt(points.Count - 1);
+            bool changed = true;
+            while (changed && points.Count >= 3)
+            {
+                changed = false;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    var a = points[(i + points.Count - 1) % points.Count];
+                    var b = points[i];
+                    var c = points[(i + 1) % points.Count];
+                    float cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                    if (Mathf.Abs(cross) < 1e-4f) { points.RemoveAt(i); changed = true; break; }
+                }
+            }
+            return points;
+        }
+
+        static float Area(List<Vector2> polygon)
+        {
+            float sum = 0;
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i]; var b = polygon[(i + 1) % polygon.Count];
+                sum += a.x * b.y - b.x * a.y;
+            }
+            return sum / 2f;
         }
     }
 }

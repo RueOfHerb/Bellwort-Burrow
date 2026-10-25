@@ -16,7 +16,8 @@ namespace BellwortBurrow.Tiles
     ///   lip crosses its top cell from corner to corner and the foot its bottom cell. Paint a staircase of these to
     ///   turn a bank 45 degrees.
     /// - Where a 45 degree run meets a flat run in an inner corner, the flat side gets a crease.
-    /// - An end against open ground is jagged; an end against steps cut into it (<see cref="StepsTile"/>) gets a border.
+    /// - An end against open ground is jagged; an end against steps cut into it (<see cref="StepsTile"/>) gets a border;
+    ///   against a ramp cut into it (<see cref="RampTile"/>) the face carries on, as the ramp's picture has it.
     /// Every look has several variations, picked by where the cell sits, so a long face never repeats.
     /// The pieces are made by setup from a face set on a ground sheet (see GroundAutoTiles.FacePieceKeys).
     /// </summary>
@@ -132,10 +133,14 @@ namespace BellwortBurrow.Tiles
             }
             bool top = y == r.top, bottom = y == r.bottom;
             char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
-            char westSide = west == null && map(new Vector3Int(x - 1, y, 0)) is StepsTile ? 'b' : Side(west, r);
-            char eastSide = east == null && map(new Vector3Int(x + 1, y, 0)) is StepsTile ? 'b' : Side(east, r);
+            char westSide = west == null ? Cut(map(new Vector3Int(x - 1, y, 0))) : Side(west, r);
+            char eastSide = east == null ? Cut(map(new Vector3Int(x + 1, y, 0))) : Side(east, r);
             return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, stripLooks ? r.top : y));
         }
+
+        // A flat run's side where no face is beside it: a border against steps cut into it; against a ramp cut into it,
+        // the face carries on (the ramp's picture has the face around its cut drawn in); otherwise open.
+        static char Cut(TileBase beside) => beside is StepsTile ? 'b' : beside is RampTile ? 'c' : 'o';
 
         // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
         // inner corner at the foot of a run down, or the start of a run up); a border where the flat run beside it

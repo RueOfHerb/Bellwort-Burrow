@@ -158,6 +158,36 @@ namespace BellwortBurrow.EditorTools
             ("Log Steps", "log_steps_set"),
         };
 
+        /// <summary>A ramp cut into a bank or cliff (<see cref="RampTile"/>): its slice, one picture of the whole ramp, and how it climbs.</summary>
+        internal struct Ramp
+        {
+            public string kind, slice;
+            public int columns, rows, landing;
+            public Vector2 uphill;
+            public float steepness, lift;
+
+            public Ramp(string kind, string slice, int columns, int rows, Vector2 uphill, float steepness, float lift, int landing)
+            {
+                this.kind = kind; this.slice = slice; this.columns = columns; this.rows = rows;
+                this.uphill = uphill; this.steepness = steepness; this.lift = lift; this.landing = landing;
+            }
+        }
+
+        /// <summary>
+        /// The ramps, earth with log edges cut into a bank and stone with stone curbs cut into a cliff, each climbing the
+        /// face's 3 rows: north straight into the hill (2 by 7 cells, 4 tiles of run), and east and west along the face
+        /// (6 by 5 cells: a level landing at the low end where the mouth opens, then 5 tiles of slope).
+        /// </summary>
+        internal static readonly Ramp[] Ramps =
+        {
+            new Ramp("Earth Ramp North", "earth_ramp_n", 2, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Earth Ramp East", "earth_ramp_e", 6, 5, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Earth Ramp West", "earth_ramp_w", 6, 5, Vector2.left, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp North", "stone_ramp_n", 2, 7, Vector2.up, 0.75f, 0f, 0),
+            new Ramp("Stone Ramp East", "stone_ramp_e", 6, 5, Vector2.right, 0.6f, 0.6f, 1),
+            new Ramp("Stone Ramp West", "stone_ramp_w", 6, 5, Vector2.left, 0.6f, 0.6f, 1),
+        };
+
 
         /// <summary>The face sets' slices: 17 by 16 tiles, the pieces laid in <see cref="FacePieceKeys"/> order, 17 to a row.</summary>
         public const int FaceSetColumns = 17, FaceSetRows = 16;
@@ -350,6 +380,12 @@ namespace BellwortBurrow.EditorTools
                     if (!GeneratedAssets.CanOverwrite(stepsPath)) kept.Add(stepsPath);
                     else if (MakeStepsTile(ground, slice, sprites, stepsPath)) written.Add(stepsPath);
                 }
+                foreach (var ramp in Ramps)
+                {
+                    string rampPath = ground.Tile(ramp.kind);
+                    if (!GeneratedAssets.CanOverwrite(rampPath)) kept.Add(rampPath);
+                    else if (MakeRampTile(ground, ramp, sprites, rampPath)) written.Add(rampPath);
+                }
                 if (ground.Water)
                 {
                     string fallPath = ground.Tile("Waterfall");
@@ -376,6 +412,7 @@ namespace BellwortBurrow.EditorTools
             if (!ground.Banks) yield break;
             foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
             foreach (var (kind, _) in Steps) yield return ground.Tile(kind);
+            foreach (var ramp in Ramps) yield return ground.Tile(ramp.kind);
             if (ground.Water) yield return ground.Tile("Waterfall");
         }
 
@@ -931,6 +968,37 @@ namespace BellwortBurrow.EditorTools
             tile.name = Path.GetFileNameWithoutExtension(path);
             tile.sprites = pieces;
             tile.steepness = 1f;
+            SaveKeepingId(tile, path);
+            return true;
+        }
+
+        /// <summary>Makes a ramp: a Ramp Tile holding its slice's pieces, row by row from the top, and how it climbs.</summary>
+        static bool MakeRampTile(GroundSheet ground, Ramp ramp, Dictionary<string, Sprite> sprites, string path)
+        {
+            var template = Enumerable.Repeat(new string('#', ramp.columns), ramp.rows).ToArray();
+            var pieces = new Sprite[ramp.columns * ramp.rows];
+            int found = 0;
+            for (int row = 0; row < ramp.rows; row++)
+                for (int column = 0; column < ramp.columns; column++)
+                    if (sprites.TryGetValue(PieceName(ramp.slice, column, row, template), out var p))
+                    {
+                        pieces[row * ramp.columns + column] = p;
+                        found++;
+                    }
+            if (found == 0)
+            {
+                Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {ramp.slice} slice.");
+                return false;
+            }
+            var tile = ScriptableObject.CreateInstance<RampTile>();
+            tile.name = Path.GetFileNameWithoutExtension(path);
+            tile.columns = ramp.columns;
+            tile.rows = ramp.rows;
+            tile.sprites = pieces;
+            tile.uphill = ramp.uphill;
+            tile.steepness = ramp.steepness;
+            tile.lift = ramp.lift;
+            tile.landing = ramp.landing;
             SaveKeepingId(tile, path);
             return true;
         }

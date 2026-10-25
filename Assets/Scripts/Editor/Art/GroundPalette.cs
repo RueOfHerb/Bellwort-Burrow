@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using BellwortBurrow.Tiles;
 using UnityEditor;
 using UnityEditor.Tilemaps;
 using UnityEngine;
@@ -504,12 +505,20 @@ namespace BellwortBurrow.EditorTools
                 runLeft += SetWidth + SetGap;
             }
 
-            // The painting tiles, in a row above.
-            int paintColumn = 1;
+            // The painting tiles, in a row above; the ramps above that, each as its whole block, to pick up and stamp.
+            int paintColumn = 1, rampColumn = 1;
             foreach (var path in GroundAutoTiles.TilePaths(ground))
             {
                 var paintTile = AssetDatabase.LoadAssetAtPath<TileBase>(path);
                 if (paintTile == null) continue;
+                if (paintTile is RampTile ramp)
+                {
+                    for (int row = 0; row < ramp.rows; row++)
+                        for (int column = 0; column < ramp.columns; column++)
+                            tilemap.SetTile(new Vector3Int(rampColumn + column, 3 + ramp.rows - 1 - row, 0), paintTile);
+                    rampColumn += ramp.columns + 1;
+                    continue;
+                }
                 tilemap.SetTile(new Vector3Int(paintColumn, 1, 0), paintTile);
                 paintColumn += 2;
             }

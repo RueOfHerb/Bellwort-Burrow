@@ -131,5 +131,80 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual("Br", tilemap.GetSprite(new Vector3Int(2, -2, 0)).name);
             Assert.AreEqual(Vector2.up, steps.Uphill(tilemap, new Vector3Int(1, -1, 0)));
         }
+
+        RampTile Ramp(int columns, int rows, Vector2 uphill, int landing)
+        {
+            var ramp = ScriptableObject.CreateInstance<RampTile>();
+            made.Add(ramp);
+            ramp.columns = columns; ramp.rows = rows; ramp.uphill = uphill; ramp.landing = landing;
+            ramp.steepness = 0.6f; ramp.lift = 0.6f;
+            ramp.sprites = new Sprite[columns * rows];
+            for (int i = 0; i < ramp.sprites.Length; i++) ramp.sprites[i] = Named("ramp " + i);
+            return ramp;
+        }
+
+        void Block(TileBase tile, int left, int top, int columns, int rows)
+        {
+            for (int y = top; y > top - rows; y--)
+                for (int x = left; x < left + columns; x++) tilemap.SetTile(new Vector3Int(x, y, 0), tile);
+        }
+
+        [Test]
+        public void ARampBlock_ShowsItsPicturePieceByPiece()
+        {
+            var ramp = Ramp(6, 5, Vector2.right, 1);
+            Block(ramp, 3, 4, 6, 5);
+            Assert.AreEqual("ramp 0", tilemap.GetSprite(new Vector3Int(3, 4, 0)).name, "the top left");
+            Assert.AreEqual("ramp 5", tilemap.GetSprite(new Vector3Int(8, 4, 0)).name, "the top right");
+            Assert.AreEqual("ramp 13", tilemap.GetSprite(new Vector3Int(4, 2, 0)).name, "row 2, column 1");
+            Assert.AreEqual("ramp 29", tilemap.GetSprite(new Vector3Int(8, 0, 0)).name, "the bottom right");
+        }
+
+        [Test]
+        public void ARampCutIntoAFace_LetsTheFaceCarryOnIntoIt()
+        {
+            var face = Face<FaceTile>(3);
+            var ramp = Ramp(6, 5, Vector2.right, 1);
+            Column(face, 0, 0, 3);
+            Block(ramp, 1, 2, 6, 5);
+            Column(face, 7, 0, 3);
+            Assert.AreEqual("FToc", KeyOf(0, 0), "west of the ramp the face carries on east");
+            Assert.AreEqual("FBco", KeyOf(7, -2), "and east of it, west");
+        }
+
+        [Test]
+        public void ARampAlongTheFace_IsLevelOnItsLanding_ThenClimbsAndLifts()
+        {
+            var east = Ramp(6, 5, Vector2.right, 1);
+            Block(east, 0, 0, 6, 5);
+            Assert.AreEqual(Vector2.zero, east.Uphill(tilemap, new Vector3Int(0, -4, 0)), "the landing is level");
+            Assert.AreEqual(0f, east.Rise(tilemap, new Vector3Int(0, -4, 0)));
+            Assert.AreEqual(Vector2.right * 0.6f, east.Uphill(tilemap, new Vector3Int(3, -2, 0)));
+            Assert.AreEqual(0.6f, east.Rise(tilemap, new Vector3Int(3, -2, 0)), 1e-5f, "walking east lifts up the screen");
+
+            var west = Ramp(6, 5, Vector2.left, 1);
+            Block(west, 10, 0, 6, 5);
+            Assert.AreEqual(Vector2.zero, west.Uphill(tilemap, new Vector3Int(15, -4, 0)), "its landing is at the east end");
+            Assert.AreEqual(-0.6f, west.Rise(tilemap, new Vector3Int(12, -2, 0)), 1e-5f, "walking west lifts up the screen");
+
+            var north = Ramp(2, 7, Vector2.up, 0);
+            north.steepness = 0.75f; north.lift = 0f;
+            Block(north, 20, 0, 2, 7);
+            Assert.AreEqual(Vector2.up * 0.75f, north.Uphill(tilemap, new Vector3Int(20, -6, 0)));
+            Assert.AreEqual(0f, north.Rise(tilemap, new Vector3Int(21, -3, 0)));
+        }
+
+        [Test]
+        public void ARampTile_BlocksAboveAndBelowItsWalkway_WithStraightEdges()
+        {
+            // a walkway climbing one pixel every two, eight pixels thick
+            System.Func<int, int, bool> solid = (x, y) => !(y >= x / 2 + 2 && y < x / 2 + 10);
+            var shapes = Colliders.CutShape(solid, 16);
+            Assert.AreEqual(2, shapes.Count, "above the walkway and below it");
+            foreach (var shape in shapes)
+                Assert.LessOrEqual(shape.Length, 6, "the walkway's edges come out as straight lines, not pixel steps");
+            Assert.AreEqual(0, Colliders.CutShape((x, y) => false, 16).Count, "all walkway: nothing blocks");
+            Assert.AreEqual(1, Colliders.CutShape((x, y) => true, 16).Count, "no walkway: the whole tile blocks");
+        }
     }
 }

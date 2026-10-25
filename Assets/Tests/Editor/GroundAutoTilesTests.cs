@@ -254,7 +254,8 @@ namespace BellwortBurrow.Tests.Editor
                 if (ground.Stone) kinds.AddRange(new[] { "Flagstones", "Flagstones Half" });
                 if (ground.Water) kinds.AddRange(new[] { "Water", "Water Half" });
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face", "Mossy Cliff Face", "Root Bank Face",
-                    "Stone Steps", "Log Steps" });
+                    "Stone Steps", "Log Steps", "Earth Ramp North", "Earth Ramp East", "Earth Ramp West",
+                    "Stone Ramp North", "Stone Ramp East", "Stone Ramp West" });
                 if (ground.Banks && ground.Water) kinds.Add("Waterfall");
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))

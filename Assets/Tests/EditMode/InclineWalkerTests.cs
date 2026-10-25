@@ -56,6 +56,21 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void Velocity_OnARampAlongTheFace_FollowsTheWalkwayAtTheSameSpeed()
+        {
+            var v = InclineWalker.Velocity(Vector2.right, 4f, Vector2.zero, 0.6f, 0.85f, 1.10f);
+            Assert.AreEqual(4f, v.magnitude, 1e-4f, "the same speed");
+            Assert.AreEqual(0.6f, v.y / v.x, 1e-4f, "turned up the screen along the walkway");
+            var back = InclineWalker.Velocity(Vector2.left, 4f, Vector2.zero, 0.6f, 0.85f, 1.10f);
+            Assert.Less(back.y, 0f, "walking back west goes down the screen");
+            Assert.AreEqual(new Vector2(0f, 4f), InclineWalker.Velocity(Vector2.up, 4f, Vector2.zero, 0.6f, 0.85f, 1.10f),
+                "walking north isn't turned");
+            var slow = InclineWalker.Velocity(Vector2.right, 4f, Vector2.right, 0f, 0.85f, 1.10f);
+            Assert.AreEqual(4f * 0.85f, slow.x, 1e-4f, "with no lift, just slower uphill");
+            Assert.AreEqual(0f, slow.y, 1e-6f);
+        }
+
+        [Test]
         public void Factor_IgnoresHowHardTheStickIsPushed()
         {
             Assert.AreEqual(Up, InclineWalker.Factor(Vector2.up * 0.3f, Vector2.up, Up, Down), 1e-5f);

@@ -15,5 +15,12 @@ namespace BellwortBurrow.Tiles
         /// zero where the cell is level.
         /// </summary>
         Vector2 Uphill(Tilemap map, Vector3Int cell);
+
+        /// <summary>
+        /// For a ramp climbing along a face (east or west): how far up the screen walking along it lifts the walker for
+        /// each unit walked east, so the walk follows the walkway up the face (negative where it climbs to the west).
+        /// Zero for everything else, where walking north is already walking up the screen.
+        /// </summary>
+        float Rise(Tilemap map, Vector3Int cell) => 0f;
     }
 }

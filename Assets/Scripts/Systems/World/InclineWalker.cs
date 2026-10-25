@@ -67,22 +67,49 @@ namespace BellwortBurrow.Systems.World
         Vector2 Feet => (body != null ? body.position : (Vector2)transform.position) + feet;
 
         /// <summary>Which way is uphill under the feet, its length how steep (zero on level ground).</summary>
-        public Vector2 UphillHere()
+        public Vector2 UphillHere() => InclineHere().uphill;
+
+        /// <summary>
+        /// The incline under the feet: which way is uphill (its length how steep), and for a ramp climbing along a face,
+        /// how far up the screen each unit walked east lifts the walker (<see cref="IInclineTile.Rise"/>).
+        /// </summary>
+        public (Vector2 uphill, float rise) InclineHere()
         {
             Vector2 at = Feet;
             if (walker == null) walker = GetComponents<Collider2D>().FirstOrDefault(c => !c.isTrigger);
             foreach (var source in Sources)
                 if (source != null && source.TryGetUphill(walker, at, out var carried))
-                    return carried;
+                    return (carried, 0f);
             if (maps == null) FindMaps();
             foreach (var map in maps)
             {
                 if (map == null || !map.isActiveAndEnabled) continue;
                 var cell = map.WorldToCell(at);
                 if (map.GetTile(cell) is IInclineTile slope)
-                    return slope.Uphill(map, cell);
+                    return (slope.Uphill(map, cell), slope.Rise(map, cell));
             }
-            return Vector2.zero;
+            return (Vector2.zero, 0f);
+        }
+
+        /// <summary>
+        /// The velocity for walking in <paramref name="move"/> (up to 1 long) at <paramref name="speed"/> here: slower
+        /// uphill and quicker downhill, and on a ramp along a face, turned up or down the screen to follow the walkway
+        /// while keeping its speed.
+        /// </summary>
+        public Vector2 VelocityFor(Vector2 move, float speed)
+        {
+            var (uphill, rise) = InclineHere();
+            return Velocity(move, speed, uphill, rise, uphillSpeed, downhillSpeed);
+        }
+
+        /// <summary><see cref="VelocityFor"/> for a given incline: the move at its <see cref="Factor"/> of the speed, lifted by <paramref name="rise"/> per unit east, keeping its length.</summary>
+        public static Vector2 Velocity(Vector2 move, float speed, Vector2 uphill, float rise, float uphillSpeed, float downhillSpeed)
+        {
+            var v = move * (speed * Factor(move, uphill, uphillSpeed, downhillSpeed));
+            if (Mathf.Abs(rise) < 1e-6f || Mathf.Abs(v.x) < 1e-6f) return v;
+            float length = v.magnitude;
+            v.y += v.x * rise;
+            return v.normalized * length;
         }
 
         /// <summary>How fast to walk in this direction here, as a share of walking speed.</summary>

@@ -160,6 +160,8 @@ namespace BellwortBurrow.EditorTools
         {
             if (Colliders.IsBlockingGroundSlice(slice))
                 return Colliders.QuarterShape((px, py) => sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] > 127, tileSize);
+            if (Colliders.IsRampSlice(slice))
+                return Colliders.CutShape((px, py) => sheet.Solid[(y + py) * sheet.Width + x + px], tileSize);
             if (Colliders.IsFaceSlice(slice))
             {
                 var keys = GroundAutoTiles.FacePieceKeys();
