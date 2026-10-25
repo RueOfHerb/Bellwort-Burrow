@@ -129,21 +129,6 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual((row, side), StepsTile.PieceFor(n, s, w, e));
         }
 
-        [Test]
-        public void StepsCutIntoAFace_BorderItAndGoUphill()
-        {
-            var face = Face<FaceTile>(3);
-            var steps = Steps();
-            Column(face, 0, 0, 3);
-            Column(steps, 1, 0, 3); Column(steps, 2, 0, 3);
-            Column(face, 3, 0, 3);
-            Assert.AreEqual("FTob", KeyOf(0, 0), "the face west of the steps gets a border on its east");
-            Assert.AreEqual("FBbo", KeyOf(3, -2), "and the face east of them on its west");
-            Assert.AreEqual("Tl", tilemap.GetSprite(new Vector3Int(1, 0, 0)).name);
-            Assert.AreEqual("Br", tilemap.GetSprite(new Vector3Int(2, -2, 0)).name);
-            Assert.AreEqual(Vector2.up, steps.Uphill(tilemap, new Vector3Int(1, -1, 0)));
-        }
-
         RampTile Ramp(int columns, int rows, Vector2 uphill, int landing)
         {
             var ramp = ScriptableObject.CreateInstance<RampTile>();
@@ -170,18 +155,6 @@ namespace BellwortBurrow.Tests.Editor
             Assert.AreEqual("ramp 5", tilemap.GetSprite(new Vector3Int(8, 4, 0)).name, "the top right");
             Assert.AreEqual("ramp 13", tilemap.GetSprite(new Vector3Int(4, 2, 0)).name, "row 2, column 1");
             Assert.AreEqual("ramp 29", tilemap.GetSprite(new Vector3Int(8, 0, 0)).name, "the bottom right");
-        }
-
-        [Test]
-        public void ARampCutIntoAFace_LetsTheFaceCarryOnIntoIt()
-        {
-            var face = Face<FaceTile>(3);
-            var ramp = Ramp(6, 5, Vector2.right, 1);
-            Column(face, 0, 0, 3);
-            Block(ramp, 1, 2, 6, 5);
-            Column(face, 7, 0, 3);
-            Assert.AreEqual("FToc", KeyOf(0, 0), "west of the ramp the face carries on east");
-            Assert.AreEqual("FBco", KeyOf(7, -2), "and east of it, west");
         }
 
         [Test]
@@ -242,24 +215,37 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
-        public void TheRampBrush_SitsTheBlockOnTheFacesFoot_AndErasingPutsTheFaceBack()
+        public void TheRampBrush_SitsTheBlockOnTheFacesFoot()
         {
             var face = Face<FaceTile>(3);
             for (int x = 0; x < 10; x++) Column(face, x, 0, 3);
-            var run = RampBrush.FaceRunNear(tilemap, new Vector3Int(5, 2, 0));
-            Assert.AreEqual((0, -2), run, "a click just above the face finds it");
+            var ramps = new GameObject("Ramps", typeof(Tilemap)).GetComponent<Tilemap>();
+            ramps.transform.SetParent(grid.transform);
+            var run = RampBrush.FaceRunNear(ramps, new Vector3Int(5, 2, 0));
+            Assert.AreEqual((0, -2), run, "from the Ramps Tilemap, a click just above the face finds the bank under it");
             var east = Ramp(6, 7, Vector2.right, 1);
-            var block = RampBrush.BlockFor(RampBrush.Kind.East, east, 4, 7, 5, run.Value);
-            Assert.AreEqual(new RectInt(3, 4, 6, 7), block, "6 by 7, its bottom row on the foot");
+            Assert.AreEqual(new RectInt(3, 4, 6, 7), RampBrush.BlockFor(RampBrush.Kind.East, east, 4, 7, 5, run.Value), "6 by 7, its bottom row on the foot");
             var north = Ramp(4, 7, Vector2.up, 0); north.stretches = true;
             Assert.AreEqual(new RectInt(4, 7, 4, 10), RampBrush.BlockFor(RampBrush.Kind.North, north, 4, 10, 5, run.Value), "a North ramp takes the width and length set");
             Assert.AreEqual(new RectInt(4, 0, 3, 3), RampBrush.BlockFor(RampBrush.Kind.Steps, Steps(), 3, 7, 5, run.Value), "steps take the face's rows");
+        }
 
-            Block(east, 3, 4, 6, 7);
-            var restore = RampBrush.Restore(tilemap, new Vector3Int(5, 1, 0));
-            Assert.AreEqual(42, restore.Count);
-            Assert.IsTrue(restore.Where(r => r.cell.y <= 0).All(r => r.face == face), "the face goes back in its rows");
-            Assert.IsTrue(restore.Where(r => r.cell.y > 0).All(r => r.face == null), "and nothing above them");
+        [Test]
+        public void TheFaceUnderARampOrSteps_StopsBlocking_AndKeepsItsLooks()
+        {
+            var face = Face<FaceTile>(3);
+            for (int x = 0; x < 6; x++) Column(face, x, 0, 3);
+            var ramps = new GameObject("Ramps", typeof(Tilemap)).GetComponent<Tilemap>();
+            ramps.transform.SetParent(grid.transform);
+            string before = KeyOf(2, -1);
+            Assert.AreEqual(Tile.ColliderType.Sprite, tilemap.GetColliderType(new Vector3Int(2, -1, 0)));
+            var steps = Steps();
+            for (int y = 0; y >= -2; y--) for (int x = 2; x <= 3; x++) ramps.SetTile(new Vector3Int(x, y, 0), steps);
+            tilemap.RefreshAllTiles();
+            Assert.AreEqual(Tile.ColliderType.None, tilemap.GetColliderType(new Vector3Int(2, -1, 0)), "under the steps");
+            Assert.AreEqual(Tile.ColliderType.Sprite, tilemap.GetColliderType(new Vector3Int(4, -1, 0)), "beside them it still blocks");
+            Assert.AreEqual(before, KeyOf(2, -1), "and the face looks the same");
+            Assert.AreEqual("FMcc", KeyOf(1, -1), "the face beside them carries on, with no border");
         }
 
         [Test]

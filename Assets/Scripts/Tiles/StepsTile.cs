@@ -5,11 +5,11 @@ using UnityEngine.Tilemaps;
 namespace BellwortBurrow.Tiles
 {
     /// <summary>
-    /// Steps cut up through a bank or cliff: stone stairs or log steps. Paint them in place of the face cells they
-    /// climb, as many rows tall as the face and one tile wide or more, on the same Tilemap as the face. The face beside
-    /// them gets a border where it's cut, and doesn't block where the steps are. Each cell picks its piece from whether
-    /// there are steps above, below, west and east of it: the top row where nothing is above, the foot where nothing
-    /// is below; the left end, the middle, the right end, or both ends when it's one tile wide.
+    /// Steps up a bank or cliff: stone stairs or log steps. Paint them on a Tilemap of their own over the bank (the
+    /// Ramps Tilemap), as many rows tall as the face and one tile wide or more; the face under them stops blocking
+    /// (<see cref="FaceTile.Covered"/>). Each cell picks its piece from whether there are steps above, below, west and
+    /// east of it: the top row where nothing is above, the foot where nothing is below; the left end, the middle, the
+    /// right end, or both ends when it's one tile wide.
     /// Walking up the steps is slower and down them quicker (<see cref="IInclineTile"/>): the way up is north.
     /// </summary>
     [CreateAssetMenu(menuName = "Bellwort Burrow/Steps Tile")]
@@ -51,9 +51,10 @@ namespace BellwortBurrow.Tiles
             tileData.colliderType = Tile.ColliderType.None;
         }
 
-        /// <summary>A cell's piece depends on its neighbours, and the face beside it borders it, so refresh around it.</summary>
+        /// <summary>A cell's piece depends on its neighbours, and the face under it on it, so refresh around it and under it.</summary>
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
+            Under.Refresh(tilemap, position);
             for (int dx = -1; dx <= 1; dx++)
                 for (int dy = -1; dy <= 1; dy++)
                 {

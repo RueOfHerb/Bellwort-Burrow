@@ -213,54 +213,68 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// The physics shape of a ramp's tile: everything but its walkway. In each column of the tile the walkway is one
-        /// run of pixels (or none); the shape is what lies above it and what lies below it, two polygons whose edges
-        /// follow the walkway's edges as straight lines (the pixel steps smoothed out to within a pixel), so a walker
-        /// slides along a ramp's edge rather than catching on it. <paramref name="solid"/> says whether pixel (x, y) blocks,
-        /// y counted from the tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
+        /// The physics shape of a ramp's tile: its solid pixels, in bands. Down each column of the tile the solid pixels
+        /// come in runs; runs that line up from column to column make a band, and each band is a polygon whose top and
+        /// bottom edges follow the runs as straight lines (the pixel steps smoothed out to within a pixel), so a walker
+        /// slides along a ramp's edge rather than catching on it. <paramref name="solid"/> says whether pixel (x, y)
+        /// blocks, y counted from the tile's top. The shapes are in pixels from the tile's bottom left corner, y up.
         /// </summary>
         public static List<Vector2[]> CutShape(Func<int, int, bool> solid, int size)
         {
-            var top = new float[size];      // where the walkway starts in each column, from the top; size where there's none
-            var bottom = new float[size];   // and where it ends
-            bool any = false;
-            for (int x = 0; x < size; x++)
-            {
-                int first = -1, last = -1;
-                for (int y = 0; y < size; y++)
-                    if (!solid(x, y)) { if (first < 0) first = y; last = y; }
-                if (first < 0) { top[x] = bottom[x] = size; continue; }
-                any = true;
-                top[x] = first;
-                bottom[x] = last + 1;
-            }
             var shapes = new List<Vector2[]>();
-            if (!any)
+            var open = new List<(List<Vector2> top, List<Vector2> bottom, int a, int b)>();
+            void Close((List<Vector2> top, List<Vector2> bottom, int a, int b) band)
             {
-                shapes.Add(new[] { new Vector2(0, 0), new Vector2(size, 0), new Vector2(size, size), new Vector2(0, size) });
-                return shapes;
+                var top = Simplify(band.top, 0.9f);
+                var bottom = Simplify(band.bottom, 0.9f);
+                // round the band: west to east along its top, then back west along its bottom, flipped to y up
+                var polygon = new List<Vector2>();
+                foreach (var p in top) polygon.Add(new Vector2(p.x, size - p.y));
+                for (int i = bottom.Count - 1; i >= 0; i--) polygon.Add(new Vector2(bottom[i].x, size - bottom[i].y));
+                var clean = Tidy(polygon);
+                if (clean.Count < 3 || Mathf.Abs(Area(clean)) < 2f) return;
+                if (Area(clean) < 0) clean.Reverse();        // counter-clockwise, like the quarter shapes
+                shapes.Add(clean.ToArray());
             }
-            // each edge as a line of points west to east (pixel corners, y down), smoothed
-            List<Vector2> Edge(float[] at)
+            for (int x = 0; x <= size; x++)
             {
-                var points = new List<Vector2>();
-                for (int x = 0; x < size; x++) { points.Add(new Vector2(x, at[x])); points.Add(new Vector2(x + 1, at[x])); }
-                return Simplify(points, 0.9f);
+                var runs = new List<(int a, int b)>();
+                if (x < size)
+                    for (int y = 0; y < size; y++)
+                        if (solid(x, y))
+                        {
+                            int a = y;
+                            while (y + 1 < size && solid(x, y + 1)) y++;
+                            runs.Add((a, y + 1));
+                        }
+                var next = new List<(List<Vector2> top, List<Vector2> bottom, int a, int b)>();
+                var used = new bool[runs.Count];
+                foreach (var band in open)
+                {
+                    int match = -1, matches = 0;
+                    for (int i = 0; i < runs.Count; i++)
+                        if (runs[i].a < band.b && runs[i].b > band.a) { match = i; matches++; }
+                    bool alone = matches == 1 && !used[match] && open.Count(o => runs[match].a < o.b && runs[match].b > o.a) == 1;
+                    if (alone)
+                    {
+                        var r = runs[match];
+                        band.top.Add(new Vector2(x, r.a)); band.top.Add(new Vector2(x + 1, r.a));
+                        band.bottom.Add(new Vector2(x, r.b)); band.bottom.Add(new Vector2(x + 1, r.b));
+                        next.Add((band.top, band.bottom, r.a, r.b));
+                        used[match] = true;
+                    }
+                    else Close(band);
+                }
+                for (int i = 0; i < runs.Count; i++)
+                    if (!used[i])
+                    {
+                        var r = runs[i];
+                        next.Add((new List<Vector2> { new Vector2(x, r.a), new Vector2(x + 1, r.a) },
+                                  new List<Vector2> { new Vector2(x, r.b), new Vector2(x + 1, r.b) }, r.a, r.b));
+                    }
+                open = next;
             }
-            Vector2 Up(Vector2 p) => new Vector2(p.x, size - p.y);
-            // above the walkway: the tile's top edge, then the walkway's top edge back west; counter-clockwise, y up
-            var above = new List<Vector2> { Up(new Vector2(0, 0)) };
-            above.AddRange(Edge(top).Select(Up));
-            above.Add(Up(new Vector2(size, 0)));
-            // below it: the walkway's bottom edge east, then the tile's bottom edge back west
-            var below = new List<Vector2> { Up(new Vector2(0, size)), Up(new Vector2(size, size)) };
-            var lower = Edge(bottom); lower.Reverse();
-            below.AddRange(lower.Select(Up));
-            foreach (var shape in new[] { above, below })
-            {
-                var clean = Tidy(shape);
-                if (clean.Count >= 3 && Mathf.Abs(Area(clean)) >= 2f) shapes.Add(clean.ToArray());
-            }
+            foreach (var band in open) Close(band);
             return shapes;
         }
 

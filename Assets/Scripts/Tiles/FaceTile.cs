@@ -16,8 +16,10 @@ namespace BellwortBurrow.Tiles
     ///   lip crosses its top cell from corner to corner and the foot its bottom cell. Paint a staircase of these to
     ///   turn a bank 45 degrees.
     /// - Where a 45 degree run meets a flat run in an inner corner, the flat side gets a crease.
-    /// - An end against open ground is jagged; an end against steps cut into it (<see cref="StepsTile"/>) gets a border;
-    ///   against a ramp cut into it (<see cref="RampTile"/>) the face carries on, as the ramp's picture has it.
+    /// - An end against open ground is jagged.
+    /// - Ramps and steps lie over the face on a Tilemap of their own (<see cref="RampTile"/>, <see cref="StepsTile"/>):
+    ///   the face under them keeps its looks but stops blocking, so the walker goes up them; the ramp blocks where it
+    ///   should.
     /// Every look has several variations, picked by where the cell sits, so a long face never repeats.
     /// The pieces are made by setup from a face set on a ground sheet (see GroundAutoTiles.FacePieceKeys).
     /// </summary>
@@ -127,24 +129,18 @@ namespace BellwortBurrow.Tiles
                     if ((e.Diagonal && e.top == r.top + 1) || (!e.Diagonal && e.top == r.top)) up++;
                 }
                 char shape = up > down ? 'U' : 'D';
-                char ws = west == null && !(map(new Vector3Int(x - 1, y, 0)) is RampTile) ? 'o' : 'c';
-                char es = east == null && !(map(new Vector3Int(x + 1, y, 0)) is RampTile) ? 'o' : 'c';
+                char ws = west == null ? 'o' : 'c', es = east == null ? 'o' : 'c';
                 if (ws == 'o' && es == 'o') ws = 'c';
                 return ($"{shape}{(char)('0' + (r.top - y))}{ws}{es}", new Vector2Int(x, r.top));
             }
             bool top = y == r.top, bottom = y == r.bottom;
             char row = top && bottom ? 'S' : top ? 'T' : bottom ? 'B' : 'M';
-            char westSide = west == null ? Cut(map(new Vector3Int(x - 1, y, 0))) : Side(west, r);
-            char eastSide = east == null ? Cut(map(new Vector3Int(x + 1, y, 0))) : Side(east, r);
+            char westSide = Side(west, r), eastSide = Side(east, r);
             // a lone 45 degree column between two flat runs is a jog in the bank, not a corner: no crease beside it
             if (westSide == 'k' && !Turns(map, x - 2, west.Value)) westSide = 'c';
             if (eastSide == 'k' && !Turns(map, x + 2, east.Value)) eastSide = 'c';
             return ($"F{row}{westSide}{eastSide}", new Vector2Int(x, stripLooks ? r.top : y));
         }
-
-        // A flat run's side where no face is beside it: a border against steps cut into it; against a ramp cut into it,
-        // the face carries on (the ramp's picture has the face around its cut drawn in); otherwise open.
-        static char Cut(TileBase beside) => beside is StepsTile ? 'b' : beside is RampTile ? 'c' : 'o';
 
         // A flat run's side: open against grass; a crease where a 45 degree run beside it starts a row higher (the
         // inner corner at the foot of a run down, or the start of a run up; a lone 45 degree column is only a jog, so
@@ -156,6 +152,21 @@ namespace BellwortBurrow.Tiles
             var b = beside.Value;
             if (b.Diagonal) return b.top == run.top + 1 ? 'k' : 'c';
             return b.top > run.top ? 'b' : 'c';
+        }
+
+        /// <summary>
+        /// Whether a ramp or steps lies over this cell on another Tilemap of the same grid (a sibling of this one): the
+        /// face under it doesn't block, and the ramp's own shape does instead.
+        /// </summary>
+        public static bool Covered(ITilemap tilemap, Vector3Int position)
+        {
+            var map = tilemap.GetComponent<Tilemap>();
+            if (map == null || map.transform.parent == null) return false;
+            foreach (Transform sibling in map.transform.parent)
+                if (sibling != map.transform && sibling.TryGetComponent<Tilemap>(out var other)
+                    && other.GetTile(position) is TileBase t && (t is RampTile || t is StepsTile))
+                    return true;
+            return false;
         }
 
         // Whether the 45 degree run beside carries on past it: the column beyond is 45 degrees too.
@@ -218,7 +229,7 @@ namespace BellwortBurrow.Tiles
             tileData.color = Color.white;
             tileData.transform = Matrix4x4.identity;
             tileData.flags = TileFlags.LockTransform | TileFlags.LockColor;
-            tileData.colliderType = solid ? Tile.ColliderType.Sprite : Tile.ColliderType.None;
+            tileData.colliderType = solid && !Covered(tilemap, position) ? Tile.ColliderType.Sprite : Tile.ColliderType.None;
         }
 
         /// <summary>

@@ -4,12 +4,14 @@ using UnityEngine.Tilemaps;
 namespace BellwortBurrow.Tiles
 {
     /// <summary>
-    /// A ramp cut into a bank or cliff, climbing its 3 rows: north straight into the hill, or east or west along the
-    /// face. Each ramp is one picture of <see cref="columns"/> by <see cref="rows"/> cells (the face around the cut is
-    /// drawn into it). Paint it as that block, in place of the face cells it covers and the hill top cells behind them,
-    /// on the same Tilemap as the face (pick the whole block from the tile palette and stamp it). Each cell finds its
-    /// piece by counting the ramp's cells west of it and above it, so a block of the right size shows the whole ramp.
-    /// The face beside it carries on into it. Only the walls, the face and the edges block; the walkway never does.
+    /// A ramp up a bank or cliff, climbing its 3 rows: north straight up it, or east or west along it. Just the ramp,
+    /// its walkway and its edges, with nothing of the bank around it, laid on a Tilemap of its own over the bank (the
+    /// Ramps Tilemap), its bottom 3 rows on the face's rows. Each ramp is one picture of <see cref="columns"/> by
+    /// <see cref="rows"/> cells; each cell finds its piece by counting the ramp's cells west of it and above it, so a
+    /// block of the right size shows the whole ramp. The face under it stops blocking (<see cref="FaceTile.Covered"/>);
+    /// the ramp blocks at its edges and, in its face rows, round its walkway, and the walkway never does. Walking up is
+    /// slower and down quicker (<see cref="IInclineTile"/>), and on an east or west ramp walking along it lifts the
+    /// walker up the screen (<see cref="IInclineTile.Rise"/>), so it follows the walkway.
     /// A ramp that <see cref="stretches"/> (the North ramps) can be painted any width and length instead: its west and
     /// east edge columns and its back end and face rows stay put, while the middle columns and the deck rows repeat, and
     /// a longer ramp is gentler.
@@ -107,6 +109,7 @@ namespace BellwortBurrow.Tiles
                 foreach (var d in new[] { Vector3Int.left, Vector3Int.right, Vector3Int.up, Vector3Int.down })
                     if (seen.Add(p + d) && tilemap.GetTile(p + d) == this) todo.Push(p + d);
             }
+            foreach (var p in seen) Under.Refresh(tilemap, p);
             foreach (var p in seen)
                 for (int dx = -1; dx <= 1; dx++)
                     for (int dy = -1; dy <= 1; dy++)

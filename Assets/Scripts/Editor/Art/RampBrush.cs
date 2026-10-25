@@ -9,11 +9,11 @@ using UnityEngine.Tilemaps;
 namespace BellwortBurrow.EditorTools
 {
     /// <summary>
-    /// The Ramp brush in the Tile Palette (pick "Ramp Brush" in the brush menu under the palette). Choose earth or stone
-    /// and North, East, West or Steps, then click a bank face on the Banks Tilemap: the whole ramp (or the steps) goes in,
-    /// its bottom row on the face's foot, centred on the column you clicked. A North ramp and the steps take the width
-    /// you set, and a North ramp the length, counted from the back of the cut to the face's foot (a longer ramp is
-    /// gentler). Erasing a ramp or steps with this brush takes the whole block out and puts the face back.
+    /// The Ramp brush in the Tile Palette (pick "Ramp Brush" in the brush menu under the palette). Pick the Ramps Tilemap,
+    /// choose earth or stone and North, East, West or Steps, then click on a bank: the whole ramp (or the steps) goes on
+    /// the Ramps Tilemap over the bank, its bottom row on the face's foot, centred on the column you clicked. A North
+    /// ramp and the steps take the width you set, and a North ramp the length, counted from its top to the face's foot (a
+    /// longer ramp is gentler). Erasing with this brush takes the whole ramp or steps out.
     /// </summary>
     [CustomGridBrush(false, false, false, "Ramp Brush")]
     public class RampBrush : GridBrushBase
@@ -41,20 +41,25 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// The run of face this click is on: the face cells in that column within a few rows of the click, as (top,
-        /// bottom). Null when there's no face near.
+        /// The run of face this click is on: the face cells in that column within a few rows of the click, on this Tilemap
+        /// or another of the same grid (the Banks under the Ramps Tilemap), as (top, bottom). Null when there's no face near.
         /// </summary>
         public static (int top, int bottom)? FaceRunNear(Tilemap map, Vector3Int at, int reach = 5)
         {
-            for (int d = 0; d <= reach; d++)
-                foreach (int y in new[] { at.y - d, at.y + d })
-                    if (map.GetTile(new Vector3Int(at.x, y, 0)) is FaceTile)
-                    {
-                        int top = y, bottom = y;
-                        while (map.GetTile(new Vector3Int(at.x, top + 1, 0)) is FaceTile) top++;
-                        while (map.GetTile(new Vector3Int(at.x, bottom - 1, 0)) is FaceTile) bottom--;
-                        return (top, bottom);
-                    }
+            var maps = new List<Tilemap> { map };
+            if (map.transform.parent != null)
+                foreach (Transform sibling in map.transform.parent)
+                    if (sibling.TryGetComponent<Tilemap>(out var other) && other != map) maps.Add(other);
+            foreach (var m in maps)
+                for (int d = 0; d <= reach; d++)
+                    foreach (int y in new[] { at.y - d, at.y + d })
+                        if (m.GetTile(new Vector3Int(at.x, y, 0)) is FaceTile)
+                        {
+                            int top = y, bottom = y;
+                            while (m.GetTile(new Vector3Int(at.x, top + 1, 0)) is FaceTile) top++;
+                            while (m.GetTile(new Vector3Int(at.x, bottom - 1, 0)) is FaceTile) bottom--;
+                            return (top, bottom);
+                        }
             return null;
         }
 
@@ -80,29 +85,34 @@ namespace BellwortBurrow.EditorTools
             if (run == null) { Debug.LogWarning("Bellwort Burrow: the Ramp brush goes on a bank face; click on one."); return; }
             var block = BlockFor(kind, tile, width, length, position.x, run.Value);
             Undo.RegisterCompleteObjectUndo(map, $"Paint {material} {kind}");
+            var cells = new List<Vector3Int>();
             for (int y = block.y; y > block.y - block.height; y--)
                 for (int x = block.x; x < block.x + block.width; x++)
+                {
                     map.SetTile(new Vector3Int(x, y, 0), tile);
+                    cells.Add(new Vector3Int(x, y, 0));
+                }
+            RefreshUnder(map, cells);
         }
 
         public override void Erase(GridLayout grid, GameObject target, Vector3Int position)
         {
             var map = target != null ? target.GetComponent<Tilemap>() : null;
             if (map == null) return;
-            var tile = map.GetTile(position);
-            if (!(tile is RampTile || tile is StepsTile)) return;
+            if (!(map.GetTile(position) is RampTile || map.GetTile(position) is StepsTile)) return;
             Undo.RegisterCompleteObjectUndo(map, "Erase ramp");
-            foreach (var (cell, face) in Restore(map, position)) map.SetTile(cell, face);
+            var block = Block(map, position);
+            foreach (var cell in block) map.SetTile(cell, null);
+            RefreshUnder(map, block);
         }
 
-        /// <summary>
-        /// The cells of the ramp or steps block through a cell, each with what goes back there: the face beside the block
-        /// in its rows (the bottom 3), nothing above them.
-        /// </summary>
-        public static List<(Vector3Int cell, TileBase face)> Restore(Tilemap map, Vector3Int at)
+        /// <summary>The cells of the ramp or steps block through a cell: the same tile, joined side to side.</summary>
+        public static List<Vector3Int> Block(Tilemap map, Vector3Int at)
         {
             var tile = map.GetTile(at);
-            var block = new HashSet<Vector3Int> { at };
+            var block = new HashSet<Vector3Int>();
+            if (tile == null) return new List<Vector3Int>();
+            block.Add(at);
             var todo = new Stack<Vector3Int>();
             todo.Push(at);
             while (todo.Count > 0 && block.Count < 4096)
@@ -111,11 +121,15 @@ namespace BellwortBurrow.EditorTools
                 foreach (var d in new[] { Vector3Int.left, Vector3Int.right, Vector3Int.up, Vector3Int.down })
                     if (map.GetTile(p + d) == tile && block.Add(p + d)) todo.Push(p + d);
             }
-            int minX = block.Min(c => c.x), maxX = block.Max(c => c.x), bottom = block.Min(c => c.y);
-            TileBase FaceBeside(int y) =>
-                (map.GetTile(new Vector3Int(minX - 1, y, 0)) as FaceTile) ?? (TileBase)(map.GetTile(new Vector3Int(maxX + 1, y, 0)) as FaceTile)
-                ?? map.GetTile(new Vector3Int(minX - 1, bottom, 0)) as FaceTile ?? map.GetTile(new Vector3Int(maxX + 1, bottom, 0)) as FaceTile;
-            return block.Select(c => (c, c.y < bottom + FaceTile.Rows ? FaceBeside(c.y) : null)).ToList();
+            return block.ToList();
+        }
+
+        static void RefreshUnder(Tilemap map, IEnumerable<Vector3Int> cells)
+        {
+            if (map.transform.parent == null) return;
+            foreach (Transform sibling in map.transform.parent)
+                if (sibling.TryGetComponent<Tilemap>(out var other) && other != map)
+                    foreach (var c in cells) other.RefreshTile(c);
         }
     }
 
@@ -140,9 +154,9 @@ namespace BellwortBurrow.EditorTools
                 brush.material = material; brush.kind = kind; brush.width = width; brush.length = length;
                 EditorUtility.SetDirty(brush);
             }
-            EditorGUILayout.HelpBox(kind == RampBrush.Kind.North ? "Click a bank face: the ramp's bottom row goes on the face's foot. A walkway 3 tiles wide is 4 columns."
+            EditorGUILayout.HelpBox("Paint on the Ramps Tilemap, over the bank. " + (kind == RampBrush.Kind.North ? "Click a bank face: the ramp's bottom row goes on the face's foot. A walkway 3 tiles wide is 4 columns."
                 : kind == RampBrush.Kind.Steps ? "Click a bank face: the steps take the face's rows. 3 columns are 3 tiles of steps."
-                : "Click a bank face: the ramp takes 6 columns of it, its bottom row on the face's foot, and climbs " + (kind == RampBrush.Kind.East ? "east." : "west."), MessageType.None);
+                : "Click a bank face: the ramp takes 6 columns of it, its bottom row on the face's foot, and climbs " + (kind == RampBrush.Kind.East ? "east." : "west.")), MessageType.None);
         }
     }
 }
