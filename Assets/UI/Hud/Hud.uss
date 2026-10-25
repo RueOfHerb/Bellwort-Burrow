@@ -1,0 +1,96 @@
+/* The HUD (ui-3): the clock top left and the inventory row along the bottom, over the game.
+   Panel pixels, 480 by 270, like the creator. Colors come from Bellwort.uss. Nothing here takes clicks. */
+
+.hud {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.hud__clock {
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    min-width: 54px;
+    padding: 3px 5px 3px 5px;
+    background-color: var(--bb-panel);
+    border-width: 1px;
+    border-color: var(--bb-edge);
+    border-radius: 2px;
+}
+
+.hud__day {
+    margin: 0;
+    padding: 0;
+    font-size: 7px;
+    color: var(--bb-ink-muted);
+    -unity-text-align: middle-left;
+}
+
+.hud__time {
+    margin: 0;
+    padding: 0;
+    font-size: 9px;
+    color: var(--bb-ink);
+    -unity-text-align: middle-left;
+}
+
+.hud__inventory {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 5px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.hud__slot {
+    width: 22px;
+    height: 22px;
+    margin-left: 1px;
+    margin-right: 1px;
+    background-color: var(--bb-panel);
+    border-width: 1px;
+    border-color: var(--bb-edge);
+    border-radius: 2px;
+}
+
+.hud__slot--filled {
+    border-color: var(--bb-button-hover);
+}
+
+.hud__icon {
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 16px;
+    height: 16px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* An item with no icon yet shows its first letters instead. */
+.hud__short {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 8px;
+    color: var(--bb-ink);
+    -unity-text-align: middle-center;
+}
+
+.hud__count {
+    position: absolute;
+    right: 1px;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 7px;
+    color: var(--bb-focus);
+    -unity-text-align: lower-right;
+}
