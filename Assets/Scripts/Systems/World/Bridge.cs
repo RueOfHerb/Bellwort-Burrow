@@ -109,7 +109,7 @@ namespace BellwortBurrow.Systems.World
         public void FindGround()
         {
             ground.Clear();
-            foreach (var map in FindObjectsByType<Tilemap>(FindObjectsSortMode.None))
+            foreach (var map in FindObjectsByType<Tilemap>())
             {
                 if (Array.IndexOf(crosses, map.name) < 0) continue;
                 if (map.TryGetComponent<CompositeCollider2D>(out var merged)) ground.Add(merged);

@@ -185,7 +185,7 @@ namespace BellwortBurrow.Tiles
         }
 
         void OnValidate() => byKey = null;
-        void OnEnable() => byKey = null;
+        public override void OnEnable() { base.OnEnable(); byKey = null; }
 
         /// <summary>The piece for a key at a cell: one of its variations, or the nearest stand-in if it has none.</summary>
         public Sprite PieceFor(string key, Vector2Int cell)

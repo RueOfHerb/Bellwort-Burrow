@@ -21,7 +21,7 @@ namespace BellwortBurrow.EditorTools
     /// - Tile Size above 0 cuts each slice into tiles named "name_00", "name_01"... (row by row)
     ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player get a physics shape whose
     ///   edges are only level, upright or at 45 degrees: the water's from its quarters (<see cref="Colliders.QuarterShape"/>),
-    ///   so half tiles and slopes block as drawn, and the bank and cliff faces' from their keys (<see cref="Colliders.FaceShape"/>),
+    ///   so slopes block as drawn, and the bank and cliff faces' from their keys (<see cref="Colliders.FaceShape"/>),
     ///   so a 45 degree run blocks along a straight line.
     /// </summary>
     [ScriptedImporter(4, new[] { "bwsheet" }, new[] { "aseprite", "ase" })]
