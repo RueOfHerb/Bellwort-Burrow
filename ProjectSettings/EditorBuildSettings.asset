@@ -6,20 +6,23 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/Core/Title.unity
+    guid: 09db28ab02b986f45a7ae786b53fd102
+  - enabled: 1
     path: Assets/Scenes/Core/CharacterCreator.unity
     guid: da321ce0ec15e1842ae6eca047d5d10e
   - enabled: 1
-    path: Assets/Scenes/Zones/ForlornForest.unity
-    guid: 68c7a56c96895d044bb8420cc770a35a
-  - enabled: 1
-    path: Assets/Scenes/Zones/ThicketPath.unity
-    guid: cadf4e4083821354db9317d7be43e7ca
+    path: Assets/Scenes/Zones/BellwortBurrow.unity
+    guid: 939bc3a986cbc6b47a7a0c579efaea2f
   - enabled: 1
     path: Assets/Scenes/Zones/BellwortApproach.unity
     guid: e9fe9a1a1e456ba4aa6e6d4dd9996dc0
   - enabled: 1
-    path: Assets/Scenes/Zones/BellwortBurrow.unity
-    guid: 939bc3a986cbc6b47a7a0c579efaea2f
+    path: Assets/Scenes/Zones/ThicketPath.unity
+    guid: cadf4e4083821354db9317d7be43e7ca
+  - enabled: 1
+    path: Assets/Scenes/Zones/ForlornForest.unity
+    guid: 68c7a56c96895d044bb8420cc770a35a
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

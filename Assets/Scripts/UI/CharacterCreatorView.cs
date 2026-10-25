@@ -24,8 +24,8 @@ namespace BellwortBurrow.UI
         [SerializeField] CharacterOptions characterOptions;
         [Tooltip("The critter on the left. Its Follow Profile is off, because this view dresses it.")]
         [SerializeField] PlayerAppearance preview;
-        [Tooltip("The scene Begin loads. The Forlorn Forest for now, until the story has an opening.")]
-        [SerializeField] string firstScene = "ForlornForest";
+        [Tooltip("The scene Begin loads: Bellwort Burrow, where the loop plays (Jocelyn, Oct 25).")]
+        [SerializeField] string firstScene = "BellwortBurrow";
 
         readonly List<OptionStepper> rows = new();
         PlayerProfile draft;

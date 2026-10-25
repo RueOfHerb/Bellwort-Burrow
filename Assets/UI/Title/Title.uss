@@ -1,0 +1,92 @@
+/* The title screen (ui-4): the name, New Game, Continue and Quit, in the creator's colors. Panel pixels, 480 by 270. */
+
+.title {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.title__panel {
+    width: 160px;
+    padding: 10px 12px 10px 12px;
+    align-items: stretch;
+    background-color: var(--bb-panel);
+    border-width: 1px;
+    border-color: var(--bb-edge);
+    border-radius: 3px;
+}
+
+.title__name {
+    margin: 0 0 2px 0;
+    padding: 0;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--bb-ink);
+    -unity-text-align: middle-center;
+}
+
+.title__tagline {
+    margin: 0 0 10px 0;
+    padding: 0;
+    font-size: 7px;
+    color: var(--bb-ink-muted);
+    -unity-text-align: middle-center;
+}
+
+.title__button {
+    height: 16px;
+    margin: 0 0 4px 0;
+    font-size: 9px;
+    color: var(--bb-ink);
+    background-color: var(--bb-button);
+    border-width: 1px;
+    border-color: var(--bb-edge);
+    border-radius: 2px;
+}
+
+.title__button:hover {
+    background-color: var(--bb-button-hover);
+}
+
+.title__button:focus {
+    border-color: var(--bb-focus);
+}
+
+.title__button:disabled {
+    color: var(--bb-ink-muted);
+    background-color: var(--bb-off);
+}
+
+.title__button--go {
+    background-color: var(--bb-go);
+}
+
+.title__button--go:hover {
+    background-color: var(--bb-go-hover);
+}
+
+.title__button--quiet {
+    margin-top: 6px;
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+    color: var(--bb-ink-muted);
+}
+
+/* Under Continue: who the newest save is, and where they were. */
+.title__save {
+    margin: -2px 0 2px 0;
+    padding: 0;
+    font-size: 7px;
+    color: var(--bb-ink-muted);
+    -unity-text-align: middle-center;
+}
+
+.title__version {
+    position: absolute;
+    right: 6px;
+    bottom: 4px;
+    margin: 0;
+    padding: 0;
+    font-size: 6px;
+    color: var(--bb-ink-muted);
+}

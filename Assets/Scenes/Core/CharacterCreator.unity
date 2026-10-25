@@ -926,7 +926,7 @@ MonoBehaviour:
   critterCatalog: {fileID: 11400000, guid: 9094f6f0ab415b549a703bfe11998036, type: 2}
   characterOptions: {fileID: 11400000, guid: 422eccbbdcd32fb4bae324d16e70029a, type: 2}
   preview: {fileID: 273424588}
-  firstScene: ForlornForest
+  firstScene: BellwortBurrow
 --- !u!4 &1536070511
 Transform:
   m_ObjectHideFlags: 0

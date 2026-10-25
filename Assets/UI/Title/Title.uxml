@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Bellwort.uss?fileID=7433441132597879392&amp;guid=ae573b2ef7677e84f8c3fe914c3d18ad&amp;type=3#Bellwort"/>
+    <Style src="Title.uss"/>
+    <ui:VisualElement name="title-screen" class="title">
+        <ui:VisualElement name="panel" class="title__panel">
+            <ui:Label text="Bellwort Burrow" name="name" class="title__name"/>
+            <ui:Label text="A clearing under the fallen tree" name="tagline" class="title__tagline"/>
+            <ui:Button text="New Game" name="new-game" class="title__button title__button--go"/>
+            <ui:Button text="Continue" name="continue" class="title__button"/>
+            <ui:Label text="" name="save-line" class="title__save"/>
+            <ui:Button text="Quit" name="quit" class="title__button title__button--quiet"/>
+        </ui:VisualElement>
+        <ui:Label text="" name="version" class="title__version"/>
+    </ui:VisualElement>
+</ui:UXML>
