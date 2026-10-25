@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 
 namespace BellwortBurrow.Tests.Editor
 {
-    public class SlopeAndStepsTests
+    public class StepsAndFacesTests
     {
         GameObject grid;
         Tilemap tilemap;
@@ -71,51 +71,6 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         string KeyOf(int x, int y) => tilemap.GetSprite(new Vector3Int(x, y, 0)).name.Split(' ')[0];
-
-        [Test]
-        public void ASteepSlope_IsTwoRowsWithALipAndAFoot()
-        {
-            var slope = Face<SlopeTile>(2);
-            for (int x = 0; x < 3; x++) Column(slope, x, 0, 2);
-            Assert.AreEqual("FToc", KeyOf(0, 0));
-            Assert.AreEqual("FBcc", KeyOf(1, -1));
-        }
-
-        [Test]
-        public void ASteepSlope_TurnsFortyFiveDegreesInColumnsOfThree()
-        {
-            var slope = Face<SlopeTile>(2);
-            Column(slope, 0, 0, 2);       // flat
-            Column(slope, 1, 0, 3);       // 45 degree column, down to the east
-            Column(slope, 2, -1, 3);
-            Column(slope, 3, -2, 2);      // flat again, a row lower
-            Assert.AreEqual('D', KeyOf(1, 0)[0], "a column one taller than the slope is a 45 degree run");
-            Assert.AreEqual("D0", KeyOf(1, 0).Substring(0, 2));
-            Assert.AreEqual("D2", KeyOf(1, -2).Substring(0, 2));
-        }
-
-        [Test]
-        public void ASlope_SaysWhichWayIsUphill_ScaledByHowSteep()
-        {
-            var slope = Face<SlopeTile>(3);
-            slope.steepness = 0.6f;
-            for (int x = 0; x < 3; x++) Column(slope, x, 0, 3);
-            Vector2 up = slope.Uphill(tilemap, new Vector3Int(1, -1, 0));
-            Assert.AreEqual(0f, up.x, 1e-5f);
-            Assert.AreEqual(0.6f, up.y, 1e-5f);
-            Assert.AreEqual(Vector2.zero, slope.Uphill(tilemap, new Vector3Int(5, 5, 0)), "not a slope cell");
-            Assert.AreEqual(0.6f, slope.UphillFor("D1cc").magnitude, 1e-5f);
-            Assert.Less(slope.UphillFor("D1cc").x, 0f, "a run down to the east rises to the north-west");
-            Assert.Greater(slope.UphillFor("U1cc").x, 0f, "a run up to the east rises to the north-east");
-        }
-
-        [Test]
-        public void ASlopeDoesNotBlock_AFaceDoes()
-        {
-            var slope = Face<SlopeTile>(3);
-            Assert.IsFalse(slope.solid);
-            Assert.IsTrue(Face<FaceTile>(3).solid);
-        }
 
         [Test]
         public void AStripFace_TakesItsLooksInOrderAlongTheFace_TheSameDownEachColumn()

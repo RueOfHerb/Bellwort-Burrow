@@ -26,7 +26,7 @@ namespace BellwortBurrow.Tiles
         /// <summary>How many rows a flat face is painted by default; a 45 degree column is one more.</summary>
         public const int Rows = 3;
 
-        [Tooltip("How many rows a flat run is painted (a 45 degree column is one more): 3 for a bank or cliff, 2 for a steep slope.")]
+        [Tooltip("How many rows a flat run is painted (a 45 degree column is one more).")]
         [Min(1)] public int rows = Rows;
 
         [Tooltip("Pieces pick their look by column, the same all the way down it, and a flat run carrying on both ways " +
@@ -71,8 +71,7 @@ namespace BellwortBurrow.Tiles
 
         /// <summary>Whether a tile carries this face on: this tile, or a face of the same family and height.</summary>
         public bool Joins(TileBase tile) =>
-            tile == this || (tile is FaceTile other && !(other is SlopeTile) && !(this is SlopeTile) &&
-                             !string.IsNullOrEmpty(family) && other.family == family && other.rows == rows);
+            tile == this || (tile is FaceTile other && !string.IsNullOrEmpty(family) && other.family == family && other.rows == rows);
 
         static Func<Vector3Int, TileBase> Reader(ITilemap map) => p => map.GetTile(p);
 

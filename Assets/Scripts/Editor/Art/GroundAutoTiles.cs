@@ -36,10 +36,7 @@ namespace BellwortBurrow.EditorTools
     ///   corner creases and open ends, each look in several variations (<see cref="FacePieceKeys"/>).
     ///   Mossy Cliff Face and Root Bank Face are the same faces overgrown: moss, hanging vines and ferns on the stone, the
     ///   great tree's roots through the earth.
-    /// - Grass Slope and Steep Grass Slope (<see cref="Slopes"/>): raised ground's front as grass you walk up, painted
-    ///   like a face, 3 rows tall for a grass slope and 2 for a steep one. They are Slope Tiles (<see cref="SlopeTile"/>).
     /// - Stone Steps and Log Steps (<see cref="Steps"/>): painted in place of the face cells they climb (<see cref="StepsTile"/>).
-    /// - Ramp (Burrow Ramp): the worn ridges of a path where it climbs a slope, on a Tilemap of its own over the path.
     /// These are ordinary Unity tile assets. Open one in the Inspector to see or change its rules. Running this again
     /// refreshes them in place, so scenes painted with them keep working; a tile you changed by hand is left alone
     /// (see <see cref="GeneratedAssets"/>).
@@ -152,16 +149,6 @@ namespace BellwortBurrow.EditorTools
         internal static readonly string[] StripFaces = { "Root Bank Face" };
 
         /// <summary>
-        /// Raised ground's slopes, walked up instead of climbed: each kind, its set (laid out like a face set, in
-        /// <see cref="FacePieceKeys"/> order), how many rows a flat run is painted and how steep it is (sys-7).
-        /// </summary>
-        internal static readonly (string kind, string slice, int rows, float steepness)[] Slopes =
-        {
-            ("Grass Slope", "grass_slope_set", 3, 0.6f),
-            ("Steep Grass Slope", "steep_slope_set", 2, 1f),
-        };
-
-        /// <summary>
         /// Steps cut up through a bank or cliff: each kind and its set, 4 by 3 tiles, rows top, middle and bottom, each
         /// row the left end, the middle, the right end and a single (<see cref="StepsTile"/>).
         /// </summary>
@@ -171,11 +158,6 @@ namespace BellwortBurrow.EditorTools
             ("Log Steps", "log_steps_set"),
         };
 
-        /// <summary>
-        /// The worn ridges of a path climbing a slope (Burrow Ramp): painted on a Tilemap of its own over the path where
-        /// it crosses a slope, laid out like the waterfall set. The slope under it says which way is up.
-        /// </summary>
-        internal const string RampSlice = "ramp_set";
 
         /// <summary>The face sets' slices: 17 by 16 tiles, the pieces laid in <see cref="FacePieceKeys"/> order, 17 to a row.</summary>
         public const int FaceSetColumns = 17, FaceSetRows = 16;
@@ -362,13 +344,6 @@ namespace BellwortBurrow.EditorTools
                     if (!GeneratedAssets.CanOverwrite(facePath)) kept.Add(facePath);
                     else if (MakeFaceTile<FaceTile>(ground, slice, sprites, facePath, t => { t.stripLooks = StripFaces.Contains(kind); t.family = FamilyOf(kind); })) written.Add(facePath);
                 }
-                foreach (var (kind, slice, rows, steepness) in Slopes)
-                {
-                    string slopePath = ground.Tile(kind);
-                    if (!GeneratedAssets.CanOverwrite(slopePath)) kept.Add(slopePath);
-                    else if (MakeFaceTile<SlopeTile>(ground, slice, sprites, slopePath, t => { t.rows = rows; t.steepness = steepness; t.solid = false; }))
-                        written.Add(slopePath);
-                }
                 foreach (var (kind, slice) in Steps)
                 {
                     string stepsPath = ground.Tile(kind);
@@ -381,9 +356,6 @@ namespace BellwortBurrow.EditorTools
                     if (!GeneratedAssets.CanOverwrite(fallPath)) kept.Add(fallPath);
                     else if (MakeWaterfallTile(ground, sprites, fallPath)) written.Add(fallPath);
                 }
-                string rampPath = ground.Tile("Ramp");
-                if (!GeneratedAssets.CanOverwrite(rampPath)) kept.Add(rampPath);
-                else if (MakeSideRowTile(ground, RampSlice, sprites, rampPath)) written.Add(rampPath);
             }
 
             AssetDatabase.SaveAssets();
@@ -403,10 +375,8 @@ namespace BellwortBurrow.EditorTools
             }
             if (!ground.Banks) yield break;
             foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
-            foreach (var (kind, _, _, _) in Slopes) yield return ground.Tile(kind);
             foreach (var (kind, _) in Steps) yield return ground.Tile(kind);
             if (ground.Water) yield return ground.Tile("Waterfall");
-            yield return ground.Tile("Ramp");
         }
 
         /// <summary>
@@ -1000,7 +970,7 @@ namespace BellwortBurrow.EditorTools
         /// <summary>
         /// A Rule Tile that picks its piece by whether it carries on above, below, west and east (<see cref="WaterfallPiece"/>),
         /// from a set laid out in rows top, middle, bottom and sides left end, middle, right end, single: the Waterfall
-        /// and the Ramp.
+        /// and the steps' layout.
         /// </summary>
         static bool MakeSideRowTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
         {
