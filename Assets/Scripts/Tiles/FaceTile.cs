@@ -127,7 +127,8 @@ namespace BellwortBurrow.Tiles
                     if ((e.Diagonal && e.top == r.top + 1) || (!e.Diagonal && e.top == r.top)) up++;
                 }
                 char shape = up > down ? 'U' : 'D';
-                char ws = west == null ? 'o' : 'c', es = east == null ? 'o' : 'c';
+                char ws = west == null && !(map(new Vector3Int(x - 1, y, 0)) is RampTile) ? 'o' : 'c';
+                char es = east == null && !(map(new Vector3Int(x + 1, y, 0)) is RampTile) ? 'o' : 'c';
                 if (ws == 'o' && es == 'o') ws = 'c';
                 return ($"{shape}{(char)('0' + (r.top - y))}{ws}{es}", new Vector2Int(x, r.top));
             }
