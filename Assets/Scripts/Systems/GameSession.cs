@@ -26,11 +26,13 @@ namespace BellwortBurrow.Systems
         void StartNewGame(PlayerProfile profile, string startZone);
 
         /// <summary>
-        /// Writes the game to its slot. The game saves when a day ends (going to bed isn't built yet, so for now that's
-        /// when the player passes out at the end of the day) and whenever a scene loads during a game (EnterScene),
-        /// plus the first save from StartNewGame. The temporary debug button calls this too.
+        /// Writes the game to its slot. The game saves when the player goes to bed (Sleep) and whenever a scene loads
+        /// during a game (EnterScene), plus the first save from StartNewGame. The temporary debug button calls this too.
         /// </summary>
         bool Save();
+
+        /// <summary>Going to bed (sys-9): the next day starts and the game saves. Passing out starts the next day without saving.</summary>
+        void Sleep();
 
         /// <summary>Fresh services filled from the slot's file. False, and nothing changes, when the slot can't be read.</summary>
         bool Load(string slot);
@@ -74,10 +76,15 @@ namespace BellwortBurrow.Systems
         }
 
         /// <summary>
-        /// The clock reached the end of the day (9:00 AM). Until passing out and the bed are built, the player wakes on
-        /// the next day straight away and the game saves.
+        /// The clock reached the end of the day (9:00 AM): the player passed out and wakes on the next day straight away.
+        /// Nothing is saved, so a day that ends badly can be loaded back from the last bed (Jocelyn's loop plan, Oct 25).
         /// </summary>
         void PassOut()
+        {
+            Services.Time.StartNextDay();
+        }
+
+        public void Sleep()
         {
             Services.Time.StartNextDay();
             Save();
