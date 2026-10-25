@@ -161,7 +161,9 @@ namespace BellwortBurrow.EditorTools
             if (Colliders.IsBlockingGroundSlice(slice))
                 return Colliders.QuarterShape((px, py) => sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] > 127, tileSize);
             if (Colliders.IsRampSlice(slice))
-                return Colliders.CutShape((px, py) => sheet.Solid[(y + py) * sheet.Width + x + px], tileSize);
+                // the walkway is the ramp's drawn, open pixels; the hill top showing through past its back edge isn't part of it
+                return Colliders.CutShape((px, py) => sheet.Solid[(y + py) * sheet.Width + x + px]
+                                                      || sheet.Art[((y + py) * sheet.Width + x + px) * 4 + 3] == 0, tileSize);
             if (Colliders.IsFaceSlice(slice))
             {
                 var keys = GroundAutoTiles.FacePieceKeys();
