@@ -1001,6 +1001,8 @@ namespace BellwortBurrow.EditorTools
             tile.steepness = ramp.steepness;
             tile.lift = ramp.lift;
             tile.landing = ramp.landing;
+            tile.stretches = ramp.uphill == Vector2.up;     // the North ramps paint any width and length
+            tile.faceRows = 3;
             SaveKeepingId(tile, path);
             return true;
         }

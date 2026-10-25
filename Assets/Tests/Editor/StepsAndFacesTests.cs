@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using BellwortBurrow.EditorTools;
 using BellwortBurrow.Tiles;
 using NUnit.Framework;
@@ -203,6 +204,62 @@ namespace BellwortBurrow.Tests.Editor
             Block(north, 20, 0, 2, 7);
             Assert.AreEqual(Vector2.up * 0.75f, north.Uphill(tilemap, new Vector3Int(20, -6, 0)));
             Assert.AreEqual(0f, north.Rise(tilemap, new Vector3Int(21, -3, 0)));
+        }
+
+        [Test]
+        public void AStretchingRamp_KeepsItsEdgesEndAndFace_AndRepeatsTheRest()
+        {
+            var north = Ramp(4, 7, Vector2.up, 0);
+            north.stretches = true; north.faceRows = 3; north.steepness = 0.75f;
+            Block(north, 0, 0, 6, 10);   // 6 wide, 10 tall: x 0 to 5, y 0 down to -9
+            string At(int x, int y) => tilemap.GetSprite(new Vector3Int(x, y, 0)).name;
+            Assert.AreEqual("ramp 0", At(0, 0), "the back end's west edge");
+            Assert.AreEqual("ramp 3", At(5, 0), "the back end's east edge");
+            Assert.AreEqual("ramp 1", At(1, 0), "a middle column");
+            Assert.AreEqual("ramp 2", At(2, 0), "the next middle column");
+            Assert.AreEqual("ramp 1", At(3, 0), "the middle columns take turns");
+            Assert.AreEqual("ramp 24", At(0, -9), "the face's foot, west edge");
+            Assert.AreEqual("ramp 16", At(0, -7), "the face's top row");
+            Assert.AreEqual("ramp 5", At(1, -1), "the first deck row");
+            Assert.AreEqual("ramp 9", At(1, -2), "the second deck row");
+            Assert.AreEqual("ramp 5", At(1, -3), "the deck rows take turns");
+            var longer = north.Uphill(tilemap, new Vector3Int(2, -4, 0));
+            Assert.AreEqual(0.75f * 4 / 7, longer.y, 1e-4f, "7 rows of deck instead of 4: gentler");
+        }
+
+        [Test]
+        public void CloseBankSteps_TurnsEachOneRowStep45Degrees()
+        {
+            var face = Face<FaceTile>(3);
+            Column(face, 0, 0, 3); Column(face, 1, 0, 3);
+            Column(face, 2, -1, 3); Column(face, 3, -1, 3);    // a step down to the east
+            Column(face, 4, 0, 3);                             // and back up
+            var added = BankTools.CloseSteps(tilemap);
+            CollectionAssert.AreEquivalent(new[] { new Vector3Int(2, 0, 0), new Vector3Int(3, 0, 0) }, added);
+            StringAssert.StartsWith("D", KeyOf(2, 0), "the step down is a 45 degree column");
+            StringAssert.StartsWith("U", KeyOf(3, 0), "and so is the step back up");
+            Assert.AreEqual(0, BankTools.CloseSteps(tilemap).Count, "closing twice changes nothing");
+        }
+
+        [Test]
+        public void TheRampBrush_SitsTheBlockOnTheFacesFoot_AndErasingPutsTheFaceBack()
+        {
+            var face = Face<FaceTile>(3);
+            for (int x = 0; x < 10; x++) Column(face, x, 0, 3);
+            var run = RampBrush.FaceRunNear(tilemap, new Vector3Int(5, 2, 0));
+            Assert.AreEqual((0, -2), run, "a click just above the face finds it");
+            var east = Ramp(6, 7, Vector2.right, 1);
+            var block = RampBrush.BlockFor(RampBrush.Kind.East, east, 4, 7, 5, run.Value);
+            Assert.AreEqual(new RectInt(3, 4, 6, 7), block, "6 by 7, its bottom row on the foot");
+            var north = Ramp(4, 7, Vector2.up, 0); north.stretches = true;
+            Assert.AreEqual(new RectInt(4, 7, 4, 10), RampBrush.BlockFor(RampBrush.Kind.North, north, 4, 10, 5, run.Value), "a North ramp takes the width and length set");
+            Assert.AreEqual(new RectInt(4, 0, 3, 3), RampBrush.BlockFor(RampBrush.Kind.Steps, Steps(), 3, 7, 5, run.Value), "steps take the face's rows");
+
+            Block(east, 3, 4, 6, 7);
+            var restore = RampBrush.Restore(tilemap, new Vector3Int(5, 1, 0));
+            Assert.AreEqual(42, restore.Count);
+            Assert.IsTrue(restore.Where(r => r.cell.y <= 0).All(r => r.face == face), "the face goes back in its rows");
+            Assert.IsTrue(restore.Where(r => r.cell.y > 0).All(r => r.face == null), "and nothing above them");
         }
 
         [Test]

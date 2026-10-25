@@ -10,6 +10,9 @@ namespace BellwortBurrow.Tiles
     /// on the same Tilemap as the face (pick the whole block from the tile palette and stamp it). Each cell finds its
     /// piece by counting the ramp's cells west of it and above it, so a block of the right size shows the whole ramp.
     /// The face beside it carries on into it. Only the walls, the face and the edges block; the walkway never does.
+    /// A ramp that <see cref="stretches"/> (the North ramps) can be painted any width and length instead: its west and
+    /// east edge columns and its back end and face rows stay put, while the middle columns and the deck rows repeat, and
+    /// a longer ramp is gentler.
     /// Walking up is slower and down quicker (<see cref="IInclineTile"/>), and on an east or west ramp walking along it
     /// lifts the walker up the screen (<see cref="IInclineTile.Rise"/>), so it follows the walkway up the face.
     /// </summary>
@@ -34,6 +37,12 @@ namespace BellwortBurrow.Tiles
         [Tooltip("How many columns at the low end are a level landing, where the ramp's mouth opens onto the ground.")]
         public int landing;
 
+        [Tooltip("Paint it any width and length: the edge columns, the back end and the face rows stay, the middle columns and deck rows repeat (North ramps).")]
+        public bool stretches;
+
+        [Tooltip("How many of its bottom rows are the face it's cut through (the face's height).")]
+        public int faceRows = 3;
+
         bool Here(ITilemap map, Vector3Int p) => map.GetTile(p) == this;
         bool Here(Tilemap map, Vector3Int p) => map.GetTile(p) == this;
 
@@ -46,9 +55,37 @@ namespace BellwortBurrow.Tiles
             return new Vector2Int(west % Mathf.Max(1, columns), above % Mathf.Max(1, rows));
         }
 
+        /// <summary>
+        /// A cell's piece in a ramp that stretches: the edge columns at the block's west and east ends and the middle
+        /// columns between them in turn; the back end at its top, its bottom <paramref name="faceRows"/> rows the face rows,
+        /// and the deck rows between in turn. A block one column wide takes the west edge; one too short for a back end,
+        /// deck and face takes what fits from the bottom up.
+        /// </summary>
+        public static Vector2Int StretchedPlaceOf(System.Func<Vector3Int, bool> isRamp, Vector3Int cell, int columns, int rows, int faceRows)
+        {
+            int west = Count(isRamp, cell, Vector3Int.left), east = Count(isRamp, cell, Vector3Int.right);
+            int above = Count(isRamp, cell, Vector3Int.up), below = Count(isRamp, cell, Vector3Int.down);
+            int middles = Mathf.Max(1, columns - 2);
+            // the deck rows take turns two at a time, so the stone slabs' staggered rows keep alternating
+            int decks = Mathf.Max(1, Mathf.Min(2, rows - faceRows - 1));
+            int column = west == 0 || columns < 2 ? 0 : east == 0 ? columns - 1 : 1 + (west - 1) % middles;
+            int row = below < faceRows ? rows - 1 - below : above == 0 ? 0 : 1 + (above - 1) % decks;
+            return new Vector2Int(column, row);
+        }
+
+        static int Count(System.Func<Vector3Int, bool> isRamp, Vector3Int cell, Vector3Int step)
+        {
+            int n = 0;
+            while (n < 256 && isRamp(cell + step * (n + 1))) n++;
+            return n;
+        }
+
+        Vector2Int Place(System.Func<Vector3Int, bool> isRamp, Vector3Int cell) =>
+            stretches ? StretchedPlaceOf(isRamp, cell, columns, rows, faceRows) : PlaceOf(isRamp, cell, columns, rows);
+
         public override void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData)
         {
-            var place = PlaceOf(p => Here(tilemap, p), position, columns, rows);
+            var place = Place(p => Here(tilemap, p), position);
             int i = place.y * columns + place.x;
             var sprite = sprites != null && i >= 0 && i < sprites.Length ? sprites[i] : null;
             tileData.sprite = sprite;
@@ -58,15 +95,25 @@ namespace BellwortBurrow.Tiles
             tileData.colliderType = sprite != null && sprite.GetPhysicsShapeCount() > 0 ? Tile.ColliderType.Sprite : Tile.ColliderType.None;
         }
 
-        /// <summary>Every cell of a ramp depends on the cells west of and above it, and the face beside it on it, so refresh the block around it.</summary>
+        /// <summary>Every cell of a ramp depends on the rest of its block, and the face beside it on it, so refresh the whole block and the cells round it.</summary>
         public override void RefreshTile(Vector3Int position, ITilemap tilemap)
         {
-            for (int dx = -1; dx <= columns; dx++)
-                for (int dy = -rows; dy <= 1; dy++)
-                {
-                    var p = position + new Vector3Int(dx, dy, 0);
-                    if ((dx == 0 && dy == 0) || tilemap.GetTile(p) != null) tilemap.RefreshTile(p);
-                }
+            var seen = new System.Collections.Generic.HashSet<Vector3Int> { position };
+            var todo = new System.Collections.Generic.Stack<Vector3Int>();
+            todo.Push(position);
+            while (todo.Count > 0 && seen.Count < 2048)
+            {
+                var p = todo.Pop();
+                foreach (var d in new[] { Vector3Int.left, Vector3Int.right, Vector3Int.up, Vector3Int.down })
+                    if (seen.Add(p + d) && tilemap.GetTile(p + d) == this) todo.Push(p + d);
+            }
+            foreach (var p in seen)
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        var q = p + new Vector3Int(dx, dy, 0);
+                        if (q == position || tilemap.GetTile(q) != null) tilemap.RefreshTile(q);
+                    }
         }
 
         /// <summary>Whether a column of the ramp is its level landing, at the low end.</summary>
@@ -75,13 +122,20 @@ namespace BellwortBurrow.Tiles
 
         public Vector2 Uphill(Tilemap map, Vector3Int cell)
         {
+            if (stretches)
+            {
+                // rising the face's height over however many rows of deck the block has: longer is gentler
+                int length = Count(p => Here(map, p), cell, Vector3Int.up) + Count(p => Here(map, p), cell, Vector3Int.down) + 1;
+                float steep = steepness * Mathf.Max(1, rows - faceRows) / Mathf.Max(1, length - faceRows);
+                return uphill.normalized * Mathf.Min(1f, steep);
+            }
             var place = PlaceOf(p => Here(map, p), cell, columns, rows);
             return IsLanding(place.x) ? Vector2.zero : uphill.normalized * steepness;
         }
 
         public float Rise(Tilemap map, Vector3Int cell)
         {
-            if (Mathf.Abs(uphill.x) < 0.5f) return 0f;
+            if (Mathf.Abs(uphill.x) < 0.5f || stretches) return 0f;
             var place = PlaceOf(p => Here(map, p), cell, columns, rows);
             return IsLanding(place.x) ? 0f : Mathf.Sign(uphill.x) * lift;
         }
