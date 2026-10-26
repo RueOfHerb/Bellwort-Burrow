@@ -144,11 +144,12 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
-        public void TheEndOfTheDay_WakesThePlayerOnTheNextDayAndSaves()
+        public void TheEndOfTheDay_WakesThePlayerOnTheNextDayWithoutSaving()
         {
             var session = MakeSession();
             session.StartNewGame(Bryn(), "ForlornForest");
             session.EnterScene("ForlornForest", true);
+            File.Delete(store.PathFor(session.Slot));
 
             session.Tick(8.4f - 0.05f);
             Assert.AreEqual(1, session.Services.Time.CurrentDay, "The day ended before 9:00 AM.");
@@ -157,8 +158,7 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.AreEqual(2, session.Services.Time.CurrentDay);
             Assert.AreEqual(calendar.WakeMinute, session.Services.Time.MinutesSinceMidnight);
             Assert.IsFalse(session.Services.Time.DayOver);
-            Assert.IsTrue(store.TryRead("slot1", out var file));
-            Assert.AreEqual(2, file.header.day);
+            Assert.IsFalse(File.Exists(store.PathFor(session.Slot)), "passing out doesn't save; going to bed does (sys-9)");
         }
 
         [Test]
@@ -225,6 +225,21 @@ namespace BellwortBurrow.Tests.EditMode
             var inventory = ((GameSession)ServiceLocator.Get<IGameSession>()).Services.Inventory;
             Assert.AreEqual(1, inventory.Slots.Count);
             Assert.AreSame(acorn, inventory.Slots[0].Item);
+        }
+
+        [Test]
+        public void Sleep_StartsTheNextDayAndSaves()
+        {
+            var session = MakeSession();
+            session.StartNewGame(Bryn(), "BellwortBurrow");
+            string slot = session.Slot;
+            int day = session.Services.Time.CurrentDay;
+            File.Delete(store.PathFor(slot));
+
+            session.Sleep();
+
+            Assert.AreEqual(day + 1, session.Services.Time.CurrentDay);
+            Assert.IsTrue(File.Exists(store.PathFor(slot)), "sleeping saves");
         }
     }
 }
