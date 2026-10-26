@@ -36,12 +36,13 @@ namespace BellwortBurrow.Player
 
         void Update()
         {
-            if (interact != null && interact.WasPerformedThisFrame()) InteractNearby();
+            // The press, not the action's Hold interaction, so a tap of E is enough.
+            if (interact != null && interact.WasPressedThisFrame()) InteractNearby();
         }
 
         public void OnInteract(InputAction.CallbackContext context)
         {
-            if (context.performed) InteractNearby();
+            if (context.started) InteractNearby();
         }
 
         /// <summary>The point the reach is measured from: a little in front of the feet, the way the player faces.</summary>
