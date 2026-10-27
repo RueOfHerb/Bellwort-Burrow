@@ -75,18 +75,19 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
-        public void TheFrontEdgeFollowsTheRoots()
+        public void ABuilding_StandsOnABox_RootsAndAll()
         {
             // A trunk with a root reaching 4 px further down on the left than the rest of its foot.
             var solid = Sheet(40, 40, (x, y) => x >= 4 && x < 36 && y >= 2 && (y < 30 || (y < 34 && x < 12)));
             var shape = Colliders.Footprint(solid, 40, 40, Slice(0, 0, 40, 40, 20, 34));
-            Vector2 Nearest(float x) => shape.Where(p => p.y < 8).OrderBy(p => Mathf.Abs(p.x - x)).First();
-            Assert.AreEqual(0f, Nearest(-12f).y, 1e-4f, "under the root the edge is on the feet");
-            Assert.AreEqual(4f, Nearest(10f).y, 1e-4f, "past the root it steps back 4 px");
+            Assert.AreEqual(4, shape.Count, "a plain box");
+            Assert.AreEqual(-16f, shape.Min(p => p.x), 1e-4f);
+            Assert.AreEqual(16f, shape.Max(p => p.x), 1e-4f);
+            Assert.IsTrue(shape.All(p => Mathf.Approximately(p.y, 0f) || Mathf.Approximately(p.y, 16f)));
         }
 
         [Test]
-        public void ARoundFoot_IsMirroredAtTheBack()
+        public void ARoundFoot_IsABoxWith45DegreeCorners()
         {
             // The front of a round foot: its lowest pixels rise toward the sides, as an ellipse's front half does.
             int W = 64, H = 64, cx = 32, feet = 60;
@@ -97,8 +98,16 @@ namespace BellwortBurrow.Tests.Editor
                 float front = feet - 10f * (1f - Mathf.Sqrt(1f - u * u)) - 10f; // 10 px tall front arc, its middle 10 px up
                 return y < front + 10f && y > 0;
             });
-            var shape = Colliders.Footprint(solid, W, H, Slice(0, 0, W, H, cx, feet));
+            var shape = Colliders.Footprint(solid, W, H, Slice(0, 0, W, H, cx, feet), round: true);
             Assert.IsNotNull(shape);
+            Assert.AreEqual(8, shape.Count, "a box with its corners cut");
+            for (int i = 0; i < shape.Count; i++)
+            {
+                Vector2 d = shape[(i + 1) % shape.Count] - shape[i];
+                bool square = Mathf.Approximately(d.x, 0f) || Mathf.Approximately(d.y, 0f);
+                bool diagonal = Mathf.Approximately(Mathf.Abs(d.x), Mathf.Abs(d.y));
+                Assert.IsTrue(square || diagonal, $"edge {i} runs at {d}, not square or 45 degrees");
+            }
             float depth = shape.Max(p => p.y) - shape.Min(p => p.y);
             Assert.Greater(depth, 15f, "the back reaches as far behind the middle as the front comes before it");
             Assert.Less(depth, 40f);

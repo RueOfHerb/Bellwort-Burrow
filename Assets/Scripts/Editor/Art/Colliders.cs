@@ -43,10 +43,24 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// The footprint of a slice, in pixels from its feet (its pivot, or the middle of its bottom edge), x to the
-        /// right and y up, going round once. Null when the slice has no solid pixels.
+        /// Round pieces: their collider is a box with its corners cut at 45 degrees, so the player slides round them.
+        /// Everything else solid (homes, cottages, benches, the log supports, whose stone rings run nearly as wide at
+        /// the front as in the middle) stands on a plain box (Jocelyn, Oct 27: rectangles and polygons with 90 and 45
+        /// degree corners, not traced outlines; the supports' cut corners let the player onto the ring's stones).
         /// </summary>
-        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice)
+        static readonly Regex RoundPiece = new Regex(@"^burrow_(stump$|mossy_rock)");
+
+        public static bool IsRound(string name) => !string.IsNullOrEmpty(name) && RoundPiece.IsMatch(name);
+
+        /// <summary>
+        /// The footprint of a slice, in pixels from its feet (its pivot, or the middle of its bottom edge), x to the
+        /// right and y up, going round once: a box as wide as the piece's base (eaves and other overhangs left out,
+        /// see <see cref="Overhang"/>), its front on the lowest solid row, at least half as deep as it is wide
+        /// (<see cref="FootprintDepth"/>). A <paramref name="round"/> piece's box has its four corners cut at 45
+        /// degrees, by as much as its front edge curves back at the sides, so it's made of squares and triangles only.
+        /// Null when the slice has no solid pixels.
+        /// </summary>
+        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice, bool round = false)
         {
             if (solid == null) return null;
             int feet = slice.Y + (slice.HasPivot ? slice.PivotY : slice.Height);
@@ -75,27 +89,29 @@ namespace BellwortBurrow.EditorTools
             int highest = int.MaxValue;
             for (int i = a; i <= b; i++) highest = Math.Min(highest, front[i]);
 
-            float width = b - a + 1;
-            float middle = Math.Min(feet - width * FootprintDepth / 2f, highest);
+            float xl = left + a - pivotX, xr = left + b + 1 - pivotX;
+            float width = xr - xl;
+            float y0 = feet - front[lowest];
+            float rise = front[lowest] - highest;
+            float depth = Mathf.Max(1f, Mathf.Round(Mathf.Max(width * FootprintDepth, round ? 2f * rise : 0f)));
+            float y1 = y0 + depth;
 
-            var edge = new List<Vector2>();
-            for (int i = a; i <= b; i++)
+            float cut = round ? Mathf.Round(Mathf.Min(rise, Mathf.Min(width, depth) / 2f - 1f)) : 0f;
+            if (cut < 1f)
+                return new List<Vector2> { new(xl, y0), new(xr, y0), new(xr, y1), new(xl, y1) };
+            return new List<Vector2>
             {
-                if (i != a && i != b && (i - a) % Step != 0) continue;
-                float px = left + (i == a ? i : i == b ? i + 1 : i + 0.5f);
-                edge.Add(new Vector2(px, front[i]));
-            }
-            if (a == b) edge.Add(new Vector2(left + a + 1, front[a]));
-            edge = Simplify(edge, 1f);
+                new(xl, y0 + cut), new(xl + cut, y0), new(xr - cut, y0), new(xr, y0 + cut),
+                new(xr, y1 - cut), new(xr - cut, y1), new(xl + cut, y1), new(xl, y1 - cut)
+            };
+        }
 
-            var shape = new List<Vector2>(edge.Count * 2);
-            foreach (var p in edge) shape.Add(new Vector2(p.x - pivotX, feet - p.y));
-            for (int i = edge.Count - 1; i >= 0; i--)
-            {
-                float back = 2 * middle - edge[i].y;
-                shape.Add(new Vector2(edge[i].x - pivotX, feet - back));
-            }
-            return shape;
+        /// <summary>The front of a footprint, left to right: the points nearer the camera than its middle.</summary>
+        public static List<Vector2> FrontOf(List<Vector2> shape)
+        {
+            if (shape == null || shape.Count == 0) return new List<Vector2>();
+            float middle = (shape.Min(p => p.y) + shape.Max(p => p.y)) / 2f;
+            return shape.Where(p => p.y < middle).OrderBy(p => p.x).ToList();
         }
 
         /// <summary>Douglas-Peucker: drops points that lie within <paramref name="tolerance"/> of a straight run.</summary>

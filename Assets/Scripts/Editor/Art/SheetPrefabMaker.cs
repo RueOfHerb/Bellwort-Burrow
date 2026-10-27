@@ -234,7 +234,8 @@ namespace BellwortBurrow.EditorTools
                         string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
                         if (ringName != null) AddPart(root, "Ring back", sprites[ringName], 0, PartRise(slices, pair.Key, ringName), lit);
                         var beam = AddPart(root, "Beam", sprites[beamName], 2, PartRise(slices, pair.Key, beamName), lit);
-                        beam.AddComponent<SeeThrough>().dither = Footprints.DitherFor(beamName, sprites);
+                        // Fades by blending, not dithering (Jocelyn, Oct 27).
+                        beam.AddComponent<SeeThrough>();
                         renderer.sortingOrder = 1;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
@@ -252,15 +253,19 @@ namespace BellwortBurrow.EditorTools
                 // A home the player can sleep at: its door ends the day (sys-9).
                 if (!backdrop) Sleeping.Dress(root, pair.Key);
 
-                // Something the player walks round: a collider on the ground it stands on, worked out from its pixels.
+                // Something the player walks round: a box (or, round, a box with 45 degree corners) on the ground it stands on.
                 if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
                 {
-                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice);
+                    bool round = Colliders.IsRound(pair.Key);
+                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round);
                     if (shape != null)
                     {
                         var collider = root.AddComponent<PolygonCollider2D>();
                         collider.pathCount = 1;
                         collider.SetPath(0, shape.Select(p => p / ArtLibrary.PixelsPerUnit).ToArray());
+                        // A round piece draws under the player whenever their feet are in front of its front edge.
+                        if (round)
+                            root.AddComponent<FrontLine>().line = Colliders.FrontOf(shape).Select(p => p / ArtLibrary.PixelsPerUnit).ToArray();
                     }
                 }
 

@@ -67,6 +67,17 @@ namespace BellwortBurrow.Systems.World
         readonly Dictionary<Collider2D, float> carried = new Dictionary<Collider2D, float>();
         bool stale;
 
+        // The player, for drawing the bridge over them while they're behind it on the grass.
+        Transform player;
+        Collider2D playerBody;
+        SpriteRenderer picture;
+        bool raised;
+        readonly Dictionary<Renderer, int> raisedFrom = new Dictionary<Renderer, int>();
+        readonly Dictionary<SortingGroup, int> raisedGroups = new Dictionary<SortingGroup, int>();
+
+        /// <summary>How far the deck and rails go up while the player is behind the bridge: over the player (0).</summary>
+        public const int RaisedBy = 10;
+
         // How many decks each walker is on, across every bridge, so stepping off one onto another keeps them across.
         static readonly Dictionary<Collider2D, int> Decks = new Dictionary<Collider2D, int>();
 
@@ -84,6 +95,7 @@ namespace BellwortBurrow.Systems.World
         {
             InclineWalker.Unregister(this);
             foreach (var walker in new List<Collider2D>(walkers)) Step(walker, false);
+            Raise(false);
             ClearRails();
         }
 
@@ -99,6 +111,66 @@ namespace BellwortBurrow.Systems.World
         void FixedUpdate()
         {
             if (Application.isPlaying) Carry();
+        }
+
+        // The deck draws flat under everything, so a player on it is on top of it. A player on the grass behind the
+        // bridge (north of its far rail) would be drawn over its deck and face too, so while they're there the deck
+        // and both rails draw over them instead (fix, Oct 27).
+        void LateUpdate()
+        {
+            if (!Application.isPlaying) return;
+            if (player == null)
+            {
+                var tagged = GameObject.FindWithTag("Player");
+                if (tagged == null) return;
+                player = tagged.transform;
+                playerBody = tagged.GetComponent<Collider2D>();
+            }
+            if (picture == null) picture = GetComponent<SpriteRenderer>();
+            bool onDeck = playerBody != null && walkers.Contains(playerBody);
+            if (picture == null) return;
+            var box = picture.bounds;
+            Vector2 local = player.position - transform.position;
+            bool over = player.position.y < box.max.y;
+            Raise(!onDeck && over && IsBehind(farRail?.foot, local, box.min.x - transform.position.x, box.max.x - transform.position.x));
+        }
+
+        /// <summary>
+        /// Whether <paramref name="feet"/> (from the bridge's feet, in units) are behind the bridge: between
+        /// <paramref name="xMin"/> and <paramref name="xMax"/> (the bridge's picture, its end pillars included) and
+        /// north of where the far rail stands (level past its ends).
+        /// </summary>
+        public static bool IsBehind(Vector2[] farFoot, Vector2 feet, float xMin, float xMax)
+        {
+            if (farFoot == null || farFoot.Length < 2) return false;
+            if (feet.x < xMin || feet.x > xMax) return false;
+            return feet.y > HeightAt(farFoot, feet.x);
+        }
+
+        void Raise(bool on)
+        {
+            if (on == raised) return;
+            raised = on;
+            if (!on)
+            {
+                foreach (var pair in raisedFrom) if (pair.Key != null) pair.Key.sortingOrder = pair.Value;
+                foreach (var pair in raisedGroups) if (pair.Key != null) pair.Key.sortingOrder = pair.Value;
+                raisedFrom.Clear();
+                raisedGroups.Clear();
+                return;
+            }
+            foreach (var renderer in GetComponentsInChildren<SpriteRenderer>())
+            {
+                if (renderer.GetComponentInParent<SortingGroup>() is SortingGroup inGroup && inGroup.transform != transform) continue;
+                raisedFrom[renderer] = renderer.sortingOrder;
+                renderer.sortingOrder += RaisedBy;
+            }
+            foreach (var strip in strips)
+            {
+                if (strip == null || !strip.TryGetComponent<SortingGroup>(out var g)) continue;
+                raisedGroups[g] = g.sortingOrder;
+                g.sortingOrder += RaisedBy;
+            }
         }
 
         void OnTriggerEnter2D(Collider2D other) => Step(other, true);
