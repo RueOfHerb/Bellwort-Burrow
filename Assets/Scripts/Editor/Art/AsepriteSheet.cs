@@ -32,6 +32,9 @@ namespace BellwortBurrow.EditorTools
         /// layers that are part of its body (<see cref="IsSolidLayer"/>). Colliders are worked out from it.
         /// </summary>
         public bool[] Solid;
+
+        /// <summary>The pixels of the stone ring layers alone (Stone ring front, Stone ring back): a log support stands on its ring.</summary>
+        public bool[] Ring;
         public readonly List<SheetSlice> Slices = new List<SheetSlice>();
         public readonly List<string> Warnings = new List<string>();
 
@@ -135,6 +138,7 @@ namespace BellwortBurrow.EditorTools
             });
 
             Solid = new bool[Width * Height];
+            Ring = new bool[Width * Height];
             var art = new double[Width * Height * 4];
             var glow = new double[Width * Height * 4];
             var warnedBlend = false;
@@ -148,7 +152,8 @@ namespace BellwortBurrow.EditorTools
                     warnedBlend = true;
                 }
                 Composite(layer.IsGlow ? glow : art, cel, layer.Opacity);
-                if (!layer.IsGlow && IsSolidLayer(layer.Name)) MarkSolid(cel, layer.Opacity);
+                if (!layer.IsGlow && IsSolidLayer(layer.Name)) MarkSolid(Solid, cel, layer.Opacity);
+                if (!layer.IsGlow && layer.Name.StartsWith("Stone ring", StringComparison.OrdinalIgnoreCase)) MarkSolid(Ring, cel, layer.Opacity);
             }
 
             Art = ToBytes(art);
@@ -367,14 +372,14 @@ namespace BellwortBurrow.EditorTools
             return true;
         }
 
-        void MarkSolid(CelInfo cel, int layerOpacity)
+        void MarkSolid(bool[] mask, CelInfo cel, int layerOpacity)
         {
             if (layerOpacity < 255 || cel.Opacity < 255) return;
             int x0 = Math.Max(0, cel.X), y0 = Math.Max(0, cel.Y);
             int x1 = Math.Min(Width, cel.X + cel.Width), y1 = Math.Min(Height, cel.Y + cel.Height);
             for (int y = y0; y < y1; y++)
                 for (int x = x0; x < x1; x++)
-                    if (cel.Rgba[((y - cel.Y) * cel.Width + (x - cel.X)) * 4 + 3] == 255) Solid[y * Width + x] = true;
+                    if (cel.Rgba[((y - cel.Y) * cel.Width + (x - cel.X)) * 4 + 3] == 255) mask[y * Width + x] = true;
         }
 
         static byte[] ToBytes(double[] values)

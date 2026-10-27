@@ -234,7 +234,8 @@ namespace BellwortBurrow.EditorTools
                         string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
                         if (ringName != null) AddPart(root, "Ring back", sprites[ringName], 0, PartRise(slices, pair.Key, ringName), lit);
                         var beam = AddPart(root, "Beam", sprites[beamName], 2, PartRise(slices, pair.Key, beamName), lit);
-                        beam.AddComponent<SeeThrough>().dither = Footprints.DitherFor(beamName, sprites);
+                        // Fades by blending, not dithering (Jocelyn, Oct 27).
+                        beam.AddComponent<SeeThrough>();
                         renderer.sortingOrder = 1;
                         if (root.GetComponent<SortingGroup>() == null) root.AddComponent<SortingGroup>();
                     }
@@ -252,15 +253,29 @@ namespace BellwortBurrow.EditorTools
                 // A home the player can sleep at: its door ends the day (sys-9).
                 if (!backdrop) Sleeping.Dress(root, pair.Key);
 
-                // Something the player walks round: a collider on the ground it stands on, worked out from its pixels.
+                // Something the player walks round: a box (or, round, a box with 45 degree corners) on the ground it stands on.
                 if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
                 {
-                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice);
+                    bool round = Colliders.IsRound(pair.Key);
+                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round,
+                        follow: Colliders.FollowsFront(pair.Key));
+                    // A log support stands on its stone ring: as wide as the ring's front stones, as deep as its back
+                    // stones reach, not the logs above it (Jocelyn, Oct 27).
+                    string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
+                    if (ringName != null && sheet.Ring != null && slices.TryGetValue(ringName, out var ringSlice))
+                    {
+                        float depth = RingDepth(sheet.Ring, sheet.Width, ringSlice);
+                        var ringShape = Colliders.Footprint(sheet.Ring, sheet.Width, sheet.Height, solidSlice, round, depth);
+                        if (ringShape != null) shape = ringShape;
+                    }
                     if (shape != null)
                     {
                         var collider = root.AddComponent<PolygonCollider2D>();
                         collider.pathCount = 1;
                         collider.SetPath(0, shape.Select(p => p / ArtLibrary.PixelsPerUnit).ToArray());
+                        // A round piece draws under the player whenever their feet are in front of its front edge.
+                        if (round)
+                            root.AddComponent<FrontLine>().line = Colliders.FrontOf(shape).Select(p => p / ArtLibrary.PixelsPerUnit).ToArray();
                     }
                 }
 
@@ -278,6 +293,16 @@ namespace BellwortBurrow.EditorTools
                 made++;
             }
             return made;
+        }
+
+        /// <summary>How far above its feet a ring's back stones reach, in pixels: the top of its slice's stone pixels.</summary>
+        static float RingDepth(bool[] ring, int sheetWidth, SheetSlice slice)
+        {
+            int feet = slice.Y + (slice.HasPivot ? slice.PivotY : slice.Height);
+            for (int y = slice.Y; y < slice.Y + slice.Height; y++)
+                for (int x = slice.X; x < slice.X + slice.Width; x++)
+                    if (ring[y * sheetWidth + x]) return feet - y;
+            return 0f;
         }
     }
 }

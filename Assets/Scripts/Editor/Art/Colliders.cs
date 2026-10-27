@@ -43,10 +43,37 @@ namespace BellwortBurrow.EditorTools
         }
 
         /// <summary>
-        /// The footprint of a slice, in pixels from its feet (its pivot, or the middle of its bottom edge), x to the
-        /// right and y up, going round once. Null when the slice has no solid pixels.
+        /// Round pieces: their collider is a box with its corners cut at 45 degrees, so the player slides round them.
+        /// Everything else solid (homes, cottages, benches) stands on a plain box (Jocelyn, Oct 27: rectangles and
+        /// polygons with 90 and 45 degree corners, not traced outlines). A log support's shape is its stone ring's, not
+        /// its logs' (see SheetPrefabMaker).
         /// </summary>
-        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice)
+        static readonly Regex RoundPiece = new Regex(@"^burrow_(stump$|mossy_rock|log_support)");
+
+        public static bool IsRound(string name) => !string.IsNullOrEmpty(name) && RoundPiece.IsMatch(name);
+
+        /// <summary>
+        /// Pieces whose collider follows their front edge a tile at a time, too big and uneven for one box: the great
+        /// stump, whose roots reach out at different depths (Jocelyn, Oct 27).
+        /// </summary>
+        public static bool FollowsFront(string name) => name == "burrow_stump";
+
+        /// <summary>How wide each step of a followed front edge is, in pixels: two tiles.</summary>
+        public const int Band = 32;
+
+        /// <summary>A followed front's steps stand on multiples of this many pixels, rounded forward, so near ones merge.</summary>
+        public const int BandSnap = 4;
+
+        /// <summary>
+        /// The footprint of a slice, in pixels from its feet (its pivot, or the middle of its bottom edge), x to the
+        /// right and y up, going round once: a box as wide as the piece's base (eaves and other overhangs left out,
+        /// see <see cref="Overhang"/>), its front on the lowest solid row, at least half as deep as it is wide
+        /// (<see cref="FootprintDepth"/>). A <paramref name="round"/> piece's box has its four corners cut at 45
+        /// degrees, by as much as its front edge curves back at the sides, so it's made of squares and triangles only.
+        /// <paramref name="depthPixels"/>, when given, is how deep it is from its front, instead.
+        /// Null when the slice has no solid pixels.
+        /// </summary>
+        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice, bool round = false, float depthPixels = 0f, bool follow = false)
         {
             if (solid == null) return null;
             int feet = slice.Y + (slice.HasPivot ? slice.PivotY : slice.Height);
@@ -70,32 +97,102 @@ namespace BellwortBurrow.EditorTools
             // The base: the columns either side of the lowest one, as far as the edge carries on without a gap or an
             // overhang (eaves, a jutting roof), where it steps up more than Overhang in one column.
             int a = lowest, b = lowest;
-            while (a > 0 && front[a - 1] >= 0 && Math.Abs(front[a - 1] - front[a]) <= Overhang) a--;
-            while (b < columns - 1 && front[b + 1] >= 0 && Math.Abs(front[b + 1] - front[b]) <= Overhang) b++;
+            if (depthPixels > 0f)
+            {
+                // A ring of stones has gaps between them: every column it covers counts.
+                a = Array.FindIndex(front, f => f >= 0);
+                b = Array.FindLastIndex(front, f => f >= 0);
+            }
+            else
+            {
+                while (a > 0 && front[a - 1] >= 0 && Math.Abs(front[a - 1] - front[a]) <= Overhang) a--;
+                while (b < columns - 1 && front[b + 1] >= 0 && Math.Abs(front[b + 1] - front[b]) <= Overhang) b++;
+            }
             int highest = int.MaxValue;
-            for (int i = a; i <= b; i++) highest = Math.Min(highest, front[i]);
+            for (int i = a; i <= b; i++) if (front[i] >= 0) highest = Math.Min(highest, front[i]);
 
-            float width = b - a + 1;
-            float middle = Math.Min(feet - width * FootprintDepth / 2f, highest);
+            float xl = left + a - pivotX, xr = left + b + 1 - pivotX;
+            float width = xr - xl;
+            float y0 = feet - front[lowest];
+            float rise = front[lowest] - highest;
+            float depth = depthPixels > 0f ? depthPixels
+                : Mathf.Max(1f, Mathf.Round(Mathf.Max(width * FootprintDepth, round ? 2f * rise : 0f)));
+            float y1 = y0 + depth;
 
-            var edge = new List<Vector2>();
-            for (int i = a; i <= b; i++)
+            if (follow) return FollowedFront(front, a, b, left, pivotX, feet, depth);
+
+            float cut = round ? Mathf.Round(Mathf.Min(rise, Mathf.Min(width, depth) / 2f - 1f)) : 0f;
+            if (cut < 1f)
+                return new List<Vector2> { new(xl, y0), new(xr, y0), new(xr, y1), new(xl, y1) };
+            return new List<Vector2>
             {
-                if (i != a && i != b && (i - a) % Step != 0) continue;
-                float px = left + (i == a ? i : i == b ? i + 1 : i + 0.5f);
-                edge.Add(new Vector2(px, front[i]));
-            }
-            if (a == b) edge.Add(new Vector2(left + a + 1, front[a]));
-            edge = Simplify(edge, 1f);
+                new(xl, y0 + cut), new(xl + cut, y0), new(xr - cut, y0), new(xr, y0 + cut),
+                new(xr, y1 - cut), new(xr - cut, y1), new(xl + cut, y1), new(xl, y1 - cut)
+            };
+        }
 
-            var shape = new List<Vector2>(edge.Count * 2);
-            foreach (var p in edge) shape.Add(new Vector2(p.x - pivotX, feet - p.y));
-            for (int i = edge.Count - 1; i >= 0; i--)
+        /// <summary>
+        /// A footprint whose front follows the piece's front edge in tile wide bands, each standing at its band's
+        /// frontmost solid pixel (so nothing sticks out of it), with 45 degree slopes of up to half a band between
+        /// bands and straight up the rest of the way, and a flat back. Every edge is flat, upright or at 45 degrees.
+        /// </summary>
+        static List<Vector2> FollowedFront(int[] front, int a, int b, int left, int pivotX, int feet, float depth)
+        {
+            var xs = new List<float>();
+            var hs = new List<float>();
+            for (int x0 = a; x0 <= b; x0 += Band)
             {
-                float back = 2 * middle - edge[i].y;
-                shape.Add(new Vector2(edge[i].x - pivotX, feet - back));
+                int x1 = Math.Min(b, x0 + Band - 1);
+                int nearest = -1;
+                for (int i = x0; i <= x1; i++) nearest = Math.Max(nearest, front[i]);
+                if (nearest < 0) continue;
+                xs.Add(left + x0 - pivotX);
+                hs.Add(Mathf.Floor((feet - nearest) / (float)BandSnap) * BandSnap);
             }
+            if (hs.Count == 0) return null;
+            float end = left + b + 1 - pivotX;
+            float half = Band / 2f;
+
+            var edge = new List<Vector2> { new(xs[0], hs[0]) };
+            for (int k = 0; k < hs.Count - 1; k++)
+            {
+                float bx = xs[k + 1], d = hs[k + 1] - hs[k];
+                if (Mathf.Approximately(d, 0f)) continue;
+                float w = Mathf.Min(Mathf.Abs(d), half);
+                if (d > 0f)
+                {
+                    // The next band stands further back: slope back into it, then straight up.
+                    edge.Add(new Vector2(bx, hs[k]));
+                    edge.Add(new Vector2(bx + w, hs[k] + w));
+                    if (w < d) edge.Add(new Vector2(bx + w, hs[k + 1]));
+                }
+                else
+                {
+                    // The next band comes further forward: slope forward at the end of this one, then straight down.
+                    edge.Add(new Vector2(bx - w, hs[k]));
+                    edge.Add(new Vector2(bx, hs[k] - w));
+                    if (w < -d) edge.Add(new Vector2(bx, hs[k + 1]));
+                }
+            }
+            edge.Add(new Vector2(end, hs[hs.Count - 1]));
+            edge = Simplify(edge, 0.01f);
+
+            // A flat back, as deep as the piece needs and a band behind its farthest step.
+            float back = Mathf.Max(hs.Min() + depth, hs.Max() + Band);
+            var shape = new List<Vector2>(edge)
+            {
+                new Vector2(end, back),
+                new Vector2(xs[0], back)
+            };
             return shape;
+        }
+
+        /// <summary>The front of a footprint, left to right: the points nearer the camera than its middle.</summary>
+        public static List<Vector2> FrontOf(List<Vector2> shape)
+        {
+            if (shape == null || shape.Count == 0) return new List<Vector2>();
+            float middle = (shape.Min(p => p.y) + shape.Max(p => p.y)) / 2f;
+            return shape.Where(p => p.y < middle).OrderBy(p => p.x).ToList();
         }
 
         /// <summary>Douglas-Peucker: drops points that lie within <paramref name="tolerance"/> of a straight run.</summary>

@@ -10,8 +10,8 @@ namespace BellwortBurrow.Systems.World
     /// - The piece's base leaving the screen: the beam fades with it, as much of the beam showing as of the base, and is
     ///   gone once the base is off the screen.
     /// - Otherwise: solid.
-    /// It fades by dithering, not by blending: it shows only some of its pixels, in a 4 by 4 checkered pattern (its
-    /// <see cref="dither"/> steps, made by the importer), so every pixel on screen keeps a colour from the palette.
+    /// It fades by blending (Jocelyn, Oct 27). Given <see cref="dither"/> steps it would dither instead, showing only
+    /// some of its pixels in a 4 by 4 checkered pattern; setup no longer gives it any.
     /// The back is the far edge of the parent's collider, or the parent's feet if it has none; the base is the parent's
     /// picture. The screen is the main camera's. The player is whatever carries the Player tag, as much of it as its
     /// pictures cover. Setup puts one on every log support's beam (see SheetPrefabMaker).
