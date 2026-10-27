@@ -258,6 +258,15 @@ namespace BellwortBurrow.EditorTools
                 {
                     bool round = Colliders.IsRound(pair.Key);
                     var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round);
+                    // A log support stands on its stone ring: as wide as the ring's front stones, as deep as its back
+                    // stones reach, not the logs above it (Jocelyn, Oct 27).
+                    string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
+                    if (ringName != null && sheet.Ring != null && slices.TryGetValue(ringName, out var ringSlice))
+                    {
+                        float depth = RingDepth(sheet.Ring, sheet.Width, ringSlice);
+                        var ringShape = Colliders.Footprint(sheet.Ring, sheet.Width, sheet.Height, solidSlice, round, depth);
+                        if (ringShape != null) shape = ringShape;
+                    }
                     if (shape != null)
                     {
                         var collider = root.AddComponent<PolygonCollider2D>();
@@ -283,6 +292,16 @@ namespace BellwortBurrow.EditorTools
                 made++;
             }
             return made;
+        }
+
+        /// <summary>How far above its feet a ring's back stones reach, in pixels: the top of its slice's stone pixels.</summary>
+        static float RingDepth(bool[] ring, int sheetWidth, SheetSlice slice)
+        {
+            int feet = slice.Y + (slice.HasPivot ? slice.PivotY : slice.Height);
+            for (int y = slice.Y; y < slice.Y + slice.Height; y++)
+                for (int x = slice.X; x < slice.X + slice.Width; x++)
+                    if (ring[y * sheetWidth + x]) return feet - y;
+            return 0f;
         }
     }
 }

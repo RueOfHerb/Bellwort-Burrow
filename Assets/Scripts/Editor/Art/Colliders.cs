@@ -44,11 +44,11 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>
         /// Round pieces: their collider is a box with its corners cut at 45 degrees, so the player slides round them.
-        /// Everything else solid (homes, cottages, benches, the log supports, whose stone rings run nearly as wide at
-        /// the front as in the middle) stands on a plain box (Jocelyn, Oct 27: rectangles and polygons with 90 and 45
-        /// degree corners, not traced outlines; the supports' cut corners let the player onto the ring's stones).
+        /// Everything else solid (homes, cottages, benches) stands on a plain box (Jocelyn, Oct 27: rectangles and
+        /// polygons with 90 and 45 degree corners, not traced outlines). A log support's shape is its stone ring's, not
+        /// its logs' (see SheetPrefabMaker).
         /// </summary>
-        static readonly Regex RoundPiece = new Regex(@"^burrow_(stump$|mossy_rock)");
+        static readonly Regex RoundPiece = new Regex(@"^burrow_(stump$|mossy_rock|log_support)");
 
         public static bool IsRound(string name) => !string.IsNullOrEmpty(name) && RoundPiece.IsMatch(name);
 
@@ -58,9 +58,10 @@ namespace BellwortBurrow.EditorTools
         /// see <see cref="Overhang"/>), its front on the lowest solid row, at least half as deep as it is wide
         /// (<see cref="FootprintDepth"/>). A <paramref name="round"/> piece's box has its four corners cut at 45
         /// degrees, by as much as its front edge curves back at the sides, so it's made of squares and triangles only.
+        /// <paramref name="depthPixels"/>, when given, is how deep it is from its front, instead.
         /// Null when the slice has no solid pixels.
         /// </summary>
-        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice, bool round = false)
+        public static List<Vector2> Footprint(bool[] solid, int sheetWidth, int sheetHeight, SheetSlice slice, bool round = false, float depthPixels = 0f)
         {
             if (solid == null) return null;
             int feet = slice.Y + (slice.HasPivot ? slice.PivotY : slice.Height);
@@ -84,16 +85,26 @@ namespace BellwortBurrow.EditorTools
             // The base: the columns either side of the lowest one, as far as the edge carries on without a gap or an
             // overhang (eaves, a jutting roof), where it steps up more than Overhang in one column.
             int a = lowest, b = lowest;
-            while (a > 0 && front[a - 1] >= 0 && Math.Abs(front[a - 1] - front[a]) <= Overhang) a--;
-            while (b < columns - 1 && front[b + 1] >= 0 && Math.Abs(front[b + 1] - front[b]) <= Overhang) b++;
+            if (depthPixels > 0f)
+            {
+                // A ring of stones has gaps between them: every column it covers counts.
+                a = Array.FindIndex(front, f => f >= 0);
+                b = Array.FindLastIndex(front, f => f >= 0);
+            }
+            else
+            {
+                while (a > 0 && front[a - 1] >= 0 && Math.Abs(front[a - 1] - front[a]) <= Overhang) a--;
+                while (b < columns - 1 && front[b + 1] >= 0 && Math.Abs(front[b + 1] - front[b]) <= Overhang) b++;
+            }
             int highest = int.MaxValue;
-            for (int i = a; i <= b; i++) highest = Math.Min(highest, front[i]);
+            for (int i = a; i <= b; i++) if (front[i] >= 0) highest = Math.Min(highest, front[i]);
 
             float xl = left + a - pivotX, xr = left + b + 1 - pivotX;
             float width = xr - xl;
             float y0 = feet - front[lowest];
             float rise = front[lowest] - highest;
-            float depth = Mathf.Max(1f, Mathf.Round(Mathf.Max(width * FootprintDepth, round ? 2f * rise : 0f)));
+            float depth = depthPixels > 0f ? depthPixels
+                : Mathf.Max(1f, Mathf.Round(Mathf.Max(width * FootprintDepth, round ? 2f * rise : 0f)));
             float y1 = y0 + depth;
 
             float cut = round ? Mathf.Round(Mathf.Min(rise, Mathf.Min(width, depth) / 2f - 1f)) : 0f;
