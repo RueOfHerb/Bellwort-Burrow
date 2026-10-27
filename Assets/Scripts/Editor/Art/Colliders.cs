@@ -134,7 +134,8 @@ namespace BellwortBurrow.EditorTools
         /// <summary>
         /// A footprint whose front follows the piece's front edge in tile wide bands, each standing at its band's
         /// frontmost solid pixel (so nothing sticks out of it), with 45 degree slopes of up to half a band between
-        /// bands and straight up the rest of the way, and a flat back. Every edge is flat, upright or at 45 degrees.
+        /// bands and straight up the rest of the way, and a flat back as deep as <paramref name="depth"/> with 45
+        /// degree sides down to a band behind each end. Every edge is flat, upright or at 45 degrees.
         /// </summary>
         static List<Vector2> FollowedFront(int[] front, int a, int b, int left, int pivotX, int feet, float depth)
         {
@@ -177,22 +178,47 @@ namespace BellwortBurrow.EditorTools
             edge.Add(new Vector2(end, hs[hs.Count - 1]));
             edge = Simplify(edge, 0.01f);
 
-            // A flat back, as deep as the piece needs and a band behind its farthest step.
-            float back = Mathf.Max(hs.Min() + depth, hs.Max() + Band);
-            var shape = new List<Vector2>(edge)
+            // The back: flat, as deep as the base from its frontmost step, sloping down at 45 degrees to a band
+            // behind each end, so the base's corners don't block the sides.
+            float start = xs[0], h0 = hs[0] + Band, hEnd = hs[hs.Count - 1] + Band;
+            float back = Mathf.Max(hs.Min() + depth, Mathf.Max(h0, hEnd));
+            float backRight = end - (back - hEnd), backLeft = start + (back - h0);
+            var shape = new List<Vector2>(edge) { new Vector2(end, hEnd) };
+            if (backLeft < backRight)
             {
-                new Vector2(end, back),
-                new Vector2(xs[0], back)
-            };
+                shape.Add(new Vector2(backRight, back));
+                shape.Add(new Vector2(backLeft, back));
+            }
+            else
+            {
+                // The slopes meet before reaching the full depth: one peak.
+                float x = (hEnd - h0 + end + start) / 2f;
+                shape.Add(new Vector2(x, h0 + x - start));
+            }
+            shape.Add(new Vector2(start, h0));
             return shape;
         }
 
-        /// <summary>The front of a footprint, left to right: the points nearer the camera than its middle.</summary>
+        /// <summary>
+        /// The front of a footprint, left to right: of the two ways round it between its leftmost and rightmost points
+        /// (the lower of each), the one nearer the camera.
+        /// </summary>
         public static List<Vector2> FrontOf(List<Vector2> shape)
         {
             if (shape == null || shape.Count == 0) return new List<Vector2>();
-            float middle = (shape.Min(p => p.y) + shape.Max(p => p.y)) / 2f;
-            return shape.Where(p => p.y < middle).OrderBy(p => p.x).ToList();
+            int n = shape.Count;
+            int l = 0, r = 0;
+            for (int i = 1; i < n; i++)
+            {
+                if (shape[i].x < shape[l].x - 1e-4f || (Mathf.Abs(shape[i].x - shape[l].x) <= 1e-4f && shape[i].y < shape[l].y)) l = i;
+                if (shape[i].x > shape[r].x + 1e-4f || (Mathf.Abs(shape[i].x - shape[r].x) <= 1e-4f && shape[i].y < shape[r].y)) r = i;
+            }
+            var one = new List<Vector2>();
+            for (int i = l; ; i = (i + 1) % n) { one.Add(shape[i]); if (i == r) break; }
+            var two = new List<Vector2>();
+            for (int i = r; ; i = (i + 1) % n) { two.Add(shape[i]); if (i == l) break; }
+            var front = one.Average(p => p.y) <= two.Average(p => p.y) ? one : two;
+            return front.OrderBy(p => p.x).ToList();
         }
 
         /// <summary>Douglas-Peucker: drops points that lie within <paramref name="tolerance"/> of a straight run.</summary>

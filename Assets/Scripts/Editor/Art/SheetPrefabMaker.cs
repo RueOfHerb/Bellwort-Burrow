@@ -257,8 +257,10 @@ namespace BellwortBurrow.EditorTools
                 if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
                 {
                     bool round = Colliders.IsRound(pair.Key);
-                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round,
-                        follow: Colliders.FollowsFront(pair.Key));
+                    bool follow = Colliders.FollowsFront(pair.Key);
+                    // The stump's base is as deep as its cut top is tall, the trunk being a cylinder (Jocelyn, Oct 27).
+                    float baseDepth = follow && sheet.Top != null ? TopHeight(sheet.Top, sheet.Width, solidSlice) : 0f;
+                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round, baseDepth, follow);
                     // A log support stands on its stone ring: as wide as the ring's front stones, as deep as its back
                     // stones reach, not the logs above it (Jocelyn, Oct 27).
                     string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);
@@ -293,6 +295,16 @@ namespace BellwortBurrow.EditorTools
                 made++;
             }
             return made;
+        }
+
+        /// <summary>How many rows of a slice a layer's mask covers, top to bottom, in pixels.</summary>
+        static float TopHeight(bool[] mask, int sheetWidth, SheetSlice slice)
+        {
+            int first = -1, last = -1;
+            for (int y = slice.Y; y < slice.Y + slice.Height; y++)
+                for (int x = slice.X; x < slice.X + slice.Width; x++)
+                    if (mask[y * sheetWidth + x]) { if (first < 0) first = y; last = y; break; }
+            return first < 0 ? 0f : last - first + 1;
         }
 
         /// <summary>How far above its feet a ring's back stones reach, in pixels: the top of its slice's stone pixels.</summary>
