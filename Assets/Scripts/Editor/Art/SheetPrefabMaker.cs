@@ -257,7 +257,8 @@ namespace BellwortBurrow.EditorTools
                 if (!backdrop && sheet?.Solid != null && Colliders.IsSolid(pair.Key) && slices.TryGetValue(pair.Key, out var solidSlice))
                 {
                     bool round = Colliders.IsRound(pair.Key);
-                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round);
+                    var shape = Colliders.Footprint(sheet.Solid, sheet.Width, sheet.Height, solidSlice, round,
+                        follow: Colliders.FollowsFront(pair.Key));
                     // A log support stands on its stone ring: as wide as the ring's front stones, as deep as its back
                     // stones reach, not the logs above it (Jocelyn, Oct 27).
                     string ringName = Footprints.RingBackFor(pair.Key, sprites.Keys);

@@ -114,6 +114,26 @@ namespace BellwortBurrow.Tests.Editor
         }
 
         [Test]
+        public void AFollowedFront_StepsWithTheRoots_InFlatUprightAnd45DegreeEdges()
+        {
+            // A 64 px wide foot whose middle 16 px reach 12 px further forward than the rest.
+            var solid = Sheet(80, 60, (x, y) => x >= 8 && x < 72 && y >= 4 && (y < 40 || (y < 52 && x >= 32 && x < 48)));
+            var shape = Colliders.Footprint(solid, 80, 60, Slice(0, 0, 80, 60, 40, 52), round: true, follow: true);
+            Assert.IsNotNull(shape);
+            for (int i = 0; i < shape.Count; i++)
+            {
+                Vector2 d = shape[(i + 1) % shape.Count] - shape[i];
+                bool square = Mathf.Approximately(d.x, 0f) || Mathf.Approximately(d.y, 0f);
+                bool diagonal = Mathf.Approximately(Mathf.Abs(d.x), Mathf.Abs(d.y));
+                Assert.IsTrue(square || diagonal, $"edge {i} runs at {d}");
+            }
+            var front = Colliders.FrontOf(shape);
+            var onFeet = front.Where(p => Mathf.Abs(p.y) < 1e-4f).ToList();
+            Assert.IsTrue(onFeet.Min(p => p.x) <= -8f && onFeet.Max(p => p.x) >= 8f, "the reaching middle stands on the feet");
+            Assert.IsTrue(front.Where(p => p.x <= -24f).All(p => p.y <= 12f + 1e-4f), "the sides stand no further back than their roots");
+        }
+
+        [Test]
         public void EavesThatJutOut_AreNotPartOfTheFootprint()
         {
             // A 20 px wide wall under a roof whose eaves stick out 6 px either side, 60 px above the feet.
