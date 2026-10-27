@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Zones/BellwortBurrow.unity
     guid: 939bc3a986cbc6b47a7a0c579efaea2f
   - enabled: 1
+    path: Assets/Scenes/Zones/FaerieField.unity
+    guid: 29f8e49ab255e3445b224f0004f8d10b
+  - enabled: 1
     path: Assets/Scenes/Zones/BellwortApproach.unity
     guid: e9fe9a1a1e456ba4aa6e6d4dd9996dc0
   - enabled: 1
