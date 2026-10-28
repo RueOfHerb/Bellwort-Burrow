@@ -12,7 +12,8 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// Makes the ground tiles you paint with, in Assets/Art/Tiles/, from each zone's ground sheet (<see cref="Sheets"/>:
-    /// forest_ground makes the Forest tiles, burrow_ground the Burrow tiles). Every ground sheet has the same slices, and
+    /// forest_ground makes the Forest tiles, burrow_ground the Burrow tiles, faerie_field_ground the Faerie Field tiles).
+    /// Every ground sheet has the same slices, and
     /// each makes:
     /// - Path and Deer Trail (Forest Path, Forest Deer Trail): Rule Tiles that read all eight neighbours. Paint where the
     ///   path goes, any width down to one tile, and each tile picks its piece from which neighbours are painted. The
@@ -27,6 +28,9 @@ namespace BellwortBurrow.EditorTools
     /// like the path's: the water with its pebbled banks, the far one a wall.
     /// With raised ground too, it makes the Waterfall (Burrow Waterfall), painted over a bank face where the creek runs
     /// off the edge (<see cref="WaterfallPiece"/>).
+    /// A ground sheet with the farm's grounds (<see cref="GroundSheet.Farm"/>: faerie_field_ground) also makes Tillable
+    /// Dirt, Farmland and Watered Farmland (<see cref="FarmSets"/>), sets like the path's; the tillable dirt's glints
+    /// (its Glow pixels) go on top of it unlit (<see cref="GlintRuleTile"/>).
     /// A ground sheet with raised ground (<see cref="GroundSheet.Banks"/>: burrow_ground) also makes:
     /// - Bank Face and Cliff Face (Burrow Bank Face, Burrow Cliff Face): the earth or stone face under raised ground's
     ///   front edge (the raised ground itself is plain Grass), painted three rows tall (four in a 45 degree column). They are Face Tiles (<see cref="FaceTile"/>), which
@@ -66,6 +70,8 @@ namespace BellwortBurrow.EditorTools
             public bool Stone;
             /// <summary>Whether the sheet has water laid like a path (<see cref="WaterSets"/>: burrow_ground).</summary>
             public bool Water;
+            /// <summary>Whether the sheet has the farm's grounds (<see cref="FarmSets"/>: faerie_field_ground).</summary>
+            public bool Farm;
 
             /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail").</summary>
             public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
@@ -76,6 +82,7 @@ namespace BellwortBurrow.EditorTools
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
             new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true, Water = true },
+            new GroundSheet { Sheet = "faerie_field_ground", Zone = "Faerie Field", Palette = "Faerie Field Ground", Farm = true },
         };
 
         /// <summary>A ground laid like a path: its tile's kind, its set's slice and its extra full pieces.</summary>
@@ -85,6 +92,8 @@ namespace BellwortBurrow.EditorTools
             public string[] Fills; // extra full pieces, picked at random alongside the template's full pieces
             /// <summary>Blocks the player: its tiles collide by their sprites' traced shapes (the water).</summary>
             public bool Blocks;
+            /// <summary>Its pieces carry glints on the Glow layer: it's a <see cref="GlintRuleTile"/> (the tillable dirt).</summary>
+            public bool Glints;
         }
 
         /// <summary>The grounds every ground sheet has, in the order the tile palette lays them out.</summary>
@@ -114,12 +123,26 @@ namespace BellwortBurrow.EditorTools
             new GroundSet { Kind = "Water", Slice = "water_set", Fills = new string[0], Blocks = true },
         };
 
+        /// <summary>
+        /// A sheet with the farm's grounds (<see cref="GroundSheet.Farm"/>) also lays, as a path is laid: Tillable Dirt,
+        /// the only ground the player can till, flat with a speck that glints here and there (till_set, a
+        /// <see cref="GlintRuleTile"/>), and over it Farmland, tilled, and Watered Farmland (farmland_set, watered_set).
+        /// </summary>
+        static readonly GroundSet[] FarmSets =
+        {
+            new GroundSet { Kind = "Tillable Dirt", Slice = "till_set", Glints = true,
+                            Fills = new[] { "till_fill_00", "till_fill_01", "till_fill_02", "till_fill_03" } },
+            new GroundSet { Kind = "Farmland", Slice = "farmland_set", Fills = new[] { "farmland_fill_00", "farmland_fill_01" } },
+            new GroundSet { Kind = "Watered Farmland", Slice = "watered_set", Fills = new[] { "watered_fill_00", "watered_fill_01" } },
+        };
+
         /// <summary>The grounds laid like a path a sheet has, in the order its tile palette lays them out.</summary>
         static IEnumerable<GroundSet> SetsOf(GroundSheet ground)
         {
             foreach (var set in Sets) yield return set;
             if (ground.Stone) foreach (var set in StoneSets) yield return set;
             if (ground.Water) foreach (var set in WaterSets) yield return set;
+            if (ground.Farm) foreach (var set in FarmSets) yield return set;
         }
 
         /// <summary>Raised ground's faces: each kind and its set of pieces (<see cref="FacePieceKeys"/>).</summary>
@@ -488,8 +511,14 @@ namespace BellwortBurrow.EditorTools
             if (pieces.Count < LayoutCount)
                 Debug.LogWarning($"Bellwort Burrow: {name} has {pieces.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
 
-            var tile = ScriptableObject.CreateInstance<RuleTile>();
+            var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>() : ScriptableObject.CreateInstance<RuleTile>();
             tile.name = name;
+            if (tile is GlintRuleTile glinting)
+            {
+                glinting.glintObject = GlintObject();
+                foreach (var piece in pieces.Values.SelectMany(p => p))
+                    if (sprites.TryGetValue(piece.name + "_glow", out var glint)) { glinting.glintPieces.Add(piece); glinting.glints.Add(glint); }
+            }
             tile.m_DefaultSprite = pieces[Full][0];
             var collider = ColliderFor(set.Blocks);
             tile.m_DefaultColliderType = collider;
@@ -497,6 +526,25 @@ namespace BellwortBurrow.EditorTools
             foreach (var kv in pieces.OrderBy(kv => kv.Key)) tile.m_TilingRules.Add(LayoutRule(RuleNeighbours(kv.Key), kv.Value, collider));
             SaveKeepingId(tile, path);
             return true;
+        }
+
+        /// <summary>Where the glint a <see cref="GlintRuleTile"/> puts on a cell is kept.</summary>
+        public const string GlintObjectPath = Folder + "/Tile Glint.prefab";
+
+        /// <summary>
+        /// The glint a <see cref="GlintRuleTile"/> puts on a cell: an empty SpriteRenderer on the unlit material (the tile
+        /// gives it the cell's glint picture and its sorting), made once at <see cref="GlintObjectPath"/>.
+        /// </summary>
+        static GameObject GlintObject()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(GlintObjectPath);
+            if (existing != null) return existing;
+            var go = new GameObject("Tile Glint");
+            var picture = go.AddComponent<SpriteRenderer>();
+            if (ArtLibrary.UnlitMaterial != null) picture.sharedMaterial = ArtLibrary.UnlitMaterial;
+            var saved = PrefabUtility.SaveAsPrefabAsset(go, GlintObjectPath);
+            Object.DestroyImmediate(go);
+            return saved;
         }
 
         /// <summary>
