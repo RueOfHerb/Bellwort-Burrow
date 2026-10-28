@@ -35,6 +35,9 @@ namespace BellwortBurrow.EditorTools
 
         /// <summary>The pixels of the stone ring layers alone (Stone ring front, Stone ring back): a log support stands on its ring.</summary>
         public bool[] Ring;
+
+        /// <summary>The pixels of a stump's Cut top layer alone: its base is as deep as its top.</summary>
+        public bool[] Top;
         public readonly List<SheetSlice> Slices = new List<SheetSlice>();
         public readonly List<string> Warnings = new List<string>();
 
@@ -139,6 +142,7 @@ namespace BellwortBurrow.EditorTools
 
             Solid = new bool[Width * Height];
             Ring = new bool[Width * Height];
+            Top = new bool[Width * Height];
             var art = new double[Width * Height * 4];
             var glow = new double[Width * Height * 4];
             var warnedBlend = false;
@@ -154,6 +158,7 @@ namespace BellwortBurrow.EditorTools
                 Composite(layer.IsGlow ? glow : art, cel, layer.Opacity);
                 if (!layer.IsGlow && IsSolidLayer(layer.Name)) MarkSolid(Solid, cel, layer.Opacity);
                 if (!layer.IsGlow && layer.Name.StartsWith("Stone ring", StringComparison.OrdinalIgnoreCase)) MarkSolid(Ring, cel, layer.Opacity);
+                if (!layer.IsGlow && layer.Name.StartsWith("Cut top", StringComparison.OrdinalIgnoreCase)) MarkSolid(Top, cel, layer.Opacity);
             }
 
             Art = ToBytes(art);

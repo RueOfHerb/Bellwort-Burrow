@@ -27,6 +27,14 @@ namespace BellwortBurrow.Player
             if (!TryGetComponent(out incline)) incline = gameObject.AddComponent<InclineWalker>();
             // The hands come with the walker, so no scene has to add them (sys-8).
             if (GetComponent<PlayerInteractor>() == null) gameObject.AddComponent<PlayerInteractor>();
+
+            // Arriving through a zone exit: stand at the spawn point it named (lvl-4).
+            var arrival = ZoneTravel.Find(ZoneTravel.Take());
+            if (arrival != null)
+            {
+                transform.position = arrival.transform.position;
+                body.position = arrival.transform.position;
+            }
             if (TryGetComponent<PlayerInput>(out var input) && input.actions != null)
                 move = input.actions.FindAction("Move");
         }
