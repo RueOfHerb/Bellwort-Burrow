@@ -19,7 +19,8 @@ namespace BellwortBurrow.EditorTools
     /// - Glow: layers with "glow" in their name. Each slice with glow pixels also gets a "name_glow" sprite
     ///   with the same rect and pivot, meant for an unlit material so it shines through the night.
     /// - Tile Size above 0 cuts each slice into tiles named "name_00", "name_01"... (row by row)
-    ///   and makes a Tile asset for each, ready for the Tile Palette. Tiles that block the player get a physics shape whose
+    ///   and makes a Tile asset for each, ready for the Tile Palette. A tile with glow pixels also gets a "name_glow"
+    ///   sprite, the glints a GlintRuleTile puts over it (the tillable dirt's specks). Tiles that block the player get a physics shape whose
     ///   edges are only level, upright or at 45 degrees: the water's from its quarters (<see cref="Colliders.QuarterShape"/>),
     ///   so slopes block as drawn, and the bank and cliff faces' from their keys (<see cref="Colliders.FaceShape"/>),
     ///   so a 45 degree run blocks along a straight line.
@@ -72,7 +73,7 @@ namespace BellwortBurrow.EditorTools
             {
                 var slice = Clamp(original, sheet, ctx);
                 if (slice.Width <= 0 || slice.Height <= 0) continue;
-                if (tileSize > 0) ImportTiles(ctx, sheet, slice, artTexture, usedNames);
+                if (tileSize > 0) ImportTiles(ctx, sheet, slice, artTexture, glowTexture, usedNames);
                 else ImportSprite(ctx, sheet, slice, artTexture, glowTexture, usedNames);
             }
         }
@@ -124,7 +125,7 @@ namespace BellwortBurrow.EditorTools
             }
         }
 
-        void ImportTiles(AssetImportContext ctx, AsepriteSheet sheet, SheetSlice slice, Texture2D art, HashSet<string> usedNames)
+        void ImportTiles(AssetImportContext ctx, AsepriteSheet sheet, SheetSlice slice, Texture2D art, Texture2D glow, HashSet<string> usedNames)
         {
             int columns = slice.Width / tileSize, rows = slice.Height / tileSize;
             if (slice.Width % tileSize != 0 || slice.Height % tileSize != 0)
@@ -146,6 +147,9 @@ namespace BellwortBurrow.EditorTools
                     var shape = TileShape(sheet, slice.Name, x, y, index);
                     if (shape != null) sprite.OverridePhysicsShape(shape);
                     ctx.AddObjectToAsset("sprite/" + name, sprite);
+                    // A tile with Glow pixels (the tillable dirt's glints) also gets "name_glow", for GlintRuleTile.
+                    if (glow != null && AsepriteSheet.AnyAlpha(sheet.Glow, sheet.Width, x, y, tileSize, tileSize))
+                        ctx.AddObjectToAsset("glow/" + name, MakeSprite(glow, rect, new Vector2(0.5f, 0.5f), name + "_glow"));
 
                     var tile = ScriptableObject.CreateInstance<Tile>();
                     tile.name = name;

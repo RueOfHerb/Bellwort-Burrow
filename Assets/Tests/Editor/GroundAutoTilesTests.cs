@@ -132,6 +132,7 @@ namespace BellwortBurrow.Tests.Editor
                 var kinds = new[] { "Grass", "Path", "Deer Trail" }.ToList();
                 if (ground.Stone) kinds.Add("Flagstones");
                 if (ground.Water) kinds.Add("Water");
+                if (ground.Farm) kinds.AddRange(new[] { "Tillable Dirt", "Farmland", "Watered Farmland" });
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face", "Mossy Cliff Face", "Root Bank Face",
                     "Stone Steps", "Log Steps", "Earth Ramp North", "Earth Ramp East", "Earth Ramp West",
                     "Stone Ramp North", "Stone Ramp East", "Stone Ramp West" });
