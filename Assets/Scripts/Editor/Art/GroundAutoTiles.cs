@@ -131,7 +131,7 @@ namespace BellwortBurrow.EditorTools
         static readonly GroundSet[] FarmSets =
         {
             new GroundSet { Kind = "Tillable Dirt", Slice = "till_set", Glints = true,
-                            Fills = new[] { "till_fill_00", "till_fill_01", "till_fill_02", "till_fill_03" } },
+                            Fills = Enumerable.Range(0, 10).Select(i => $"till_fill_{i:00}").ToArray() },
             new GroundSet { Kind = "Farmland", Slice = "farmland_set", Fills = new[] { "farmland_fill_00", "farmland_fill_01" } },
             new GroundSet { Kind = "Watered Farmland", Slice = "watered_set", Fills = new[] { "watered_fill_00", "watered_fill_01" } },
         };
@@ -524,9 +524,15 @@ namespace BellwortBurrow.EditorTools
             tile.m_DefaultColliderType = collider;
             tile.m_TilingRules = new List<RuleTile.TilingRule>();
             foreach (var kv in pieces.OrderBy(kv => kv.Key)) tile.m_TilingRules.Add(LayoutRule(RuleNeighbours(kv.Key), kv.Value, collider));
+            // The Rule Tile picks a random piece from Perlin noise at the cell times the scale: at 0.5 every other cell
+            // lands on the noise's grid and takes the same piece, which would set the glints out in a grid.
+            if (set.Glints) foreach (var rule in tile.m_TilingRules) rule.m_PerlinScale = GlintPerlinScale;
             SaveKeepingId(tile, path);
             return true;
         }
+
+        /// <summary>The Perlin scale a glinting set picks its pieces with: off the noise's grid, so glints scatter.</summary>
+        internal const float GlintPerlinScale = 0.37f;
 
         /// <summary>Where the glint a <see cref="GlintRuleTile"/> puts on a cell is kept.</summary>
         public const string GlintObjectPath = Folder + "/Tile Glint.prefab";
