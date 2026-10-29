@@ -164092,6 +164092,10 @@ MonoBehaviour:
   stumpTop: {x: 0, y: 34.8125}
   stumpRim: {x: 17.5, y: 8.75}
   heights: {fileID: 11400000, guid: 3b62eec6512cdb94098dfee72d932791, type: 2}
+  standing:
+  - {fileID: 1485097691}
+  - {fileID: 2056302309}
+  - {fileID: 1802990271}
   settings:
     moonRises: 19
     moonFull: 1
@@ -164119,6 +164123,9 @@ MonoBehaviour:
     logBearing: 243.4
   preview: 0
   previewHour: 19
+  authoredSaved: 0
+  authoredColor: {r: 0, g: 0, b: 0, a: 0}
+  authoredIntensity: 0
 --- !u!4 &1064144305
 Transform:
   m_ObjectHideFlags: 0
