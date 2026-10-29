@@ -192,14 +192,21 @@ namespace BellwortBurrow.EditorTools
                 EditorSceneManager.MarkSceneDirty(clock.gameObject.scene);
             }
 
+            for (int i = 0; i < lo.Count; i++) { lo[i] = Mathf.Round(lo[i] * 1000f) / 1000f; hi[i] = Mathf.Round(hi[i] * 1000f) / 1000f; }
+            for (int i = 0; i < rampLo.Count; i++) { rampLo[i] = Mathf.Round(rampLo[i] * 1000f) / 1000f; rampHi[i] = Mathf.Round(rampHi[i] * 1000f) / 1000f; }
+            if (same && heights.tilePixels == tilePixels && Same(heights.cells, cells) &&
+                Same(heights.faceX, fx.ToArray()) && Same(heights.faceBottom, fb.ToArray()) && Same(heights.faceTop, ft.ToArray()) &&
+                Same(heights.faceLow, lo.ToArray()) && Same(heights.faceHigh, hi.ToArray()) && Same(heights.faceEdges, edges.ToArray()) &&
+                Same(heights.ramps, rampRects.ToArray()) && Same(heights.rampClimb, climbs.ToArray()) &&
+                Same(heights.rampLanding, landings.ToArray()) && Same(heights.rampLow, rampLo.ToArray()) && Same(heights.rampHigh, rampHi.ToArray()))
+                return true;   // nothing moved: leave the asset (and git) alone
+
             Undo.RecordObject(heights, "Work Out Heights");
             heights.origin = new Vector2Int(bounds.xMin, bounds.yMin);
             heights.width = w;
             heights.height = h;
             heights.tilePixels = tilePixels;
             // to a thousandth of a level, so working the heights out again only changes the cells that really moved
-            for (int i = 0; i < lo.Count; i++) { lo[i] = Mathf.Round(lo[i] * 1000f) / 1000f; hi[i] = Mathf.Round(hi[i] * 1000f) / 1000f; }
-            for (int i = 0; i < rampLo.Count; i++) { rampLo[i] = Mathf.Round(rampLo[i] * 1000f) / 1000f; rampHi[i] = Mathf.Round(rampHi[i] * 1000f) / 1000f; }
             heights.cells = cells;
             heights.faceX = fx.ToArray(); heights.faceBottom = fb.ToArray(); heights.faceTop = ft.ToArray();
             heights.faceLow = lo.ToArray(); heights.faceHigh = hi.ToArray(); heights.faceEdges = edges.ToArray();
@@ -211,6 +218,9 @@ namespace BellwortBurrow.EditorTools
             clock.ReloadHeights();
             return true;
         }
+
+        static bool Same<T>(T[] a, T[] b) => a != null && b != null && a.Length == b.Length &&
+                                             System.Linq.Enumerable.SequenceEqual(a, b);
 
         // Whether a pixel of a face tile's sprite (x, y from its lower left) is the face itself: drawn, and not the grass
         // the tile carries at its lip and foot (grass is the only green-leaning colour on a face's sheet; earth and stone
