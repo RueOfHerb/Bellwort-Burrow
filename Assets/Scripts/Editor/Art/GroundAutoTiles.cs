@@ -519,8 +519,14 @@ namespace BellwortBurrow.EditorTools
             if (pieces.Count < LayoutCount)
                 Debug.LogWarning($"Bellwort Burrow: {name} has {pieces.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
 
-            var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>() : ScriptableObject.CreateInstance<RuleTile>();
+            var across = WangPieces(sprites, "path_across");
+            var up = WangPieces(sprites, "path_up");
+            bool wang = set.Kind == "Path" && across != null && up != null;
+            var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>()
+                     : wang ? ScriptableObject.CreateInstance<WangPathTile>()
+                     : ScriptableObject.CreateInstance<RuleTile>();
             tile.name = name;
+            if (wang) { ((WangPathTile)tile).across = across; ((WangPathTile)tile).up = up; }
             if (tile is GlintRuleTile glinting)
             {
                 glinting.glintObject = GlintObject();
@@ -549,6 +555,24 @@ namespace BellwortBurrow.EditorTools
         /// <summary>The Perlin scale a glinting set picks its pieces with: off the noise's grid, so glints scatter.</summary>
         internal const float GlintPerlinScale = 0.37f;
 
+        /// <summary>
+        /// A Wang path's pieces from a slice of WangPathTile.States squared tiles (path_across, path_up: art-2.41), or
+        /// null when the sheet doesn't have them all.
+        /// </summary>
+        static Sprite[] WangPieces(Dictionary<string, Sprite> sprites, string slice)
+        {
+            var pieces = new Sprite[WangPathTile.States * WangPathTile.States];
+            for (int i = 0; i < pieces.Length; i++)
+                if (!sprites.TryGetValue($"{slice}_{i:00}", out pieces[i])) return null;
+            return pieces;
+        }
+
+        /// <summary>How often a piece comes up against the others in its list (art-2.41): the featured pieces
+        /// (grass_more, path_fill_more, with clumps, ruts and big stones) half as often as the plain ones, so the
+        /// features read as now and then instead of everywhere.</summary>
+        internal static float WeightOf(Sprite piece) =>
+            piece != null && (piece.name.StartsWith("grass_more") || piece.name.StartsWith("path_fill_more")) ? 1f : 2f;
+
         /// <summary>The Perlin scale a sheet with EvenPick picks its pieces with: far enough along the noise from one
         /// cell to the next that neighbours seldom land on the same piece, and off its grid.</summary>
         internal const float ScatterPerlinScale = 7.31f;
@@ -559,9 +583,16 @@ namespace BellwortBurrow.EditorTools
         /// map and the first and last almost never came up. Here the list is cut into slots, and each piece gets a run
         /// of them as wide as an equal share of where the noise actually falls at this scale.
         /// </summary>
-        internal static Sprite[] EvenPick(IList<Sprite> pieces, float scale, int slots = 120)
+        internal static Sprite[] EvenPick(IList<Sprite> pieces, float scale, int slots = 120) =>
+            EvenPick(pieces, pieces.Select(WeightOf).ToList(), scale, slots);
+
+        /// <summary>As EvenPick, each piece coming up in proportion to its weight.</summary>
+        internal static Sprite[] EvenPick(IList<Sprite> pieces, IList<float> weights, float scale, int slots = 120)
         {
             if (pieces.Count < 2) return pieces.ToArray();
+            float weightTotal = weights.Sum();
+            var upTo = new float[pieces.Count];   // where each piece's share of the noise ends, 0 to 1
+            for (int i = 0, n = pieces.Count; i < n; i++) upTo[i] = (i > 0 ? upTo[i - 1] : 0f) + weights[i] / weightTotal;
             var mass = new float[slots];
             for (int y = 0; y < 128; y++)
                 for (int x = 0; x < 128; x++)
@@ -574,7 +605,10 @@ namespace BellwortBurrow.EditorTools
             for (int i = 0; i < slots; i++)
             {
                 float middle = soFar + mass[i] / 2f;
-                laid[i] = pieces[Mathf.Clamp(Mathf.FloorToInt(middle / total * pieces.Count), 0, pieces.Count - 1)];
+                float at = middle / total;
+                int k = 0;
+                while (k < pieces.Count - 1 && at > upTo[k]) k++;
+                laid[i] = pieces[k];
                 soFar += mass[i];
             }
             return laid;
