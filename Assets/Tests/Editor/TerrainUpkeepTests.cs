@@ -62,7 +62,7 @@ namespace BellwortBurrow.Tests.Editor
             Column(0, 48, 45); Column(1, 47, 44); Column(2, 43, 40); Column(3, 42, 39);
             var odd = TerrainUpkeep.OddShapes(map);
             Assert.That(odd.Select(o => o.cell), Is.EquivalentTo(new[] { new Vector3Int(1, 47, 0), new Vector3Int(2, 43, 0) }));
-            Assert.That(odd[0].why, Does.Contain("sheer drop"));
+            Assert.That(odd[0].why, Does.Contain("steeper than 45 degrees"));
         }
 
         [Test]
@@ -72,6 +72,20 @@ namespace BellwortBurrow.Tests.Editor
             var odd = TerrainUpkeep.OddShapes(map);
             Assert.That(odd.Count, Is.EqualTo(1));
             Assert.That(odd[0].cell, Is.EqualTo(new Vector3Int(0, 10, 0)));
+        }
+
+        [Test]
+        public void StraighteningASteepRunKeepsItsTopAndLeavesOnly45Degrees()
+        {
+            Column(-1, 48, 46);                                          // flat, then down: steeply at x 1 to 2
+            Column(0, 48, 45); Column(1, 47, 44); Column(2, 43, 40); Column(3, 42, 39);
+            Column(4, 41, 39); Column(5, 41, 39); Column(6, 41, 39); Column(7, 41, 39);   // flat again, long enough to catch up
+            BankTools.StraightenBanks(map);
+            Assert.That(TerrainUpkeep.OddShapes(map), Is.Empty);
+            for (int y = 46; y <= 48; y++) Assert.That(map.GetTile(new Vector3Int(-1, y, 0)), Is.Not.Null, "the high end stays");
+            Assert.That(map.GetTile(new Vector3Int(2, 46, 0)), Is.Not.Null, "x 2 now carries on a row below x 1");
+            Assert.That(map.GetTile(new Vector3Int(7, 41, 0)), Is.Not.Null, "and the flat run is met again");
+            Assert.That(map.GetTile(new Vector3Int(7, 42, 0)), Is.Null);
         }
     }
 }

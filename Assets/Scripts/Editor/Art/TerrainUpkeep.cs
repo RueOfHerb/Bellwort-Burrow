@@ -15,7 +15,8 @@ namespace BellwortBurrow.EditorTools
     ///   Rules knows setup has caught up with it. Hand edited tiles are kept, as setup keeps them.
     /// - A moment after a Banks layer is painted, the console names every place near the new tiles where a bank takes a
     ///   shape no face piece draws (<see cref="OddShapes"/>), so it can be fixed while the brush is still in hand.
-    ///   Bellwort Burrow > Tiles > List Odd Bank Shapes lists them all.
+    ///   Bellwort Burrow > Tiles > List Odd Bank Shapes lists them all, and Straighten Banks To 45 Degrees redraws the steep
+    ///   ones (<see cref="BankTools.StraightenBanks"/>). Banks are flat or 45 degrees, never steeper (Jocelyn, Oct 29).
     /// - The heights already work themselves out after a Banks or Ramps layer is painted (<see cref="TerrainHeightsBaker"/>).
     /// Bellwort Burrow > Tiles > Terrain Upkeep turns the first two on and off (on by default, remembered per machine).
     /// </summary>
@@ -160,7 +161,7 @@ namespace BellwortBurrow.EditorTools
                         string side = dx < 0 ? "west" : "east";
                         if (run.Diagonal && Mathf.Abs(beside.top - run.top) > 1 && beside.Height <= tile.rows + 1)
                             found.Add((top, $"a 45 degree run whose {side} neighbour starts {Mathf.Abs(beside.top - run.top)} rows " +
-                                            $"{(beside.top > run.top ? "higher" : "lower")}: a sheer drop, which no piece draws yet"));
+                                            $"{(beside.top > run.top ? "higher" : "lower")}: steeper than 45 degrees, which banks never are (Tiles > Straighten Banks To 45 Degrees)"));
                         else if (beside.top > run.top && beside.bottom < run.bottom)
                             found.Add((top, $"its {side} neighbour is taller at both ends, so this column's lip and foot stop inside that face"));
                     }
