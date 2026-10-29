@@ -35,6 +35,13 @@ namespace BellwortBurrow.Systems.World
         [SerializeField] Vector2 stumpTop = new(0f, 34.8125f);
         [Tooltip("The stump's rim as seen from above: half its width and half its depth on screen, in world units.")]
         [SerializeField] Vector2 stumpRim = new(17.5f, 8.75f);
+        [Tooltip("The ground's heights, worked out from the banks (Bellwort Burrow > Tiles > Work Out Heights). With them " +
+                 "the log's shadow steps at banks and runs down cliff faces (lvl-5); leave empty for flat ground.")]
+        [SerializeField] TerrainHeights heights;
+        [Tooltip("Groups of things that stand up (the log's supports, trees, homes). With heights, each one takes the " +
+                 "shadow at its feet instead of the ground drawn behind it (lvl-5). The stump always does. A child with a " +
+                 "sprite of its own is one thing, with everything under it; a child without one is a group, looked into.")]
+        [SerializeField] Transform[] standing = System.Array.Empty<Transform>();
         [SerializeField] TreeShadowSettings settings = new();
 
         [Header("Editor preview")]
@@ -50,23 +57,70 @@ namespace BellwortBurrow.Systems.World
         BoundsInt cells;
         int lastMinute = -1;
         (int lo, int hi) lastBand = (int.MinValue, int.MinValue);
-        (Vector2Int start, int bearing, int length, int width) lastStrip;
-        bool authoredSaved;
-        Color authoredColor;
-        float authoredIntensity;
+        (Vector2Int start, int bearing, int length, int width, int scale) lastStrip;
+        float[] levels, blockLevels;
+        float baseLevel;
+        int levelsVersion = -1;
+        // A repaint on heights spread over a few frames in Play (lvl-5): the next row of blocks, and what it paints.
+        const int SpreadFrames = 8;
+        int pendingRow = -1;
+        (Vector2 start, Vector2 dir, int across, Vector2 shift) pending;
+        // The zone light as it was before Preview took it over, kept through script reloads so Preview never mistakes its
+        // own shade for the light's colour (lvl-5.3).
+        [SerializeField, HideInInspector] bool authoredSaved;
+        [SerializeField, HideInInspector] Color authoredColor;
+        [SerializeField, HideInInspector] float authoredIntensity;
 
         public TreeShadowSettings Settings => settings;
+
+        /// <summary>Picks up newly worked out heights on the next refresh (Work Out Heights calls this).</summary>
+        public void ReloadHeights()
+        {
+            lastMinute = -1;
+            levelsVersion = -1;
+#if UNITY_EDITOR
+            if (!Application.isPlaying) UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+#endif
+        }
 
         /// <summary>The minute shown last, or -1 before the first.</summary>
         public int ShownMinute => lastMinute;
 
-        void OnEnable() => lastMinute = -1;
+        void OnEnable()
+        {
+            lastMinute = -1;
+#if UNITY_EDITOR
+            UnityEditor.SceneManagement.EditorSceneManager.sceneSaving += OnSceneSaving;
+            UnityEditor.SceneManagement.EditorSceneManager.sceneSaved += OnSceneSaved;
+#endif
+        }
 
         void OnDisable()
         {
+#if UNITY_EDITOR
+            UnityEditor.SceneManagement.EditorSceneManager.sceneSaving -= OnSceneSaving;
+            UnityEditor.SceneManagement.EditorSceneManager.sceneSaved -= OnSceneSaved;
+#endif
             RestoreAuthored();
             Release();
         }
+
+#if UNITY_EDITOR
+        // Saving while Preview is on writes the zone light as it was, not the previewed shade, then shows the hour again.
+        void OnSceneSaving(UnityEngine.SceneManagement.Scene scene, string path)
+        {
+            if (Application.isPlaying || scene != gameObject.scene || !authoredSaved || ambient == null) return;
+            ambient.color = authoredColor;
+            ambient.intensity = authoredIntensity;
+        }
+
+        void OnSceneSaved(UnityEngine.SceneManagement.Scene scene)
+        {
+            if (Application.isPlaying || scene != gameObject.scene || !authoredSaved) return;
+            lastMinute = -1;
+            UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+        }
+#endif
 
         void OnValidate()
         {
@@ -103,11 +157,15 @@ namespace BellwortBurrow.Systems.World
                 minute = Mathf.RoundToInt(previewHour * 60f) % (24 * 60);
             }
 
-            if (minute != lastMinute) Show(minute);
+            if (minute != lastMinute) Show(minute, Application.isPlaying);
+            else if (pendingRow >= 0) ContinuePaint();
         }
 
         /// <summary>Lights the zone for a minute of the day (also for tests and captures).</summary>
-        public void Show(int minuteOfDay)
+        public void Show(int minuteOfDay) => Show(minuteOfDay, false);
+
+        // spread: paint a shadow on heights over a few frames instead of at once (in Play).
+        void Show(int minuteOfDay, bool spread)
         {
             if (ambient == null || area == null) return;
             if (!Build()) return;
@@ -122,7 +180,7 @@ namespace BellwortBurrow.Systems.World
 
             if (stump != null)
             {
-                ShowFromStump(sky);
+                ShowFromStump(sky, spread);
             }
             else
             {
@@ -149,9 +207,9 @@ namespace BellwortBurrow.Systems.World
         }
 
         // The fallen log's shadow from the top of the stump, on its southwest side, under the log overhead (Jocelyn, Oct 22).
-        void ShowFromStump(TreeShadow.Sky sky)
+        void ShowFromStump(TreeShadow.Sky sky, bool spread)
         {
-            (Vector2Int, int, int, int) strip;
+            (Vector2Int, int, int, int, int) strip;
             Vector2 start = default, dir = default;
             float length = 0f;
             int across = 0;
@@ -160,11 +218,22 @@ namespace BellwortBurrow.Systems.World
                 (dir, length, across) = TreeShadow.FromStump(sky.travel, settings);
                 var top = ((Vector2)stump.position + stumpTop - (Vector2)direct.transform.position) * pixelsPerUnit;
                 start = TreeShadow.StartOnRim(top, stumpRim * pixelsPerUnit, dir);
+                float scale = levels != null ? ShadowCurve.ScaleAt(sky.travel, settings.elevationRise, settings.elevationPeak) : 0f;
                 strip = (Vector2Int.RoundToInt(start), Mathf.RoundToInt(Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg * 100f),
-                         Mathf.RoundToInt(length), across);
+                         Mathf.RoundToInt(length), across, Mathf.RoundToInt(scale * 1000f));
             }
-            else strip = (new Vector2Int(int.MinValue, int.MinValue), 0, 0, 0);
+            else strip = (new Vector2Int(int.MinValue, int.MinValue), 0, 0, 0, 0);
             if (strip == lastStrip) return;
+            pendingRow = -1;
+            if (sky.shadow && levels != null)
+            {
+                pending = (start, dir, across, TreeShadow.ShiftPerLevel(dir, strip.Item5 / 1000f));
+                lastStrip = strip;
+                pendingRow = 0;
+                if (spread) ContinuePaint();
+                else while (pendingRow >= 0) ContinuePaint();
+                return;
+            }
             if (sky.shadow) TreeShadow.PaintFromStump(pixels, cookie.width, cookie.height, start, dir, length, across);
             else TreeShadow.Paint(pixels, cookie.width, cookie.height, int.MaxValue / 2, int.MaxValue / 2);
             cookie.SetPixels32(pixels);
@@ -178,6 +247,7 @@ namespace BellwortBurrow.Systems.World
             if (bounds.size.x <= 0 || bounds.size.y <= 0) return false;
             if (direct != null && cookie != null && bounds == cells)
             {
+                if (HeightsChanged()) LoadLevels();
                 Place();
                 return true;
             }
@@ -205,8 +275,108 @@ namespace BellwortBurrow.Systems.World
             direct.targetSortingLayers = ambient.targetSortingLayers;
             lastBand = (int.MinValue, int.MinValue);
             lastStrip = default;
+            LoadLevels();
             Place();
             return true;
+        }
+
+        // Paints the next rows of a pending shadow on heights, and uploads the cookie once the last are done.
+        void ContinuePaint()
+        {
+            if (pendingRow < 0 || cookie == null || levels == null) { pendingRow = -1; return; }
+            int rows = (cookie.height + TreeShadow.Block - 1) / TreeShadow.Block;
+            int step = (rows + SpreadFrames - 1) / SpreadFrames;
+            TreeShadow.PaintOnHeights(pixels, cookie.width, cookie.height, pending.start, pending.dir, pending.across, levels,
+                baseLevel, pending.shift, blockLevels, pendingRow, pendingRow + step);
+            pendingRow += step;
+            if (pendingRow < rows) return;
+            pendingRow = -1;
+            cookie.SetPixels32(pixels);
+            cookie.Apply(false);
+        }
+
+        bool HeightsChanged() => heights == null ? levels != null : heights.version != levelsVersion;
+
+        // Each cookie pixel's ground level from the heights, with the stump itself at its own ground's level, so the
+        // shadow still starts on its rim (lvl-5).
+        void LoadLevels()
+        {
+            levels = null;
+            levelsVersion = -1;
+            lastStrip = default;
+            if (heights == null || stump == null) return;
+            if (heights.origin != (Vector2Int)cells.min || heights.width != cells.size.x || heights.height != cells.size.y ||
+                heights.tilePixels != pixelsPerUnit)
+            {
+                Debug.LogWarning($"{name}: the heights don't cover the ground's cells; run Bellwort Burrow > Tiles > Work Out Heights.", this);
+                return;
+            }
+            levels = heights.PixelLevels();
+            blockLevels = TreeShadow.BlockLevels(levels, cookie.width, cookie.height);
+            levelsVersion = heights.version;
+            var flat = (float[])levels.Clone();
+            baseLevel = LevelAt(flat, stump.position);
+
+            // Things that stand up take the level at their feet, back ones first so the front ones win where they overlap.
+            var things = new System.Collections.Generic.List<(float feet, Transform thing)>();
+            if (stump.TryGetComponent<SpriteRenderer>(out _)) things.Add((stump.position.y, stump));
+            foreach (var group in standing) Collect(group, things);
+            things.Sort((p, q) => q.feet.CompareTo(p.feet));
+            var sheets = new System.Collections.Generic.Dictionary<Texture2D, Color32[]>();
+            foreach (var (_, thing) in things)
+            {
+                var renderers = thing.GetComponentsInChildren<SpriteRenderer>();
+                float lowest = float.PositiveInfinity, middle = 0f;
+                foreach (var r in renderers)
+                    if (r.enabled && r.sprite != null && r.bounds.min.y < lowest) { lowest = r.bounds.min.y; middle = r.bounds.center.x; }
+                if (float.IsInfinity(lowest)) continue;
+                float level = thing == stump ? baseLevel : LevelAt(flat, new Vector2(middle, lowest));
+                foreach (var r in renderers) Stamp(r, level, sheets);
+            }
+            blockLevels = TreeShadow.BlockLevels(levels, cookie.width, cookie.height);
+        }
+
+        void Collect(Transform group, System.Collections.Generic.List<(float, Transform)> into)
+        {
+            if (group == null) return;
+            foreach (Transform child in group)
+            {
+                if (child == stump || !child.gameObject.activeInHierarchy) continue;
+                if (child.TryGetComponent<SpriteRenderer>(out var r)) into.Add((r.bounds.min.y, child));
+                else Collect(child, into);
+            }
+        }
+
+        // The ground's level under a world point (before anything is stamped).
+        float LevelAt(float[] flat, Vector2 world)
+        {
+            var p = Vector2Int.FloorToInt((world - (Vector2)area.CellToWorld(cells.min)) * pixelsPerUnit);
+            p.x = Mathf.Clamp(p.x, 0, cookie.width - 1);
+            p.y = Mathf.Clamp(p.y + 1, 0, cookie.height - 1);
+            return flat[p.y * cookie.width + p.x];
+        }
+
+        // Gives every drawn pixel of a sprite one level.
+        void Stamp(SpriteRenderer body, float level, System.Collections.Generic.Dictionary<Texture2D, Color32[]> sheets)
+        {
+            if (!body.enabled || body.sprite == null) return;
+            var corner = area.CellToWorld(cells.min);
+            int w = cookie.width, h = cookie.height;
+            var min = Vector2Int.RoundToInt(((Vector2)body.bounds.min - (Vector2)corner) * pixelsPerUnit);
+            var sprite = body.sprite;
+            var rect = sprite.textureRect;
+            int sw = Mathf.RoundToInt(rect.width), sh = Mathf.RoundToInt(rect.height);
+            if (!sheets.TryGetValue(sprite.texture, out var art))
+                sheets[sprite.texture] = art = sprite.texture.isReadable ? sprite.texture.GetPixels32() : null;
+            int tx = Mathf.RoundToInt(rect.x), ty = Mathf.RoundToInt(rect.y), tw = sprite.texture.width;
+            for (int y = 0; y < sh; y++)
+            for (int x = 0; x < sw; x++)
+            {
+                int px = min.x + (body.flipX ? sw - 1 - x : x), py = min.y + (body.flipY ? sh - 1 - y : y);
+                if (px < 0 || py < 0 || px >= w || py >= h) continue;
+                if (art != null && art[(ty + y) * tw + tx + x].a == 0) continue;
+                levels[py * w + px] = level;
+            }
         }
 
         // The cookie's lower left corner on the ground's lower left cell, snapped to whole pixels.
@@ -227,6 +397,9 @@ namespace BellwortBurrow.Systems.World
             cookieSprite = null;
             cookie = null;
             pixels = null;
+            levels = null;
+            levelsVersion = -1;
+            pendingRow = -1;
             lastMinute = -1;
             lastBand = (int.MinValue, int.MinValue);
             lastStrip = default;
