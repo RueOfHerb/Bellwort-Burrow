@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd4407bf09d545f4abf26b4a2f3951dc, type: 3}
+  m_Name: Bellwort
+  m_EditorClassIdentifier: BellwortBurrow.Data::BellwortBurrow.Data.Professions.Botany.BotanyCropDefinition
+  id: bellwort
+  profession: {fileID: 11400000, guid: fd0b0e9edb555734183669b8098f0226, type: 2}
+  seedItem: {fileID: 11400000, guid: 8ec17436a8b1f5545a5da9a338374336, type: 2}
+  harvestItem: {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
+  growthStageCount: 3
+  daysPerStage: 1
+  growableSeasons: 00000000
+  harvestXp: 5

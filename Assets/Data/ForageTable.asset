@@ -17,19 +17,29 @@ MonoBehaviour:
     item: {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
     amount: 1
     respawnDays: 1
+    bonusItem: {fileID: 11400000, guid: 8ec17436a8b1f5545a5da9a338374336, type: 2}
+    bonusAmount: 1
   - slice: burrow_bellworts_b
     item: {fileID: 11400000, guid: 770e12e96fd10854baf5df726213e074, type: 2}
     amount: 1
     respawnDays: 1
+    bonusItem: {fileID: 11400000, guid: 8ec17436a8b1f5545a5da9a338374336, type: 2}
+    bonusAmount: 1
   - slice: burrow_grass_tall
     item: {fileID: 11400000, guid: 35eaf111d78c3ed4b8d282860f6aac42, type: 2}
     amount: 1
     respawnDays: 1
+    bonusItem: {fileID: 0}
+    bonusAmount: 1
   - slice: burrow_mossy_rock_a
     item: {fileID: 11400000, guid: bd95061e1493b9743abd6cdb96ca1d94, type: 2}
     amount: 1
     respawnDays: 1
+    bonusItem: {fileID: 0}
+    bonusAmount: 1
   - slice: burrow_mossy_rock_b
     item: {fileID: 11400000, guid: bd95061e1493b9743abd6cdb96ca1d94, type: 2}
     amount: 1
     respawnDays: 1
+    bonusItem: {fileID: 0}
+    bonusAmount: 1
