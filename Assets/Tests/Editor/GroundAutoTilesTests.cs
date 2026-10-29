@@ -143,5 +143,35 @@ namespace BellwortBurrow.Tests.Editor
             }
             Assert.AreEqual(GroundAutoTiles.Sheets.Length, GroundAutoTiles.Sheets.Select(g => g.Palette).Distinct().Count(), "two ground sheets share a palette");
         }
+        [Test]
+        public void EvenPick_TakesEveryPieceAboutEquallyOften_AndNeighboursSeldomMatch()
+        {
+            var pieces = Enumerable.Range(0, 12).Select(i => { var sp = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero); sp.name = "p" + i; return sp; }).ToList();
+            float scale = GroundAutoTiles.ScatterPerlinScale;
+            var laid = GroundAutoTiles.EvenPick(pieces, scale);
+            Sprite Pick(int x, int y) => laid[Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise((x + 100000f) * scale, (y + 100000f) * scale) * laid.Length), 0, laid.Length - 1)];
+            var counts = pieces.ToDictionary(p => p, p => 0);
+            int same = 0, cells = 0;
+            for (int y = 0; y < 100; y++)
+                for (int x = 0; x < 140; x++)
+                {
+                    var p = Pick(x, y);
+                    counts[p]++;
+                    if (Pick(x + 1, y) == p) same++;
+                    cells++;
+                }
+            float even = cells / 12f;
+            foreach (var kv in counts)
+                Assert.That(kv.Value, Is.InRange(even * 0.6f, even * 1.4f), $"{kv.Key.name} is picked {kv.Value} times of {cells}");
+            Assert.That(same / (float)cells, Is.LessThan(0.2f), "neighbours land on the same piece too often");
+            foreach (var p in pieces) UnityEngine.Object.DestroyImmediate(p);
+        }
+
+        [Test]
+        public void OnlyTheBurrowPicksEvenly_TheForestKeepsItsPlainGrassCommonest()
+        {
+            Assert.IsTrue(GroundAutoTiles.Sheets.Single(g => g.Sheet == "burrow_ground").EvenPick);
+            Assert.IsFalse(GroundAutoTiles.Sheets.Single(g => g.Sheet == "forest_ground").EvenPick);
+        }
     }
 }
