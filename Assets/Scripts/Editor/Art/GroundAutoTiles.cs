@@ -72,6 +72,12 @@ namespace BellwortBurrow.EditorTools
             public bool Water;
             /// <summary>Whether the sheet has the farm's grounds (<see cref="FarmSets"/>: faerie_field_ground).</summary>
             public bool Farm;
+            /// <summary>
+            /// Whether its tiles pick each of their pieces about equally often, far apart on the noise so neighbours
+            /// seldom match (<see cref="EvenPick"/>: burrow_ground, art-2.40). Without it Unity's Perlin pick favours the
+            /// middle of each list, which the forest's grass leans on to keep its plainest piece the commonest.
+            /// </summary>
+            public bool EvenPick;
 
             /// <summary>Where one of its tiles is saved, by kind ("Grass", "Path", "Deer Trail").</summary>
             public string Tile(string kind) => $"{Folder}/{Zone} {kind}.asset";
@@ -81,7 +87,7 @@ namespace BellwortBurrow.EditorTools
         public static readonly GroundSheet[] Sheets =
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
-            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true, Water = true },
+            new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true, Water = true, EvenPick = true },
             new GroundSheet { Sheet = "faerie_field_ground", Zone = "Faerie Field", Palette = "Faerie Field Ground", Farm = true },
         };
 
@@ -99,7 +105,7 @@ namespace BellwortBurrow.EditorTools
         /// <summary>The grounds every ground sheet has, in the order the tile palette lays them out.</summary>
         static readonly GroundSet[] Sets =
         {
-            new GroundSet { Kind = "Path", Slice = "path_set", Fills = new[] { "path_fill_00", "path_fill_01" } },
+            new GroundSet { Kind = "Path", Slice = "path_set", Fills = new[] { "path_fill_00", "path_fill_01", "path_fill_more_00", "path_fill_more_01", "path_fill_more_02", "path_fill_more_03" } },
             new GroundSet { Kind = "Deer Trail", Slice = "trail_set", Fills = new[] { "trail_00", "trail_01" } },
         };
 
@@ -271,8 +277,10 @@ namespace BellwortBurrow.EditorTools
             new Vector3Int(-1, -1, 0), new Vector3Int(0, -1, 0), new Vector3Int(1, -1, 0),
         };
 
-        // Perlin noise favors the middle of the list, so the plainest grass goes in the middle.
-        static readonly string[] GrassPieces = { "grass_00", "grass_01", "grass_02", "grass_03" };
+        // Perlin noise favors the middle of the list, so the plainest grass goes in the middle (a sheet with EvenPick
+        // takes them all about equally). grass_more is the Burrow's eight more (art-2.40); a sheet without it skips them.
+        static readonly string[] GrassPieces = { "grass_00", "grass_01", "grass_02", "grass_03",
+            "grass_more_00", "grass_more_01", "grass_more_02", "grass_more_03", "grass_more_04", "grass_more_05", "grass_more_06", "grass_more_07" };
 
         [MenuItem("Bellwort Burrow/Setup/Forest Steps/4. Make Ground Auto Tiles", false, 204)]
         static void MakeFromMenu()
@@ -315,7 +323,7 @@ namespace BellwortBurrow.EditorTools
             }
             string grassPath = ground.Tile("Grass");
             if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
-            else if (MakeGrassTile(sprites, grassPath)) written.Add(grassPath);
+            else if (MakeGrassTile(ground, sprites, grassPath)) written.Add(grassPath);
             if (ground.Banks)
             {
                 foreach (var (kind, slice) in Faces)
@@ -511,8 +519,14 @@ namespace BellwortBurrow.EditorTools
             if (pieces.Count < LayoutCount)
                 Debug.LogWarning($"Bellwort Burrow: {name} has {pieces.Count} of the {LayoutCount} layouts; tiles with a missing layout show the full piece.");
 
-            var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>() : ScriptableObject.CreateInstance<RuleTile>();
+            var across = WangPieces(sprites, "path_across");
+            var up = WangPieces(sprites, "path_up");
+            bool wang = set.Kind == "Path" && across != null && up != null;
+            var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>()
+                     : wang ? ScriptableObject.CreateInstance<WangPathTile>()
+                     : ScriptableObject.CreateInstance<RuleTile>();
             tile.name = name;
+            if (wang) { ((WangPathTile)tile).across = across; ((WangPathTile)tile).up = up; }
             if (tile is GlintRuleTile glinting)
             {
                 glinting.glintObject = GlintObject();
@@ -527,12 +541,78 @@ namespace BellwortBurrow.EditorTools
             // The Rule Tile picks a random piece from Perlin noise at the cell times the scale: at 0.5 every other cell
             // lands on the noise's grid and takes the same piece, which would set the glints out in a grid.
             if (set.Glints) foreach (var rule in tile.m_TilingRules) rule.m_PerlinScale = GlintPerlinScale;
+            if (ground.EvenPick)
+                foreach (var rule in tile.m_TilingRules)
+                {
+                    if (rule.m_Output != RuleTile.TilingRuleOutput.OutputSprite.Random) continue;
+                    if (!set.Glints) rule.m_PerlinScale = ScatterPerlinScale;
+                    rule.m_Sprites = EvenPick(rule.m_Sprites.Distinct().ToList(), rule.m_PerlinScale);
+                }
             SaveKeepingId(tile, path);
             return true;
         }
 
         /// <summary>The Perlin scale a glinting set picks its pieces with: off the noise's grid, so glints scatter.</summary>
         internal const float GlintPerlinScale = 0.37f;
+
+        /// <summary>
+        /// A Wang path's pieces from a slice of WangPathTile.States squared tiles (path_across, path_up: art-2.41), or
+        /// null when the sheet doesn't have them all.
+        /// </summary>
+        static Sprite[] WangPieces(Dictionary<string, Sprite> sprites, string slice)
+        {
+            var pieces = new Sprite[WangPathTile.States * WangPathTile.States];
+            for (int i = 0; i < pieces.Length; i++)
+                if (!sprites.TryGetValue($"{slice}_{i:00}", out pieces[i])) return null;
+            return pieces;
+        }
+
+        /// <summary>How often a piece comes up against the others in its list (art-2.41): the featured pieces
+        /// (grass_more, path_fill_more, with clumps, ruts and big stones) half as often as the plain ones, so the
+        /// features read as now and then instead of everywhere.</summary>
+        internal static float WeightOf(Sprite piece) =>
+            piece != null && (piece.name.StartsWith("grass_more") || piece.name.StartsWith("path_fill_more")) ? 1f : 2f;
+
+        /// <summary>The Perlin scale a sheet with EvenPick picks its pieces with: far enough along the noise from one
+        /// cell to the next that neighbours seldom land on the same piece, and off its grid.</summary>
+        internal const float ScatterPerlinScale = 7.31f;
+
+        /// <summary>
+        /// The pieces laid out so a Rule Tile's Perlin pick takes each about equally often (art-2.40). Unity picks a
+        /// piece by Perlin noise, which bunches round its middle: at 0.5, one of twelve grass pieces covered 45% of a
+        /// map and the first and last almost never came up. Here the list is cut into slots, and each piece gets a run
+        /// of them as wide as an equal share of where the noise actually falls at this scale.
+        /// </summary>
+        internal static Sprite[] EvenPick(IList<Sprite> pieces, float scale, int slots = 120) =>
+            EvenPick(pieces, pieces.Select(WeightOf).ToList(), scale, slots);
+
+        /// <summary>As EvenPick, each piece coming up in proportion to its weight.</summary>
+        internal static Sprite[] EvenPick(IList<Sprite> pieces, IList<float> weights, float scale, int slots = 120)
+        {
+            if (pieces.Count < 2) return pieces.ToArray();
+            float weightTotal = weights.Sum();
+            var upTo = new float[pieces.Count];   // where each piece's share of the noise ends, 0 to 1
+            for (int i = 0, n = pieces.Count; i < n; i++) upTo[i] = (i > 0 ? upTo[i - 1] : 0f) + weights[i] / weightTotal;
+            var mass = new float[slots];
+            for (int y = 0; y < 128; y++)
+                for (int x = 0; x < 128; x++)
+                {
+                    float v = Mathf.PerlinNoise((x + 100000f) * scale, (y + 100000f) * scale);   // as RuleTile samples it
+                    mass[Mathf.Clamp(Mathf.FloorToInt(v * slots), 0, slots - 1)]++;
+                }
+            float total = mass.Sum(), soFar = 0f;
+            var laid = new Sprite[slots];
+            for (int i = 0; i < slots; i++)
+            {
+                float middle = soFar + mass[i] / 2f;
+                float at = middle / total;
+                int k = 0;
+                while (k < pieces.Count - 1 && at > upTo[k]) k++;
+                laid[i] = pieces[k];
+                soFar += mass[i];
+            }
+            return laid;
+        }
 
         /// <summary>Where the glint a <see cref="GlintRuleTile"/> puts on a cell is kept.</summary>
         public const string GlintObjectPath = Folder + "/Tile Glint.prefab";
@@ -762,7 +842,7 @@ namespace BellwortBurrow.EditorTools
             return true;
         }
 
-        static bool MakeGrassTile(Dictionary<string, Sprite> sprites, string path)
+        static bool MakeGrassTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path)
         {
             var grass = new List<Sprite>();
             foreach (var name in GrassPieces)
@@ -778,8 +858,8 @@ namespace BellwortBurrow.EditorTools
             var rule = new RuleTile.TilingRule
             {
                 m_Output = RuleTile.TilingRuleOutput.OutputSprite.Random,
-                m_Sprites = grass.ToArray(),
-                m_PerlinScale = 0.5f,
+                m_Sprites = ground.EvenPick ? EvenPick(grass, ScatterPerlinScale) : grass.ToArray(),
+                m_PerlinScale = ground.EvenPick ? ScatterPerlinScale : 0.5f,
                 m_ColliderType = Tile.ColliderType.None,
             };
             rule.m_Neighbors.Clear(); // no conditions: every grass tile picks a random variation

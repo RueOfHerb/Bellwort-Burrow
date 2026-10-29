@@ -143,5 +143,94 @@ namespace BellwortBurrow.Tests.Editor
             }
             Assert.AreEqual(GroundAutoTiles.Sheets.Length, GroundAutoTiles.Sheets.Select(g => g.Palette).Distinct().Count(), "two ground sheets share a palette");
         }
+        [Test]
+        public void EvenPick_TakesEveryPieceAboutEquallyOften_AndNeighboursSeldomMatch()
+        {
+            var pieces = Enumerable.Range(0, 12).Select(i => { var sp = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero); sp.name = "p" + i; return sp; }).ToList();
+            float scale = GroundAutoTiles.ScatterPerlinScale;
+            var laid = GroundAutoTiles.EvenPick(pieces, scale);
+            Sprite Pick(int x, int y) => laid[Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise((x + 100000f) * scale, (y + 100000f) * scale) * laid.Length), 0, laid.Length - 1)];
+            var counts = pieces.ToDictionary(p => p, p => 0);
+            int same = 0, cells = 0;
+            for (int y = 0; y < 100; y++)
+                for (int x = 0; x < 140; x++)
+                {
+                    var p = Pick(x, y);
+                    counts[p]++;
+                    if (Pick(x + 1, y) == p) same++;
+                    cells++;
+                }
+            float even = cells / 12f;
+            foreach (var kv in counts)
+                Assert.That(kv.Value, Is.InRange(even * 0.6f, even * 1.4f), $"{kv.Key.name} is picked {kv.Value} times of {cells}");
+            Assert.That(same / (float)cells, Is.LessThan(0.2f), "neighbours land on the same piece too often");
+            foreach (var p in pieces) UnityEngine.Object.DestroyImmediate(p);
+        }
+
+        [Test]
+        public void OnlyTheBurrowPicksEvenly_TheForestKeepsItsPlainGrassCommonest()
+        {
+            Assert.IsTrue(GroundAutoTiles.Sheets.Single(g => g.Sheet == "burrow_ground").EvenPick);
+            Assert.IsFalse(GroundAutoTiles.Sheets.Single(g => g.Sheet == "forest_ground").EvenPick);
+        }
+        static Sprite Named(string name)
+        {
+            var sp = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero);
+            sp.name = name;
+            return sp;
+        }
+
+        [Test]
+        public void WeightedPick_TakesThePlainPiecesTwiceAsOftenAsTheFeaturedOnes()
+        {
+            var plain = Enumerable.Range(0, 4).Select(i => Named($"grass_{i:00}")).ToList();
+            var featured = Enumerable.Range(0, 8).Select(i => Named($"grass_more_{i:00}")).ToList();
+            var laid = GroundAutoTiles.EvenPick(plain.Concat(featured).ToList(), GroundAutoTiles.ScatterPerlinScale);
+            float scale = GroundAutoTiles.ScatterPerlinScale;
+            int plainCount = 0, cells = 0;
+            for (int y = 0; y < 100; y++)
+                for (int x = 0; x < 140; x++, cells++)
+                    if (plain.Contains(laid[Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise((x + 100000f) * scale, (y + 100000f) * scale) * laid.Length), 0, laid.Length - 1)]))
+                        plainCount++;
+            // four plain pieces at twice the weight of eight featured ones: half the ground
+            Assert.That(plainCount / (float)cells, Is.InRange(0.4f, 0.6f));
+            foreach (var p in plain.Concat(featured)) UnityEngine.Object.DestroyImmediate(p);
+        }
+
+        [Test]
+        public void WangPath_NeighboursAgreeOnEveryJoin_AndRunsMeetTheirEndsInTheUsualPlace()
+        {
+            var tile = ScriptableObject.CreateInstance<BellwortBurrow.Tiles.WangPathTile>();
+            tile.across = Enumerable.Range(0, 9).Select(i => Named($"across_{i}")).ToArray();
+            tile.up = Enumerable.Range(0, 9).Select(i => Named($"up_{i}")).ToArray();
+            var go = new GameObject("grid", typeof(Grid));
+            var map = new GameObject("map", typeof(Tilemap)).GetComponent<Tilemap>();
+            map.transform.SetParent(go.transform);
+            try
+            {
+                for (int x = 0; x < 40; x++) map.SetTile(new Vector3Int(x, 0, 0), tile);
+                for (int y = 3; y < 43; y++) map.SetTile(new Vector3Int(60, y, 0), tile);
+                int Across(int x) => System.Array.IndexOf(tile.across, map.GetSprite(new Vector3Int(x, 0, 0)));
+                int Up(int y) => System.Array.IndexOf(tile.up, map.GetSprite(new Vector3Int(60, y, 0)));
+                var states = new System.Collections.Generic.HashSet<int>();
+                for (int x = 1; x < 39; x++)
+                {
+                    Assert.GreaterOrEqual(Across(x), 0, $"cell {x} of the run shows a Wang piece");
+                    if (x < 38) Assert.AreEqual(Across(x) % 3, Across(x + 1) / 3, $"cells {x} and {x + 1} disagree on their join");
+                    states.Add(Across(x) % 3);
+                }
+                Assert.AreEqual(0, Across(1) / 3, "the join next to the run's end sits where every path piece meets");
+                Assert.AreEqual(0, Across(38) % 3, "and at the other end too");
+                Assert.AreEqual(3, states.Count, "the joins take all three states along a long run");
+                for (int y = 4; y < 41; y++)
+                    Assert.AreEqual(Up(y + 1) % 3, Up(y) / 3, $"rows {y} and {y + 1} disagree on their join");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+                foreach (var p in tile.across.Concat(tile.up)) UnityEngine.Object.DestroyImmediate(p);
+                UnityEngine.Object.DestroyImmediate(tile);
+            }
+        }
     }
 }
