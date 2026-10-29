@@ -8,7 +8,7 @@ namespace BellwortBurrow.Systems.World
 {
     /// <summary>
     /// A piece of ground clutter the player can pick (sys-8): bellworts, tall grass, a mossy rock. Interacting puts its
-    /// item in the inventory and hides the piece; it comes back after its respawn days, counted by the clock's day
+    /// item in the inventory, and its bonus item if it has one (bellworts give a seed too, sys-10), and hides the piece; it comes back after its respawn days, counted by the clock's day
     /// changes. The prefab maker adds this to the pieces the Forage Table lists. What's been picked isn't saved yet,
     /// so everything is back after a load.
     /// </summary>
@@ -18,6 +18,9 @@ namespace BellwortBurrow.Systems.World
         [SerializeField, Min(1)] int amount = 1;
         [Tooltip("How many day changes until it can be picked again.")]
         [SerializeField, Min(1)] int respawnDays = 1;
+        [Tooltip("Something more it gives along with its item, like a Bellwort seed with the flower. Optional.")]
+        [SerializeField] ItemDefinition bonusItem;
+        [SerializeField, Min(0)] int bonusAmount = 1;
 
         bool taken;
         int daysLeft;
@@ -28,11 +31,15 @@ namespace BellwortBurrow.Systems.World
         public bool Taken => taken;
         public Vector2 Position => transform.position;
 
-        public void Configure(ItemDefinition item, int amount = 1, int respawnDays = 1)
+        public ItemDefinition BonusItem => bonusItem;
+
+        public void Configure(ItemDefinition item, int amount = 1, int respawnDays = 1, ItemDefinition bonusItem = null, int bonusAmount = 1)
         {
             this.item = item;
             this.amount = Mathf.Max(1, amount);
             this.respawnDays = Mathf.Max(1, respawnDays);
+            this.bonusItem = bonusItem;
+            this.bonusAmount = Mathf.Max(0, bonusAmount);
         }
 
         void OnEnable() => Interactables.Add(this);
@@ -45,6 +52,7 @@ namespace BellwortBurrow.Systems.World
         {
             if (!CanInteract(who)) return;
             if (!ServiceLocator.TryGet<IInventoryService>(out var inventory) || !inventory.TryAdd(item, amount)) return;
+            if (bonusItem != null && bonusAmount > 0) inventory.TryAdd(bonusItem, bonusAmount);
 
             taken = true;
             daysLeft = respawnDays;

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using BellwortBurrow.Core;
 using BellwortBurrow.Data;
+using BellwortBurrow.Data.Professions.Botany;
 using BellwortBurrow.Systems.Save;
 
 namespace BellwortBurrow.Systems
@@ -19,6 +20,8 @@ namespace BellwortBurrow.Systems
         [SerializeField] VoidEventChannel dayChangedChannel;
         [Tooltip("Every item, so saves can store item ids and find the items again.")]
         [SerializeField] ItemCatalog itemCatalog;
+        [Tooltip("Every crop, so saves can store crop ids and find the crops again.")]
+        [SerializeField] BotanyCropCatalog cropCatalog;
         [Tooltip("In the editor and development builds, every new game goes in one dev slot (dev.json), so test saves don't pile up.")]
         [SerializeField] bool reuseDevSlot = true;
 
@@ -65,7 +68,8 @@ namespace BellwortBurrow.Systems
         }
 
         GameServices MakeServices() =>
-            new(calendarConfig, dayChangedChannel, itemCatalog != null ? itemCatalog.Find : null);
+            new(calendarConfig, dayChangedChannel, itemCatalog != null ? itemCatalog.Find : null,
+                cropCatalog != null ? cropCatalog.Find : null);
 
         // Pressing Play in a scene in the editor: that scene can finish loading before the Game Root listens, so its
         // load is missed and a zone wouldn't count as the world. Enter it here if it wasn't entered already.

@@ -74,6 +74,19 @@ namespace BellwortBurrow.Tests.EditMode
         }
 
         [Test]
+        public void ABonusItemComesAlongWithTheItem()
+        {
+            var node = Node(Item("bellwort_flower"), Vector2.zero);
+            node.Configure(node.Item, 1, 1, Item("bellwort_seed"), 1);
+
+            node.Interact(Player());
+
+            Assert.AreEqual(2, inventory.Slots.Count);
+            Assert.AreEqual("bellwort_flower", inventory.Slots[0].Item.Id);
+            Assert.AreEqual("bellwort_seed", inventory.Slots[1].Item.Id);
+        }
+
+        [Test]
         public void ItComesBackAfterItsRespawnDays()
         {
             var node = Node(Item("stone"), Vector2.zero, respawnDays: 2);

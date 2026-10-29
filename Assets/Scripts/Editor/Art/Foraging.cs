@@ -35,7 +35,7 @@ namespace BellwortBurrow.EditorTools
             if (row == null || row.item == null) return false;
             var forageable = root.GetComponent<Forageable>();
             if (forageable == null) forageable = root.AddComponent<Forageable>();
-            forageable.Configure(row.item, row.amount, row.respawnDays);
+            forageable.Configure(row.item, row.amount, row.respawnDays, row.bonusItem, row.bonusAmount);
             return true;
         }
     }

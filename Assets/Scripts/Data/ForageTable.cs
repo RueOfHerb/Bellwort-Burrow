@@ -19,6 +19,9 @@ namespace BellwortBurrow.Data
             public ItemDefinition item;
             [Min(1)] public int amount = 1;
             [Min(1)] public int respawnDays = 1;
+            [Tooltip("Something more it gives along with its item, like a Bellwort seed with the flower (sys-10). Optional.")]
+            public ItemDefinition bonusItem;
+            [Min(0)] public int bonusAmount = 1;
         }
 
         [SerializeField] List<Row> rows = new();
