@@ -87,5 +87,23 @@ namespace BellwortBurrow.Tests.Editor
             Assert.That(map.GetTile(new Vector3Int(7, 41, 0)), Is.Not.Null, "and the flat run is met again");
             Assert.That(map.GetTile(new Vector3Int(7, 42, 0)), Is.Null);
         }
+
+        [Test]
+        public void TuftsOnWaterOrAPathAreCleared()
+        {
+            var tufts = new GameObject("Tufts and Crop Circles", typeof(Tilemap)).GetComponent<Tilemap>();
+            var water = new GameObject("Water", typeof(Tilemap)).GetComponent<Tilemap>();
+            tufts.transform.SetParent(grid.transform); water.transform.SetParent(grid.transform);
+            var tuft = ScriptableObject.CreateInstance<Tile>();
+            var wet = ScriptableObject.CreateInstance<Tile>();
+            tufts.SetTile(new Vector3Int(1, 1, 0), tuft);
+            tufts.SetTile(new Vector3Int(2, 1, 0), tuft);
+            water.SetTile(new Vector3Int(2, 1, 0), wet);
+            Assert.That(TerrainUpkeep.TuftsBeside(water), Is.EqualTo(tufts));
+            var gone = TerrainUpkeep.ClearTuftsOver(tufts, new[] { water });
+            Assert.That(gone, Is.EqualTo(new[] { new Vector3Int(2, 1, 0) }));
+            Assert.That(tufts.GetTile(new Vector3Int(1, 1, 0)), Is.Not.Null, "a tuft on grass stays");
+            Object.DestroyImmediate(tuft); Object.DestroyImmediate(wet);
+        }
     }
 }

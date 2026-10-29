@@ -17,8 +17,11 @@ namespace BellwortBurrow.EditorTools
     ///   shape no face piece draws (<see cref="OddShapes"/>), so it can be fixed while the brush is still in hand.
     ///   Bellwort Burrow > Tiles > List Odd Bank Shapes lists them all, and Straighten Banks To 45 Degrees redraws the steep
     ///   ones (<see cref="BankTools.StraightenBanks"/>). Banks are flat or 45 degrees, never steeper (Jocelyn, Oct 29).
+    /// - A moment after Water, Paths, Banks, Waterfalls or Ramps is painted, any grass tuft or crop circle left on the new
+    ///   tiles (the Tufts and Crop Circles layer draws over them, so it would float) is cleared, as its own undo step
+    ///   (<see cref="ClearTuftsOver"/>). Bellwort Burrow > Tiles > Clear Floating Tufts does the whole open scene.
     /// - The heights already work themselves out after a Banks or Ramps layer is painted (<see cref="TerrainHeightsBaker"/>).
-    /// Bellwort Burrow > Tiles > Terrain Upkeep turns the first two on and off (on by default, remembered per machine).
+    /// Bellwort Burrow > Tiles > Terrain Upkeep turns the first three on and off (on by default, remembered per machine).
     /// </summary>
     [InitializeOnLoad]
     public static class TerrainUpkeep
@@ -28,6 +31,11 @@ namespace BellwortBurrow.EditorTools
         const double Settle = 1.0;   // seconds after the last painted tile
 
         static readonly Dictionary<Tilemap, List<Vector3Int>> painted = new();
+        static readonly Dictionary<Tilemap, List<Vector3Int>> covered = new();
+
+        /// <summary>The layers a tuft can't sit on: they draw under the Tufts and Crop Circles layer.</summary>
+        public static readonly string[] Covers = { "Water", "Paths", "Banks", "Waterfalls", "Ramps" };
+        const string TuftsLayer = "Tufts and Crop Circles";
         static readonly HashSet<string> savedSheets = new();
         static double lastChange;
 
@@ -86,7 +94,13 @@ namespace BellwortBurrow.EditorTools
 
         static void OnTilesChanged(Tilemap map, Tilemap.SyncTile[] tiles)
         {
-            if (!On || Application.isPlaying || map == null || map.name != "Banks") return;
+            if (!On || Application.isPlaying || map == null) return;
+            if (System.Array.IndexOf(Covers, map.name) >= 0)
+            {
+                if (!covered.TryGetValue(map, out var under)) covered[map] = under = new List<Vector3Int>();
+                foreach (var t in tiles) if (t.tile != null) under.Add(t.position);
+            }
+            if (map.name != "Banks") return;
             if (!painted.TryGetValue(map, out var cells)) painted[map] = cells = new List<Vector3Int>();
             foreach (var t in tiles) cells.Add(t.position);
             lastChange = EditorApplication.timeSinceStartup;
@@ -96,7 +110,22 @@ namespace BellwortBurrow.EditorTools
         {
             if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode) return;
             if (savedSheets.Count > 0) RemakeGround();
-            if (painted.Count == 0 || EditorApplication.timeSinceStartup - lastChange < Settle) return;
+            if ((painted.Count == 0 && covered.Count == 0) || EditorApplication.timeSinceStartup - lastChange < Settle) return;
+            var covers = covered.Where(m => m.Key != null).ToList();
+            covered.Clear();
+            foreach (var m in covers)
+            {
+                var tufts = TuftsBeside(m.Key);
+                if (tufts == null) continue;
+                Undo.RegisterCompleteObjectUndo(tufts, "Clear Floating Tufts");
+                var gone = ClearTuftsOver(tufts, new[] { m.Key }, m.Value);
+                if (gone.Count > 0)
+                {
+                    UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(tufts.gameObject.scene);
+                    Debug.Log($"Bellwort Burrow: cleared {gone.Count} tuft(s) left on the {m.Key.name} just painted " +
+                              $"({string.Join(", ", gone.Select(c => $"{c.x}, {c.y}"))}). Undo brings them back.", tufts);
+                }
+            }
             var maps = painted.Where(m => m.Key != null).ToList();
             painted.Clear();
             foreach (var m in maps) Report(m.Key, m.Value);
@@ -111,6 +140,58 @@ namespace BellwortBurrow.EditorTools
             string report = string.Join("\n", odd.Select(o => $"  ({o.cell.x}, {o.cell.y}): {o.why}"));
             Debug.LogWarning($"Bellwort Burrow: the bank just painted on {map.gameObject.scene.name}'s {map.name} takes a shape no face " +
                              $"piece draws, so it shows a notch or a seam ({odd.Count} place(s), by the column's top cell):\n{report}", map);
+        }
+
+        /// <summary>The Tufts and Crop Circles layer on the same grid as a layer, or null.</summary>
+        public static Tilemap TuftsBeside(Tilemap map)
+        {
+            if (map.transform.parent == null) return null;
+            foreach (Transform sibling in map.transform.parent)
+                if (sibling.name == TuftsLayer && sibling.TryGetComponent<Tilemap>(out var tufts)) return tufts;
+            return null;
+        }
+
+        /// <summary>
+        /// Clears every tuft or crop circle cell that sits on a tile of one of <paramref name="covers"/> (only at
+        /// <paramref name="cells"/> when given), since the layer draws over them and it would float. Returns the cells cleared.
+        /// </summary>
+        public static List<Vector3Int> ClearTuftsOver(Tilemap tufts, IEnumerable<Tilemap> covers, IEnumerable<Vector3Int> cells = null)
+        {
+            var maps = covers.Where(m => m != null && m != tufts).ToList();
+            var gone = new List<Vector3Int>();
+            foreach (var c in (cells ?? AllCells(tufts.cellBounds)).Distinct())
+                if (tufts.GetTile(c) != null && maps.Any(m => m.GetTile(c) != null))
+                {
+                    tufts.SetTile(c, null);
+                    gone.Add(c);
+                }
+            return gone;
+        }
+
+        static IEnumerable<Vector3Int> AllCells(BoundsInt bounds)
+        {
+            foreach (var c in bounds.allPositionsWithin) yield return c;
+        }
+
+        [MenuItem("Bellwort Burrow/Tiles/Clear Floating Tufts", false, 402)]
+        static void ClearAllFloating()
+        {
+            int total = 0;
+            foreach (var tufts in Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Exclude).Where(m => m.name == TuftsLayer))
+            {
+                var covers = tufts.transform.parent == null ? new List<Tilemap>() :
+                    tufts.transform.parent.GetComponentsInChildren<Tilemap>(true).Where(m => System.Array.IndexOf(Covers, m.name) >= 0).ToList();
+                Undo.RegisterCompleteObjectUndo(tufts, "Clear Floating Tufts");
+                var gone = ClearTuftsOver(tufts, covers);
+                total += gone.Count;
+                if (gone.Count > 0)
+                {
+                    UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(tufts.gameObject.scene);
+                    Debug.Log($"Bellwort Burrow: cleared {gone.Count} floating tuft(s) on {tufts.gameObject.scene.name}: " +
+                              string.Join(", ", gone.Select(c => $"({c.x}, {c.y})")), tufts);
+                }
+            }
+            if (total == 0) Debug.Log("Bellwort Burrow: no tufts float on water, paths, banks or ramps in the open scenes.");
         }
 
         /// <summary>Every odd bank shape in the open scenes' Banks layers, in the console: Bellwort Burrow > Tiles > List Odd Bank Shapes.</summary>
