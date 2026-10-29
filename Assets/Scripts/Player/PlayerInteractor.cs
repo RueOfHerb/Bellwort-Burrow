@@ -1,22 +1,18 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using BellwortBurrow.Core;
-using BellwortBurrow.Data.Professions.Botany;
-using BellwortBurrow.Systems.Inventory;
-using BellwortBurrow.Systems.Professions.Botany;
 using BellwortBurrow.Systems.World;
 
 namespace BellwortBurrow.Player
 {
     /// <summary>
-    /// The player's hands (sys-5, sys-8). The Interact action (E, or a gamepad button) uses the nearest interactable
-    /// within reach of a point just in front of the player's feet: a forageable gives its item. With a PlayerInput on
-    /// the same object it reads Interact itself; without one, wire OnInteract up to an input event.
-    /// PlantAtCell and HarvestAtCell are the Botany stubs, for a farmland tile later.
+    /// The player's hands (sys-5, sys-8, sys-10). The Interact action (E, or a gamepad button) uses the nearest
+    /// interactable within reach of a point just in front of the player's feet: a forageable gives its item, a door is
+    /// the bed. With nothing in reach, it works the farm's ground at that point (FarmField): till, plant, water,
+    /// harvest. With a PlayerInput on the same object it reads Interact itself; without one, wire OnInteract up to an
+    /// input event.
     /// </summary>
     public class PlayerInteractor : MonoBehaviour
     {
-        [SerializeField] BotanyCropDefinition equippedCrop;
         [Tooltip("How far from the point in front of the feet an interactable may be, in units (16 px each).")]
         [SerializeField, Min(0.1f)] float reach = 1.25f;
         [Tooltip("How far in front of the feet the reach is centred, in the direction the player faces.")]
@@ -55,29 +51,13 @@ namespace BellwortBurrow.Player
             }
         }
 
-        /// <summary>Uses the nearest interactable within reach. True when something was used.</summary>
+        /// <summary>Uses the nearest interactable within reach, or else the farm's ground in front. True when something was used.</summary>
         public bool InteractNearby()
         {
             var target = Interactables.Nearest(ReachPoint, reach, gameObject);
-            if (target == null) return false;
+            if (target == null) return FarmField.TryUseAny(ReachPoint, gameObject);
             target.Interact(gameObject);
             return true;
-        }
-
-        public void PlantAtCell(Vector3Int cell)
-        {
-            var plotService = ServiceLocator.Get<BotanyPlotService>();
-            plotService.TryPlant(cell, equippedCrop);
-        }
-
-        public void HarvestAtCell(Vector3Int cell)
-        {
-            var plotService = ServiceLocator.Get<BotanyPlotService>();
-            if (plotService.TryHarvest(cell, out var yield))
-            {
-                var inventory = ServiceLocator.Get<IInventoryService>();
-                inventory.TryAdd(yield, 1);
-            }
         }
     }
 }
