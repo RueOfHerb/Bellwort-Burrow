@@ -271,6 +271,111 @@ namespace BellwortBurrow.Systems.World
             }
         }
 
+        /// <summary>
+        /// Like PaintFromStump, on ground that rises and falls (lvl-5): each pixel at a level other than the stump's
+        /// takes the shadow of the flat ground shiftPerLevel away per level, so the shadow steps back toward the stump on
+        /// higher ground, on past it on lower ground, and runs down bank and cliff faces. levels holds each pixel's
+        /// level (TerrainHeights.PixelLevels), baseLevel the stump's. blockRowFrom and blockRowTo paint only those rows
+        /// of blocks, so the clock can spread a repaint over a few frames.
+        /// </summary>
+        public static void PaintOnHeights(Color32[] pixels, int width, int height, Vector2 start, Vector2 dir, int across,
+                                          float[] levels, float baseLevel, Vector2 shiftPerLevel, float[] blockLevels = null,
+                                          int blockRowFrom = 0, int blockRowTo = int.MaxValue)
+        {
+            var light = new Color32(255, 255, 255, 255);
+            var shade = new Color32(0, 0, 0, 0);
+            dir = dir.normalized;
+            var side = new Vector2(-dir.y, dir.x);
+            float half = across / 2f;
+            const float barkMost = 17f;   // the bark's bulge and the branch stub reach no further, plus rounding
+            blockLevels ??= BlockLevels(levels, width, height);
+            int blocksX = (width + Block - 1) / Block, blocksY = (height + Block - 1) / Block;
+            Span<Vector2> corners = stackalloc Vector2[8];
+            for (int by = Math.Max(0, blockRowFrom); by < Math.Min(blocksY, blockRowTo); by++)
+            for (int bx = 0; bx < blocksX; bx++)
+            {
+                int x0 = bx * Block, y0 = by * Block;
+                int x1 = Math.Min(width, x0 + Block), y1 = Math.Min(height, y0 + Block);
+                int k = (by * blocksX + bx) * 2;
+                float lo = blockLevels[k] - baseLevel, hi = blockLevels[k + 1] - baseLevel;
+                // Where this block's pixels look in the flat shadow: its corners, moved by the lowest and highest level.
+                int c = 0;
+                for (int e = 0; e < 2; e++)
+                {
+                    float dz = e == 0 ? lo : hi;
+                    var o = dz * shiftPerLevel - start;
+                    corners[c++] = new Vector2(x0 - 1, y0 - 1) + o;
+                    corners[c++] = new Vector2(x1 + 1, y0 - 1) + o;
+                    corners[c++] = new Vector2(x0 - 1, y1 + 1) + o;
+                    corners[c++] = new Vector2(x1 + 1, y1 + 1) + o;
+                }
+                bool allBehind = true, allLeft = true, allRight = true, allIn = true;
+                foreach (var p in corners)
+                {
+                    float pa = p.x * dir.x + p.y * dir.y, pb = p.x * side.x + p.y * side.y;
+                    allBehind &= pa < 0f;
+                    allLeft &= pb > half + barkMost;
+                    allRight &= pb < -(half + barkMost);
+                    allIn &= pa >= 1f && Mathf.Abs(pb) <= half - barkMost;
+                }
+                if (allBehind || allLeft || allRight || allIn)
+                {
+                    var fill = allIn ? shade : light;
+                    for (int y = y0; y < y1; y++)
+                        for (int x = x0; x < x1; x++) pixels[y * width + x] = fill;
+                    continue;
+                }
+                for (int y = y0; y < y1; y++)
+                {
+                    int row = y * width;
+                    for (int x = x0; x < x1; x++)
+                    {
+                        float dz = levels[row + x] - baseLevel;
+                        float lx = Mathf.Round(x + dz * shiftPerLevel.x) - start.x;
+                        float ly = Mathf.Round(y + dz * shiftPerLevel.y) - start.y;
+                        float pa = lx * dir.x + ly * dir.y, pb = lx * side.x + ly * side.y;
+                        bool shaded = false;
+                        if (pa >= 0f && Mathf.Abs(pb) <= half + barkMost)
+                        {
+                            int along = Mathf.RoundToInt(pa);
+                            shaded = pb <= half + Bark(along, 2.1f, true) && pb >= -(half + Bark(along, 0.4f, false));
+                        }
+                        pixels[row + x] = shaded ? shade : light;
+                    }
+                }
+            }
+        }
+
+        /// <summary>The side of the blocks PaintOnHeights settles at once where no edge can fall.</summary>
+        public const int Block = 16;
+
+        /// <summary>The lowest and highest level in each Block by Block square of pixels, for PaintOnHeights.</summary>
+        public static float[] BlockLevels(float[] levels, int width, int height)
+        {
+            int blocksX = (width + Block - 1) / Block, blocksY = (height + Block - 1) / Block;
+            var ranges = new float[blocksX * blocksY * 2];
+            for (int by = 0; by < blocksY; by++)
+            for (int bx = 0; bx < blocksX; bx++)
+            {
+                float lo = float.PositiveInfinity, hi = float.NegativeInfinity;
+                for (int y = by * Block; y < Math.Min(height, (by + 1) * Block); y++)
+                    for (int x = bx * Block; x < Math.Min(width, (bx + 1) * Block); x++)
+                    {
+                        float v = levels[y * width + x];
+                        if (v < lo) lo = v;
+                        if (v > hi) hi = v;
+                    }
+                ranges[(by * blocksX + bx) * 2] = lo;
+                ranges[(by * blocksX + bx) * 2 + 1] = hi;
+            }
+            return ranges;
+        }
+
+        /// <summary>How far, per level, the shadow on raised ground is looked up in the flat one: along the shadow by
+        /// the light's stretch (scale(u), lvl-2.11), and down the screen because raised ground is drawn a level higher.</summary>
+        public static Vector2 ShiftPerLevel(Vector2 dir, float scale) =>
+            TerrainHeights.LevelPixels * (scale * dir.normalized - Vector2.up);
+
         // Narrows [lo, hi] (x measured from the start) to where a * x + b lies between min and max.
         static void Clip(float a, float b, float min, float max, ref float lo, ref float hi)
         {
