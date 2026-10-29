@@ -164091,6 +164091,7 @@ MonoBehaviour:
   stump: {fileID: 1834681931}
   stumpTop: {x: 0, y: 34.8125}
   stumpRim: {x: 17.5, y: 8.75}
+  heights: {fileID: 11400000, guid: 3b62eec6512cdb94098dfee72d932791, type: 2}
   settings:
     moonRises: 19
     moonFull: 1
