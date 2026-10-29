@@ -38,7 +38,20 @@ namespace BellwortBurrow.Systems.World
         [Tooltip("For each face, tilePixels pairs (foot, lip) per pixel column, in pixels up from the face's first row.")]
         public byte[] faceEdges = Array.Empty<byte>();
 
+        [Header("Ramps and steps, one per block")]
+        [Tooltip("Each ramp's cells: lower left, and one past its upper right.")]
+        public RectInt[] ramps = Array.Empty<RectInt>();
+        [Tooltip("Which way each climbs: North (and steps) up the screen, East or West along the face.")]
+        public RampClimb[] rampClimb = Array.Empty<RampClimb>();
+        [Tooltip("Level columns at an East or West ramp's low end, where its mouth opens.")]
+        public int[] rampLanding = Array.Empty<int>();
+        public float[] rampLow = Array.Empty<float>();
+        public float[] rampHigh = Array.Empty<float>();
+
+        public enum RampClimb { North, East, West }
+
         public int FaceCount => faceX.Length;
+        public int RampCount => ramps.Length;
 
         /// <summary>The level of a cell (NaN on a face, or outside).</summary>
         public float CellLevel(int x, int y)
@@ -105,10 +118,46 @@ namespace BellwortBurrow.Systems.World
                     }
                 }
             }
+            for (int r = 0; r < RampCount; r++) RampLevels(r, z, pw, ph);
             return z;
 
             float At(int cx, int cy) =>
                 cx < 0 || cy < 0 || cx >= width || cy >= height ? float.NaN : cells[cy * width + cx];
+        }
+
+        // A ramp climbs one face (lvl-5.3). North ramps and steps rise from the block's foot to its top. An East or West
+        // ramp's walkway climbs a level along its columns past the landing, rising a level up the screen as it goes; in
+        // each column, below the walkway is its side wall (from the low ground up to the walkway) and above it the
+        // shelf's back wall (from the walkway up to the high ground), each a level's height on screen per level.
+        void RampLevels(int r, float[] z, int pw, int ph)
+        {
+            int p = tilePixels;
+            var rect = ramps[r];
+            int x0 = (rect.xMin - origin.x) * p, x1 = (rect.xMax - origin.x) * p;
+            int y0 = (rect.yMin - origin.y) * p, y1 = (rect.yMax - origin.y) * p;
+            float lo = rampLow[r], hi = rampHigh[r];
+            float climb = Mathf.Max(1, rect.width - rampLanding[r]) * p;
+            for (int x = Mathf.Max(0, x0); x < Mathf.Min(pw, x1); x++)
+            {
+                float f = rampClimb[r] switch
+                {
+                    RampClimb.East => Mathf.Clamp01((x + 0.5f - (x0 + rampLanding[r] * p)) / climb),
+                    RampClimb.West => Mathf.Clamp01(((x1 - rampLanding[r] * p) - (x + 0.5f)) / climb),
+                    _ => 0f
+                };
+                float walk = Mathf.Lerp(lo, hi, f);
+                float bottom = y0 + f * LevelPixels, top = bottom + LevelPixels, wall = (1f - f) * LevelPixels;
+                for (int y = Mathf.Max(0, y0); y < Mathf.Min(ph, y1); y++)
+                {
+                    float yy = y + 0.5f, v;
+                    if (rampClimb[r] == RampClimb.North) v = Mathf.Lerp(lo, hi, (yy - y0) / Mathf.Max(1, y1 - y0));
+                    else if (yy < bottom) v = Mathf.Lerp(lo, walk, (yy - y0) / Mathf.Max(1f, bottom - y0));
+                    else if (yy < top) v = walk;
+                    else if (yy < top + wall) v = Mathf.Lerp(walk, hi, (yy - top) / wall);
+                    else v = hi;
+                    z[y * pw + x] = v;
+                }
+            }
         }
 
         /// <summary>

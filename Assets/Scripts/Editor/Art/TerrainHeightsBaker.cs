@@ -11,7 +11,7 @@ namespace BellwortBurrow.EditorTools
 {
     /// <summary>
     /// Works out a zone's ground heights from its Banks layer for the Tree Shadow Clock (lvl-5): Bellwort Burrow > Tiles >
-    /// Work Out Heights, and again on its own a moment after the Banks layer is painted, in any scene whose clock already
+    /// Work Out Heights, and again on its own a moment after the Banks or Ramps layer is painted, in any scene whose clock already
     /// has heights. Reads where the faces are and, from each face tile's own pixels (the earth or stone, not the grass it carries), where its foot and lip are.
     /// </summary>
     [InitializeOnLoad]
@@ -42,7 +42,7 @@ namespace BellwortBurrow.EditorTools
 
         static void OnTilesChanged(Tilemap map, Tilemap.SyncTile[] tiles)
         {
-            if (Application.isPlaying || map == null || map.name != "Banks") return;
+            if (Application.isPlaying || map == null || (map.name != "Banks" && map.name != "Ramps")) return;
             waiting.Add(map.gameObject.scene);
             lastChange = EditorApplication.timeSinceStartup;
         }
@@ -91,6 +91,14 @@ namespace BellwortBurrow.EditorTools
             bool same = heights != null && heights.width == w && heights.height == h &&
                         heights.origin == new Vector2Int(bounds.xMin, bounds.yMin) && heights.cells.Length == w * h;
             var cells = TerrainHeights.Solve(face, same ? heights.cells : null);
+            // To a thousandth of a level, and a cell keeps its last level unless it moved more than a hundredth (half a
+            // pixel), so working the heights out again only changes the cells that really moved (git stays quiet).
+            for (int i = 0; i < cells.Length; i++)
+            {
+                if (float.IsNaN(cells[i])) continue;
+                float old = same ? heights.cells[i] : float.NaN;
+                cells[i] = !float.IsNaN(old) && Mathf.Abs(cells[i] - old) < 0.01f ? old : Mathf.Round(cells[i] * 1000f) / 1000f;
+            }
             var art = new Dictionary<Texture2D, Color32[]>();
             var fx = new List<int>(); var fb = new List<int>(); var ft = new List<int>();
             var lo = new List<float>(); var hi = new List<float>(); var edges = new List<byte>();
@@ -131,6 +139,49 @@ namespace BellwortBurrow.EditorTools
                 }
             }
 
+            // Ramps and steps, each block climbing the face it's cut through (lvl-5.3).
+            var rampRects = new List<RectInt>(); var climbs = new List<TerrainHeights.RampClimb>();
+            var landings = new List<int>(); var rampLo = new List<float>(); var rampHi = new List<float>();
+            foreach (var root in clock.gameObject.scene.GetRootGameObjects())
+                foreach (var map in root.GetComponentsInChildren<Tilemap>(true))
+                {
+                    if (map.name != "Ramps") continue;
+                    var seen = new HashSet<Vector3Int>();
+                    foreach (var start in map.cellBounds.allPositionsWithin)
+                    {
+                        var tile = map.GetTile(start);
+                        if (!(tile is RampTile || tile is StepsTile) || seen.Contains(start)) continue;
+                        var block = new RectInt(start.x, start.y, 1, 1);
+                        var todo = new Stack<Vector3Int>();
+                        todo.Push(start); seen.Add(start);
+                        while (todo.Count > 0)
+                        {
+                            var c = todo.Pop();
+                            block.SetMinMax(Vector2Int.Min(block.min, (Vector2Int)c), Vector2Int.Max(block.max, (Vector2Int)c + Vector2Int.one));
+                            foreach (var d in new[] { Vector3Int.left, Vector3Int.right, Vector3Int.up, Vector3Int.down })
+                                if (map.GetTile(c + d) == tile && seen.Add(c + d)) todo.Push(c + d);
+                        }
+                        var climb = tile is RampTile ramp && ramp.uphill.x > 0.5f ? TerrainHeights.RampClimb.East
+                                  : tile is RampTile ramp2 && ramp2.uphill.x < -0.5f ? TerrainHeights.RampClimb.West
+                                  : TerrainHeights.RampClimb.North;
+                        float below = 0f, above = 0f; int nb = 0, na = 0;
+                        for (int cx = block.xMin; cx < block.xMax; cx++)
+                        {
+                            int x = cx - bounds.xMin;
+                            if (x < 0 || x >= w) continue;
+                            for (int y = block.yMin - 1 - bounds.yMin; y >= 0; y--)
+                                if (!face[x, y]) { below += cells[y * w + x]; nb++; break; }
+                            for (int y = block.yMax - bounds.yMin; y < h; y++)
+                                if (y >= 0 && !face[x, y]) { above += cells[y * w + x]; na++; break; }
+                        }
+                        float lowLevel = nb > 0 ? below / nb : 0f, highLevel = na > 0 ? above / na : lowLevel + 1f;
+                        rampRects.Add(block); climbs.Add(climb);
+                        landings.Add(tile is RampTile r3 && climb != TerrainHeights.RampClimb.North ? r3.landing : 0);
+                        // a ramp climbs the one face it's cut through, even where another bank stands right behind it
+                        rampLo.Add(lowLevel); rampHi.Add(Mathf.Clamp(highLevel, lowLevel, lowLevel + 1f));
+                    }
+                }
+
             if (heights == null)
             {
                 if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Data", "Heights");
@@ -146,9 +197,14 @@ namespace BellwortBurrow.EditorTools
             heights.width = w;
             heights.height = h;
             heights.tilePixels = tilePixels;
+            // to a thousandth of a level, so working the heights out again only changes the cells that really moved
+            for (int i = 0; i < lo.Count; i++) { lo[i] = Mathf.Round(lo[i] * 1000f) / 1000f; hi[i] = Mathf.Round(hi[i] * 1000f) / 1000f; }
+            for (int i = 0; i < rampLo.Count; i++) { rampLo[i] = Mathf.Round(rampLo[i] * 1000f) / 1000f; rampHi[i] = Mathf.Round(rampHi[i] * 1000f) / 1000f; }
             heights.cells = cells;
             heights.faceX = fx.ToArray(); heights.faceBottom = fb.ToArray(); heights.faceTop = ft.ToArray();
             heights.faceLow = lo.ToArray(); heights.faceHigh = hi.ToArray(); heights.faceEdges = edges.ToArray();
+            heights.ramps = rampRects.ToArray(); heights.rampClimb = climbs.ToArray(); heights.rampLanding = landings.ToArray();
+            heights.rampLow = rampLo.ToArray(); heights.rampHigh = rampHi.ToArray();
             heights.version++;
             EditorUtility.SetDirty(heights);
             AssetDatabase.SaveAssetIfDirty(heights);

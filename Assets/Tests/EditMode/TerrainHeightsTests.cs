@@ -66,6 +66,43 @@ namespace BellwortBurrow.Tests.EditMode
             Object.DestroyImmediate(heights);
         }
 
+        static TerrainHeights FlatWithRamp(RectInt block, TerrainHeights.RampClimb climb, int landing)
+        {
+            var heights = ScriptableObject.CreateInstance<TerrainHeights>();
+            heights.width = 10; heights.height = 10; heights.tilePixels = 16;
+            heights.cells = new float[100];
+            heights.ramps = new[] { block }; heights.rampClimb = new[] { climb }; heights.rampLanding = new[] { landing };
+            heights.rampLow = new[] { 0f }; heights.rampHigh = new[] { 1f };
+            return heights;
+        }
+
+        [Test]
+        public void AnEastRampClimbsALevelAlongItsColumns()
+        {
+            var heights = FlatWithRamp(new RectInt(2, 2, 6, 7), TerrainHeights.RampClimb.East, 1);
+            var z = heights.PixelLevels();
+            int pw = 160;
+            Assert.That(z[(32 + 20) * pw + 40], Is.EqualTo(0f).Within(1e-4f), "on the landing's walkway");
+            Assert.That(z[(32 + 140 - 32) * pw + 40], Is.EqualTo(1f).Within(1e-4f), "above the landing's back wall");
+            Assert.That(z[(32 + 60) * pw + 120], Is.EqualTo(0.906f).Within(0.01f), "on the walkway near its top end");
+            Assert.That(z[(32 + 20) * pw + 120], Is.InRange(0f, 0.906f), "the walkway's side wall below it");
+            Assert.That(z[(32 + 20) * pw + 80], Is.LessThan(z[(32 + 20) * pw + 120] + 1e-4f), "lower toward the landing");
+            Object.DestroyImmediate(heights);
+        }
+
+        [Test]
+        public void ANorthRampClimbsUpTheScreen()
+        {
+            var heights = FlatWithRamp(new RectInt(2, 2, 4, 7), TerrainHeights.RampClimb.North, 0);
+            var z = heights.PixelLevels();
+            int pw = 160;
+            Assert.That(z[(32 + 1) * pw + 56], Is.LessThan(0.02f), "its foot");
+            Assert.That(z[(32 + 56) * pw + 56], Is.EqualTo(0.5f).Within(0.02f), "halfway");
+            Assert.That(z[(32 + 111) * pw + 56], Is.GreaterThan(0.98f), "its top");
+            Assert.That(z[(32 + 56) * pw + 8], Is.EqualTo(0f).Within(1e-4f), "beside it the ground is its own");
+            Object.DestroyImmediate(heights);
+        }
+
         [Test]
         public void TheShadowStepsUpOntoRaisedGround()
         {
