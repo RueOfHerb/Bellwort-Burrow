@@ -110,7 +110,7 @@ namespace BellwortBurrow.Systems.World
             if (service.IsTilled(cell))
             {
                 if (!service.HasCrop(cell) && TryPlantFromInventory(service, cell)) return Did("plant");
-                if (service.TryWater(cell)) return Did("water");
+                if (!IsEdge(cell) && service.TryWater(cell)) return Did("water");
                 return false;
             }
 
@@ -118,8 +118,73 @@ namespace BellwortBurrow.Systems.World
             return false;
         }
 
-        /// <summary>Whether the ground at a cell is tillable dirt that isn't tilled yet.</summary>
-        public bool CanTill(Vector3Int cell)
+        /// <summary>
+        /// What using the ground at a point would do, without doing it (ui-5): "harvest", "plant", "water", "till", or ""
+        /// when nothing would happen. It follows <see cref="TryUse"/> step for step, so the target indicator only shows
+        /// where pressing Interact does something.
+        /// </summary>
+        public string ActionAt(Vector2 at)
+        {
+            if (tillable == null || farmland == null) return "";
+            var service = Plots();
+            if (service == null) return "";
+            var cell = CellAt(at);
+            if (service.IsMature(cell)) return "harvest";
+            if (service.IsTilled(cell))
+            {
+                if (!service.HasCrop(cell) && HasAnySeed()) return "plant";
+                return service.IsWatered(cell) || IsEdge(cell) ? "" : "water";
+            }
+            return CanTill(cell) ? "till" : "";
+        }
+
+        /// <summary>The farm cell under a point, in world space: what the target indicator frames.</summary>
+        public Bounds CellBounds(Vector2 at)
+        {
+            var map = farmland != null ? farmland : tillable;
+            var size = map.layoutGrid != null ? map.layoutGrid.cellSize : Vector3.one;
+            size.z = 0f;   // flat on the ground
+            var min = map.CellToWorld(CellAt(at));
+            return new Bounds(min + size / 2f, size);
+        }
+
+        /// <summary>The farm in the loaded scenes whose ground at a point would do something, and what; null when none would.</summary>
+        public static FarmField TargetAt(Vector2 at, out string action)
+        {
+            foreach (var farm in active)
+            {
+                if (farm == null) continue;
+                action = farm.ActionAt(at);
+                if (action != "") return farm;
+            }
+            action = "";
+            return null;
+        }
+
+        bool HasAnySeed()
+        {
+            if (!ServiceLocator.TryGet<IInventoryService>(out var inventory)) return false;
+            foreach (var look in cropLooks)
+                if (look?.crop != null && look.crop.SeedItem != null && HasItem(inventory, look.crop.SeedItem)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether the ground at a cell can be tilled: tillable dirt all the way round, not on the patch's ragged edge
+        /// (Jocelyn, Oct 29: the edges can't be tilled or watered).
+        /// </summary>
+        public bool CanTill(Vector3Int cell) => IsDirt(cell) && !IsEdge(cell);
+
+        /// <summary>Whether a cell is tillable dirt with grass in any of the eight cells round it: the patch's edge.</summary>
+        public bool IsEdge(Vector3Int cell)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if ((dx != 0 || dy != 0) && !IsDirt(cell + new Vector3Int(dx, dy, 0))) return true;
+            return false;
+        }
+
+        bool IsDirt(Vector3Int cell)
         {
             var tile = tillable != null ? tillable.GetTile(cell) : null;
             if (tile == null) return false;
