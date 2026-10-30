@@ -54,7 +54,8 @@ namespace BellwortBurrow.Tests.EditMode
             crops = Layer(grid, "Crops");
             dirt = Make<Tile>(); tilled = Make<Tile>(); wet = Make<Tile>();
             stages = new[] { Make<Tile>(), Make<Tile>(), Make<Tile>() };
-            tillable.SetTile(Vector3Int.zero, dirt);
+            for (int y = -1; y <= 1; y++)            // a 3 by 3 patch, so (0, 0) is inside its edge
+                for (int x = -1; x <= 1; x++) tillable.SetTile(new Vector3Int(x, y, 0), dirt);
 
             var profession = Make<ProfessionDefinition>();
             profession.ConfigureForTesting(AnimationCurve.Constant(0, 100, 1000));
@@ -144,6 +145,41 @@ namespace BellwortBurrow.Tests.EditMode
             Assert.AreSame(flower, inventory.Slots[0].Item);
             Assert.IsNull(crops.GetTile(Vector3Int.zero));
             Assert.AreSame(tilled, farmland.GetTile(Vector3Int.zero));
+        }
+
+        [Test]
+        public void ActionAtSaysWhatEWouldDo_WithoutDoingIt()
+        {
+            Assert.AreEqual("till", farm.ActionAt(at));
+            Assert.IsFalse(plots.IsTilled(Vector3Int.zero), "asking changes nothing");
+            Assert.AreEqual("", farm.ActionAt(new Vector2(3.5f, 0.5f)), "bare grass");
+            farm.TryUse(at, player);
+            Assert.AreEqual("water", farm.ActionAt(at), "no seed in the bag");
+            inventory.TryAdd(seed, 1);
+            Assert.AreEqual("plant", farm.ActionAt(at));
+            farm.TryUse(at, player);
+            Assert.AreEqual("water", farm.ActionAt(at));
+            farm.TryUse(at, player);
+            Assert.AreEqual("", farm.ActionAt(at), "watered, still growing: nothing to do");
+            Assert.IsNull(FarmField.TargetAt(new Vector2(3.5f, 0.5f), out var none), "no farm would do anything on bare grass");
+            Assert.AreEqual("", none);
+            var frame = farm.CellBounds(at);
+            Assert.AreEqual(new Vector3(0.5f, 0.5f, 0f), frame.center);
+            Assert.AreEqual(Vector3.one, new Vector3(frame.size.x, frame.size.y, 1f));
+        }
+
+        [Test]
+        public void ThePatchsEdgeCantBeTilledOrWatered()
+        {
+            var edge = new Vector2(1.5f, 0.5f);
+            Assert.IsTrue(farm.IsEdge(new Vector3Int(1, 0, 0)));
+            Assert.AreEqual("", farm.ActionAt(edge));
+            Assert.IsFalse(farm.TryUse(edge, player), "no tilling on the edge");
+            plots.TryTill(new Vector3Int(1, 0, 0));   // tilled before the rule, in an older save
+            Assert.AreEqual("", farm.ActionAt(edge));
+            Assert.IsFalse(farm.TryUse(edge, player), "no watering on the edge");
+            Assert.IsFalse(plots.IsWatered(new Vector3Int(1, 0, 0)));
+            Assert.AreEqual("till", farm.ActionAt(at), "the middle still tills");
         }
     }
 }

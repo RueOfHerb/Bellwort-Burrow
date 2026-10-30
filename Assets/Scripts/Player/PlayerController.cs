@@ -42,6 +42,13 @@ namespace BellwortBurrow.Player
         /// <summary>The way the player last walked, as a unit vector; down until they move.</summary>
         public Vector2 Facing => facing;
 
+        /// <summary>Turns the player toward a point, as when the mouse picks a tile beside them (ui-5).</summary>
+        public void FaceToward(Vector2 point)
+        {
+            var toward = point - (Vector2)transform.position;
+            if (toward.sqrMagnitude > 0.0001f) facing = toward.normalized;
+        }
+
         public void OnMove(InputAction.CallbackContext context)
         {
             moveInput = context.ReadValue<Vector2>();
