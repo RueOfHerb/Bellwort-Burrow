@@ -32,7 +32,7 @@ namespace BellwortBurrow.Tiles
         public int Stride => (lookWeights.Length - 1) * framesPerLook + 1;
 
         /// <summary>The look a cell shows, from where it is: an index into <see cref="lookWeights"/>.</summary>
-        public static int LookAt(Vector3Int position, int[] weights)
+        public static int LookAt(Vector3Int position, int[] weights, uint salt = 5u)
         {
             int total = 0;
             foreach (var w in weights) total += w;
@@ -42,7 +42,7 @@ namespace BellwortBurrow.Tiles
                 uint h = 2166136261u;
                 h = (h ^ (uint)position.x) * 16777619u;
                 h = (h ^ (uint)position.y) * 16777619u;
-                h = (h ^ 5u) * 16777619u;
+                h = (h ^ salt) * 16777619u;
                 h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15;
                 int r = (int)(h % (uint)total);
                 for (int i = 0; i < weights.Length; i++)

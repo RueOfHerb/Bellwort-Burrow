@@ -326,6 +326,7 @@ namespace BellwortBurrow.EditorTools
             }
             if (ground.Water)
             {
+                if (written.Contains(ground.Tile("Water"))) AddIdleWater(ground, sheetPath, sprites);
                 string fastPath = ground.Tile(FastWaterKind);
                 if (!GeneratedAssets.CanOverwrite(fastPath)) kept.Add(fastPath);
                 else if (MakeFastWaterTile(ground, sheetPath, sprites, fastPath)) written.Add(fastPath);
@@ -833,7 +834,8 @@ namespace BellwortBurrow.EditorTools
         /// them for the animated tiles, and the tile palette leaves them out.
         /// </summary>
         internal static bool IsAnimationFrameSlice(string slice) =>
-            slice != null && (slice.StartsWith(WaterfallFramePrefix, StringComparison.Ordinal) || slice == FastWaterFrames.StreaksSlice);
+            slice != null && (slice.StartsWith(WaterfallFramePrefix, StringComparison.Ordinal) || slice == FastWaterFrames.StreaksSlice
+                              || slice == FastWaterFrames.SquigglesSlice);
 
         // ---- Fast water ---------------------------------------------------------------------------------------------
         internal const string FastWaterKind = "Fast Water";
@@ -885,6 +887,52 @@ namespace BellwortBurrow.EditorTools
             tile.framesPerSecond = FastWaterFrames.FramesPerSecond;
             SaveKeepingId(tile, path);
             return true;
+        }
+
+        /// <summary>Where a zone's idle water frames are saved: a texture with the frames that differ from their piece.</summary>
+        internal static string IdleWaterFramesPath(GroundSheet ground) => $"{Folder}/{ground.Zone} Water Frames.asset";
+
+        /// <summary>
+        /// Gives the calm water (Burrow Water) its idle frames (Jocelyn, Oct 30): every piece of water_set, glints and
+        /// all, with the idle_water_squiggles slice's squiggles on its open water (<see cref="FastWaterFrames.MakeIdle"/>).
+        /// A sheet without the slice leaves the water still.
+        /// </summary>
+        static void AddIdleWater(GroundSheet ground, string sheetPath, Dictionary<string, Sprite> sprites)
+        {
+            var water = AssetDatabase.LoadAssetAtPath<WaterTile>(ground.Tile("Water"));
+            if (water == null) return;
+            AsepriteSheet sheet;
+            try { sheet = AsepriteSheet.Read(File.ReadAllBytes(sheetPath)); }
+            catch (Exception e) { Debug.LogWarning($"Bellwort Burrow: {water.name} stays still; couldn't read {sheetPath}: {e.Message}"); return; }
+            int at = sheet.Slices.FindIndex(s => s.Name == "water_set");
+            if (at < 0) return;
+            var set = sheet.Slices[at];
+            var pieces = new List<(int x, int y, Sprite piece)>();
+            var full = new List<(int x, int y)>();
+            var seen = new HashSet<Sprite>();
+            for (int row = 0; row < Template.Length; row++)
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName("water_set", column, row, Template), out var piece)) continue;
+                    int x = set.X + column * 16, y = set.Y + row * 16;
+                    if (Layout(Template, column, row) == Full) full.Add((x, y));
+                    if (seen.Add(piece)) pieces.Add((x, y, piece));
+                }
+            var made = FastWaterFrames.MakeIdle(sheet, pieces, full, IdleWaterFramesPath(ground));
+            if (made == null)
+            {
+                water.idlePieces = new Sprite[0]; water.idleFrames = new Sprite[0]; water.idleLookWeights = new int[0];
+            }
+            else
+            {
+                water.idlePieces = pieces.Select(p => p.piece).ToArray();
+                water.idleFrames = made.Value.frames;
+                water.idleFramesPerLook = made.Value.framesPerLook;
+                water.idleLookWeights = Enumerable.Repeat(FastWaterFrames.IdleLookWeight, made.Value.looks).Append(FastWaterFrames.IdleStillWeight).ToArray();
+                water.idleFramesPerSecond = FastWaterFrames.IdleFramesPerSecond;
+            }
+            EditorUtility.SetDirty(water);
         }
 
         /// <summary>Calm water and Fast Water count each other as the same water, so they run on as one creek.</summary>

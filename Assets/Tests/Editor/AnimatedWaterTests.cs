@@ -74,6 +74,26 @@ namespace BellwortBurrow.Tests.Editor
             Object.DestroyImmediate(texture); Object.DestroyImmediate(tile);
         }
 
+        [Test]
+        public void CalmWaterIdlesWithItsOwnPiecesFramesAndStillLooksStayStill()
+        {
+            var water = ScriptableObject.CreateInstance<WaterTile>();
+            var texture = new Texture2D(16, 16);
+            Sprite Make(string name) { var s = Sprite.Create(texture, new Rect(0, 0, 16, 16), Vector2.one * 0.5f, 16); s.name = name; return s; }
+            var a = Make("a"); var b = Make("b"); var stranger = Make("c");
+            water.idlePieces = new[] { a, b };
+            water.idleFramesPerLook = 2;
+            water.idleLookWeights = new[] { 1, 1, 4 };          // two looks, then still
+            water.idleFrames = new[] { Make("a00"), a, Make("a10"), Make("a11"), Make("b00"), b, b, Make("b11") };
+            CollectionAssert.AreEqual(new[] { "a00", "a" }, water.IdleFramesFor(a, 0).Select(s => s.name));
+            CollectionAssert.AreEqual(new[] { "b", "b11" }, water.IdleFramesFor(b, 1).Select(s => s.name));
+            Assert.IsNull(water.IdleFramesFor(a, 2), "the still look doesn't animate");
+            Assert.IsNull(water.IdleFramesFor(stranger, 0), "a piece without frames stays still");
+            Assert.AreNotEqual(FastWaterTile.LookAt(new Vector3Int(3, 4, 0), new[] { 1, 1, 1, 1, 1, 1, 1, 1, 4 }, WaterTile.IdleSalt) == -1, true);
+            foreach (var s in water.idleFrames.Concat(new[] { stranger }).Distinct()) Object.DestroyImmediate(s);
+            Object.DestroyImmediate(texture); Object.DestroyImmediate(water);
+        }
+
         static Color32[] Piece(Color32 fill)
         {
             var p = new Color32[256];
@@ -137,6 +157,7 @@ namespace BellwortBurrow.Tests.Editor
         {
             Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("waterfall_frame_1"));
             Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("fast_water_streaks"));
+            Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("idle_water_squiggles"));
             Assert.IsFalse(GroundAutoTiles.IsAnimationFrameSlice("waterfall_set"));
             Assert.IsFalse(GroundAutoTiles.IsAnimationFrameSlice("water_set"));
         }
