@@ -26,6 +26,33 @@ namespace BellwortBurrow.EditorTools
             AssetDatabase.ImportAsset(StampPath);
         }
 
+        /// <summary>
+        /// Stamps only these sheets as set up, keeping every other sheet's line: called when one step of setup ran for them
+        /// on its own (terrain upkeep remaking the ground tiles after a ground sheet was saved, arc-11). No stamp yet: nothing.
+        /// </summary>
+        public static void Restamp(IEnumerable<string> sheetPaths)
+        {
+            if (!File.Exists(StampPath)) return;
+            var wanted = new HashSet<string>(sheetPaths.Select(p => p.Replace('\\', '/')));
+            var current = Current();
+            var lines = new List<string>();
+            var done = new HashSet<string>();
+            foreach (var line in File.ReadAllLines(StampPath))
+            {
+                var parts = line.Split('\t');
+                if (!line.StartsWith("#") && parts.Length == 3 && wanted.Contains(parts[0]) && current.TryGetValue(parts[0], out var now))
+                {
+                    lines.Add($"{parts[0]}\t{now.glow}\t{now.slices}");
+                    done.Add(parts[0]);
+                }
+                else if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
+            }
+            foreach (var path in wanted)
+                if (!done.Contains(path) && current.TryGetValue(path, out var now)) lines.Add($"{path}\t{now.glow}\t{now.slices}");
+            File.WriteAllText(StampPath, string.Join("\n", lines) + "\n");
+            AssetDatabase.ImportAsset(StampPath);
+        }
+
         /// <summary>Sheets whose Glow layer or slices changed since setup last ran, as short lines. Empty when none did.</summary>
         public static List<string> Changes()
         {
