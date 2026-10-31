@@ -26,8 +26,11 @@ namespace BellwortBurrow.EditorTools
     /// Flagstones), a set like the path's, with the paths' grass fringe for an edge.
     /// A ground sheet with water (<see cref="GroundSheet.Water"/>: burrow_ground) also makes Water (Burrow Water), a set
     /// like the path's: the water with its pebbled banks, the far one a wall.
-    /// With raised ground too, it makes the Waterfall (Burrow Waterfall), painted over a bank face where the creek runs
-    /// off the edge (<see cref="WaterfallPiece"/>).
+    /// It also makes Fast Water (Burrow Fast Water, <see cref="FastWaterTile"/>), painted on the Water layer below a
+    /// waterfall and in narrow spots: the calm water's pieces with streaks of current running down them, joining the
+    /// calm water as one creek (<see cref="WaterTile"/>), and the Waterfall (Burrow Waterfall), painted over a bank face
+    /// where the creek runs off the edge (<see cref="WaterfallPiece"/>), its curtain and foam animated from the
+    /// waterfall_frame slices (art-4).
     /// A ground sheet with the farm's grounds (<see cref="GroundSheet.Farm"/>: faerie_field_ground) also makes Tillable
     /// Dirt, Farmland and Watered Farmland (<see cref="FarmSets"/>), sets like the path's; the tillable dirt's glints
     /// (its Glow pixels) go on top of it unlit (<see cref="GlintRuleTile"/>).
@@ -68,7 +71,7 @@ namespace BellwortBurrow.EditorTools
             public bool Banks;
             /// <summary>Whether the sheet has flagstones laid like a path (<see cref="StoneSets"/>: burrow_ground).</summary>
             public bool Stone;
-            /// <summary>Whether the sheet has water laid like a path (<see cref="WaterSets"/>: burrow_ground).</summary>
+            /// <summary>Whether the sheet has water laid like a path (<see cref="WaterSets"/>: burrow_ground, faerie_field_ground), with Fast Water and the Waterfall.</summary>
             public bool Water;
             /// <summary>Whether the sheet has the farm's grounds (<see cref="FarmSets"/>: faerie_field_ground).</summary>
             public bool Farm;
@@ -88,7 +91,7 @@ namespace BellwortBurrow.EditorTools
         {
             new GroundSheet { Sheet = "forest_ground", Zone = "Forest", Palette = "Forest Ground" },
             new GroundSheet { Sheet = "burrow_ground", Zone = "Burrow", Palette = "Burrow Ground", Banks = true, Stone = true, Water = true, EvenPick = true },
-            new GroundSheet { Sheet = "faerie_field_ground", Zone = "Faerie Field", Palette = "Faerie Field Ground", Farm = true },
+            new GroundSheet { Sheet = "faerie_field_ground", Zone = "Faerie Field", Palette = "Faerie Field Ground", Water = true, Farm = true },
         };
 
         /// <summary>A ground laid like a path: its tile's kind, its set's slice and its extra full pieces.</summary>
@@ -321,6 +324,17 @@ namespace BellwortBurrow.EditorTools
                 if (!GeneratedAssets.CanOverwrite(setPath)) kept.Add(setPath);
                 else if (MakeSetTile(ground, set, sprites, setPath)) written.Add(setPath);
             }
+            if (ground.Water)
+            {
+                if (written.Contains(ground.Tile("Water"))) AddIdleWater(ground, sheetPath, sprites);
+                string fastPath = ground.Tile(FastWaterKind);
+                if (!GeneratedAssets.CanOverwrite(fastPath)) kept.Add(fastPath);
+                else if (MakeFastWaterTile(ground, sheetPath, sprites, fastPath)) written.Add(fastPath);
+                LinkWater(ground);
+                string fallPath = ground.Tile("Waterfall");
+                if (!GeneratedAssets.CanOverwrite(fallPath)) kept.Add(fallPath);
+                else if (MakeWaterfallTile(ground, sprites, fallPath)) written.Add(fallPath);
+            }
             string grassPath = ground.Tile("Grass");
             if (!GeneratedAssets.CanOverwrite(grassPath)) kept.Add(grassPath);
             else if (MakeGrassTile(ground, sprites, grassPath)) written.Add(grassPath);
@@ -344,12 +358,6 @@ namespace BellwortBurrow.EditorTools
                     if (!GeneratedAssets.CanOverwrite(rampPath)) kept.Add(rampPath);
                     else if (MakeRampTile(ground, ramp, sprites, rampPath)) written.Add(rampPath);
                 }
-                if (ground.Water)
-                {
-                    string fallPath = ground.Tile("Waterfall");
-                    if (!GeneratedAssets.CanOverwrite(fallPath)) kept.Add(fallPath);
-                    else if (MakeWaterfallTile(ground, sprites, fallPath)) written.Add(fallPath);
-                }
             }
 
             AssetDatabase.SaveAssets();
@@ -362,11 +370,17 @@ namespace BellwortBurrow.EditorTools
         public static IEnumerable<string> TilePaths(GroundSheet ground)
         {
             yield return ground.Tile("Grass");
-            foreach (var set in SetsOf(ground)) yield return ground.Tile(set.Kind);
-            if (!ground.Banks) yield break;
-            foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
-            foreach (var (kind, _) in Steps) yield return ground.Tile(kind);
-            foreach (var ramp in Ramps) yield return ground.Tile(ramp.kind);
+            foreach (var set in SetsOf(ground))
+            {
+                yield return ground.Tile(set.Kind);
+                if (set.Kind == "Water") yield return ground.Tile(FastWaterKind);
+            }
+            if (ground.Banks)
+            {
+                foreach (var (kind, _) in Faces) yield return ground.Tile(kind);
+                foreach (var (kind, _) in Steps) yield return ground.Tile(kind);
+                foreach (var ramp in Ramps) yield return ground.Tile(ramp.kind);
+            }
             if (ground.Water) yield return ground.Tile("Waterfall");
         }
 
@@ -524,6 +538,7 @@ namespace BellwortBurrow.EditorTools
             bool wang = set.Kind == "Path" && across != null && up != null;
             var tile = set.Glints ? ScriptableObject.CreateInstance<GlintRuleTile>()
                      : wang ? ScriptableObject.CreateInstance<WangPathTile>()
+                     : set.Kind == "Water" ? ScriptableObject.CreateInstance<WaterTile>()
                      : ScriptableObject.CreateInstance<RuleTile>();
             tile.name = name;
             if (wang) { ((WangPathTile)tile).across = across; ((WangPathTile)tile).up = up; }
@@ -797,18 +812,154 @@ namespace BellwortBurrow.EditorTools
         /// its piece from <see cref="WaterfallPiece"/>, one rule for each way its four sides can be.
         /// </summary>
         static bool MakeWaterfallTile(GroundSheet ground, Dictionary<string, Sprite> sprites, string path) =>
-            MakeSideRowTile(ground, WaterfallSlice, sprites, path);
+            MakeSideRowTile(ground, WaterfallSlice, sprites, path, WaterfallFrameSlices(sprites), WaterfallFramesPerSecond);
+
+        /// <summary>The waterfall's later frames (art-4): waterfall_frame_1, _2 and so on beside waterfall_set, the first.</summary>
+        internal const string WaterfallFramePrefix = "waterfall_frame_";
+
+        /// <summary>The waterfall's frames a second: 110 ms a frame (Jocelyn's pick, Oct 29).</summary>
+        internal const float WaterfallFramesPerSecond = 1000f / 110f;
+
+        /// <summary>The waterfall's frame slices that the sheet has, in order, starting with waterfall_set.</summary>
+        static List<string> WaterfallFrameSlices(Dictionary<string, Sprite> sprites)
+        {
+            var slices = new List<string> { WaterfallSlice };
+            for (int i = 1; sprites.ContainsKey(PieceName(WaterfallFramePrefix + i, 1, 1, SideRowTemplate)); i++)
+                slices.Add(WaterfallFramePrefix + i);
+            return slices;
+        }
+
+        /// <summary>
+        /// The slices that hold animation frames (the waterfall's later frames, the fast water's streaks): setup reads
+        /// them for the animated tiles, and the tile palette leaves them out.
+        /// </summary>
+        internal static bool IsAnimationFrameSlice(string slice) =>
+            slice != null && (slice.StartsWith(WaterfallFramePrefix, StringComparison.Ordinal) || slice == FastWaterFrames.StreaksSlice
+                              || slice == FastWaterFrames.SquigglesSlice);
+
+        // ---- Fast water ---------------------------------------------------------------------------------------------
+        internal const string FastWaterKind = "Fast Water";
+
+        /// <summary>Where a zone's fast water frames are saved: a texture with the frames as sprites on it.</summary>
+        internal static string FastWaterFramesPath(GroundSheet ground) => $"{Folder}/{ground.Zone} Fast Water Frames.asset";
+
+        /// <summary>
+        /// Makes Fast Water (Burrow Fast Water, art-4): a rule per layout of the calm water's set, each showing that
+        /// layout's first piece (which it also collides by) and animating the frames <see cref="FastWaterFrames"/>
+        /// makes from it, one set of frames per look, a look picked by where the cell is.
+        /// </summary>
+        static bool MakeFastWaterTile(GroundSheet ground, string sheetPath, Dictionary<string, Sprite> sprites, string path)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            AsepriteSheet sheet;
+            try { sheet = AsepriteSheet.Read(File.ReadAllBytes(sheetPath)); }
+            catch (Exception e) { Debug.LogWarning($"Bellwort Burrow: skipped {name}; couldn't read {sheetPath}: {e.Message}"); return false; }
+            int at = sheet.Slices.FindIndex(s => s.Name == "water_set");
+            if (at < 0) { Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no water_set slice."); return false; }
+            var water = sheet.Slices[at];
+            var first = new SortedDictionary<uint, (int x, int y, Sprite piece)>();
+            var full = new List<(int x, int y)>();
+            for (int row = 0; row < Template.Length; row++)
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName("water_set", column, row, Template), out var piece)) continue;
+                    uint layout = Layout(Template, column, row);
+                    int x = water.X + column * 16, y = water.Y + row * 16;
+                    if (layout == Full) full.Add((x, y));
+                    if (!first.ContainsKey(layout)) first[layout] = (x, y, piece);
+                }
+            if (!first.ContainsKey(Full)) { Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet}'s water_set has no full piece."); return false; }
+            var rules = first.Values.ToList();
+            var made = FastWaterFrames.Make(sheet, rules, full, FastWaterFramesPath(ground));
+            if (made == null) { Debug.LogWarning($"Bellwort Burrow: skipped {name}; {ground.Sheet} has no {FastWaterFrames.StreaksSlice} slice."); return false; }
+
+            var tile = ScriptableObject.CreateInstance<FastWaterTile>();
+            tile.name = name;
+            var collider = ColliderFor(true);
+            tile.m_DefaultSprite = first[Full].piece;
+            tile.m_DefaultColliderType = collider;
+            tile.m_TilingRules = new List<RuleTile.TilingRule>();
+            foreach (var kv in first) tile.m_TilingRules.Add(LayoutRule(RuleNeighbours(kv.Key), new List<Sprite> { kv.Value.piece }, collider));
+            tile.frames = made.Value.frames;
+            tile.framesPerLook = made.Value.framesPerLook;
+            tile.lookWeights = Enumerable.Repeat(FastWaterFrames.LookWeight, made.Value.looks).Append(FastWaterFrames.CalmWeight).ToArray();
+            tile.framesPerSecond = FastWaterFrames.FramesPerSecond;
+            SaveKeepingId(tile, path);
+            return true;
+        }
+
+        /// <summary>Where a zone's idle water frames are saved: a texture with the frames that differ from their piece.</summary>
+        internal static string IdleWaterFramesPath(GroundSheet ground) => $"{Folder}/{ground.Zone} Water Frames.asset";
+
+        /// <summary>
+        /// Gives the calm water (Burrow Water) its idle frames (Jocelyn, Oct 30): every piece of water_set, glints and
+        /// all, with the idle_water_squiggles slice's squiggles on its open water (<see cref="FastWaterFrames.MakeIdle"/>).
+        /// A sheet without the slice leaves the water still.
+        /// </summary>
+        static void AddIdleWater(GroundSheet ground, string sheetPath, Dictionary<string, Sprite> sprites)
+        {
+            var water = AssetDatabase.LoadAssetAtPath<WaterTile>(ground.Tile("Water"));
+            if (water == null) return;
+            AsepriteSheet sheet;
+            try { sheet = AsepriteSheet.Read(File.ReadAllBytes(sheetPath)); }
+            catch (Exception e) { Debug.LogWarning($"Bellwort Burrow: {water.name} stays still; couldn't read {sheetPath}: {e.Message}"); return; }
+            int at = sheet.Slices.FindIndex(s => s.Name == "water_set");
+            if (at < 0) return;
+            var set = sheet.Slices[at];
+            var pieces = new List<(int x, int y, Sprite piece)>();
+            var full = new List<(int x, int y)>();
+            var seen = new HashSet<Sprite>();
+            for (int row = 0; row < Template.Length; row++)
+                for (int column = 0; column < Template[row].Length; column++)
+                {
+                    if (Template[row][column] != '#') continue;
+                    if (!sprites.TryGetValue(PieceName("water_set", column, row, Template), out var piece)) continue;
+                    int x = set.X + column * 16, y = set.Y + row * 16;
+                    if (Layout(Template, column, row) == Full) full.Add((x, y));
+                    if (seen.Add(piece)) pieces.Add((x, y, piece));
+                }
+            var made = FastWaterFrames.MakeIdle(sheet, pieces, full, IdleWaterFramesPath(ground));
+            if (made == null)
+            {
+                water.idlePieces = new Sprite[0]; water.idleFrames = new Sprite[0]; water.idleLookWeights = new int[0];
+            }
+            else
+            {
+                water.idlePieces = pieces.Select(p => p.piece).ToArray();
+                water.idleFrames = made.Value.frames;
+                water.idleFramesPerLook = made.Value.framesPerLook;
+                water.idleLookWeights = Enumerable.Repeat(FastWaterFrames.IdleLookWeight, made.Value.looks).Append(FastWaterFrames.IdleStillWeight).ToArray();
+                water.idleFramesPerSecond = FastWaterFrames.IdleFramesPerSecond;
+            }
+            EditorUtility.SetDirty(water);
+        }
+
+        /// <summary>Calm water and Fast Water count each other as the same water, so they run on as one creek.</summary>
+        static void LinkWater(GroundSheet ground)
+        {
+            var calm = AssetDatabase.LoadAssetAtPath<WaterTile>(ground.Tile("Water"));
+            var fast = AssetDatabase.LoadAssetAtPath<WaterTile>(ground.Tile(FastWaterKind));
+            if (calm == null || fast == null) return;
+            calm.sameWater = new TileBase[] { fast };
+            fast.sameWater = new TileBase[] { calm };
+            EditorUtility.SetDirty(calm);
+            EditorUtility.SetDirty(fast);
+        }
 
         /// <summary>
         /// A Rule Tile that picks its piece by whether it carries on above, below, west and east (<see cref="WaterfallPiece"/>),
         /// from a set laid out in rows top, middle, bottom and sides left end, middle, right end, single: the Waterfall
         /// and the steps' layout.
         /// </summary>
-        static bool MakeSideRowTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path)
+        static bool MakeSideRowTile(GroundSheet ground, string slice, Dictionary<string, Sprite> sprites, string path,
+                                    List<string> frameSlices = null, float framesPerSecond = 0f)
         {
             var template = SideRowTemplate;
-            Sprite Piece(char row, char side) =>
-                sprites.TryGetValue(PieceName(slice, WaterfallSides.IndexOf(side), WaterfallRows.IndexOf(row), template), out var p) ? p : null;
+            Sprite PieceOf(string from, char row, char side) =>
+                sprites.TryGetValue(PieceName(from, WaterfallSides.IndexOf(side), WaterfallRows.IndexOf(row), template), out var p) ? p : null;
+            Sprite Piece(char row, char side) => PieceOf(slice, row, side);
+            bool animated = frameSlices != null && frameSlices.Count > 1;
             if (Piece('M', 'm') == null)
             {
                 Debug.LogWarning($"Bellwort Burrow: skipped {Path.GetFileNameWithoutExtension(path)}; {ground.Sheet} has no {slice} slice.");
@@ -826,13 +977,17 @@ namespace BellwortBurrow.EditorTools
                 bool n = (bits & 1) != 0, s = (bits & 2) != 0, w = (bits & 4) != 0, e = (bits & 8) != 0;
                 var (row, side) = WaterfallPiece(n, s, w, e);
                 var sprite = Piece(row, side) ?? Piece('M', 'm');
+                // animated: the same piece from each frame slice in turn (a frame missing a piece shows the first frame's)
+                var shown = animated ? frameSlices.Select(f => PieceOf(f, row, side) ?? sprite).ToArray() : new[] { sprite };
                 int Is(bool on) => on ? RuleTile.TilingRuleOutput.Neighbor.This : RuleTile.TilingRuleOutput.Neighbor.NotThis;
                 tile.m_TilingRules.Add(new RuleTile.TilingRule
                 {
                     m_Neighbors = new List<int> { Is(n), Is(s), Is(w), Is(e) },
                     m_NeighborPositions = new List<Vector3Int>(positions),
-                    m_Sprites = new[] { sprite },
-                    m_Output = RuleTile.TilingRuleOutput.OutputSprite.Single,
+                    m_Sprites = shown,
+                    m_Output = animated ? RuleTile.TilingRuleOutput.OutputSprite.Animation : RuleTile.TilingRuleOutput.OutputSprite.Single,
+                    m_MinAnimationSpeed = animated ? framesPerSecond : 1f,
+                    m_MaxAnimationSpeed = animated ? framesPerSecond : 1f,
                     m_ColliderType = Tile.ColliderType.None,
                     m_RuleTransform = RuleTile.TilingRuleOutput.Transform.Fixed,
                 });

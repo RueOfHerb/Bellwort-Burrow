@@ -131,12 +131,12 @@ namespace BellwortBurrow.Tests.Editor
                 var names = GroundAutoTiles.TilePaths(ground).Select(System.IO.Path.GetFileNameWithoutExtension).ToList();
                 var kinds = new[] { "Grass", "Path", "Deer Trail" }.ToList();
                 if (ground.Stone) kinds.Add("Flagstones");
-                if (ground.Water) kinds.Add("Water");
+                if (ground.Water) kinds.AddRange(new[] { "Water", "Fast Water" });   // fast water paints right after the calm (art-4)
                 if (ground.Farm) kinds.AddRange(new[] { "Tillable Dirt", "Farmland", "Watered Farmland" });
                 if (ground.Banks) kinds.AddRange(new[] { "Bank Face", "Cliff Face", "Mossy Cliff Face", "Root Bank Face",
                     "Stone Steps", "Log Steps", "Earth Ramp North", "Earth Ramp East", "Earth Ramp West",
                     "Stone Ramp North", "Stone Ramp East", "Stone Ramp West" });
-                if (ground.Banks && ground.Water) kinds.Add("Waterfall");
+                if (ground.Water) kinds.Add("Waterfall");
                 CollectionAssert.AreEqual(kinds.Select(k => ground.Zone + " " + k), names, ground.Sheet);
                 foreach (var path in GroundAutoTiles.TilePaths(ground))
                     Assert.IsTrue(every.Add(path), $"{path} comes from two ground sheets");

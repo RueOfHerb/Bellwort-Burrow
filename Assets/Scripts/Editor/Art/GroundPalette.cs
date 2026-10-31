@@ -302,6 +302,7 @@ namespace BellwortBurrow.EditorTools
             // Every other slice to the right, as it sits on the sheet. Slices that share rows on the sheet share a band,
             // side by side; the bands go one under the other.
             var rest = sheet.Slices
+                .Where(s => !GroundAutoTiles.IsAnimationFrameSlice(s.Name))   // frames, not tiles to paint (art-4)
                 .Where(s => SliceTiles(s, tileSize).Any(t => tiles.ContainsKey(t.name) && !placed.Contains(t.name)))
                 .OrderBy(s => s.Y).ThenBy(s => s.X).ToList();
             int bandTop = 0, restRight = left;
