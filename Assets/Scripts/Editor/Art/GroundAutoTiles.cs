@@ -835,7 +835,7 @@ namespace BellwortBurrow.EditorTools
         /// </summary>
         internal static bool IsAnimationFrameSlice(string slice) =>
             slice != null && (slice.StartsWith(WaterfallFramePrefix, StringComparison.Ordinal) || slice == FastWaterFrames.StreaksSlice
-                              || slice == FastWaterFrames.SquigglesSlice);
+                              || slice == FastWaterFrames.SquigglesSlice || slice == FastWaterFrames.FastSquigglesSlice);
 
         // ---- Fast water ---------------------------------------------------------------------------------------------
         internal const string FastWaterKind = "Fast Water";
@@ -883,7 +883,10 @@ namespace BellwortBurrow.EditorTools
             foreach (var kv in first) tile.m_TilingRules.Add(LayoutRule(RuleNeighbours(kv.Key), new List<Sprite> { kv.Value.piece }, collider));
             tile.frames = made.Value.frames;
             tile.framesPerLook = made.Value.framesPerLook;
-            tile.lookWeights = Enumerable.Repeat(FastWaterFrames.LookWeight, made.Value.looks).Append(FastWaterFrames.CalmWeight).ToArray();
+            // With the fast water's squiggles every tile moves: the still look never comes up.
+            bool squiggles = sheet.Slices.Exists(s => s.Name == FastWaterFrames.FastSquigglesSlice);
+            tile.lookWeights = Enumerable.Repeat(FastWaterFrames.LookWeight, made.Value.looks)
+                                         .Append(squiggles ? 0 : FastWaterFrames.CalmWeight).ToArray();
             tile.framesPerSecond = FastWaterFrames.FramesPerSecond;
             SaveKeepingId(tile, path);
             return true;

@@ -158,6 +158,7 @@ namespace BellwortBurrow.Tests.Editor
             Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("waterfall_frame_1"));
             Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("fast_water_streaks"));
             Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("idle_water_squiggles"));
+            Assert.IsTrue(GroundAutoTiles.IsAnimationFrameSlice("fast_water_squiggles"));
             Assert.IsFalse(GroundAutoTiles.IsAnimationFrameSlice("waterfall_set"));
             Assert.IsFalse(GroundAutoTiles.IsAnimationFrameSlice("water_set"));
         }
