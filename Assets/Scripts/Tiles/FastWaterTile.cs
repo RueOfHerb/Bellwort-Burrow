@@ -11,7 +11,9 @@ namespace BellwortBurrow.Tiles
     /// <see cref="lookWeights"/> being calm, so the streaks scatter instead of repeating tile after tile, and a streak
     /// never crosses into the next tile, so neighbours never have to line up.
     /// Setup makes the frames from the sheet: the calm water's pieces with their glints taken off and the
-    /// fast_water_streaks slice laid over their open water (GroundAutoTiles, FastWaterFrames).
+    /// fast_water_streaks slice laid over their open water (GroundAutoTiles, FastWaterFrames). Since Nov 17 a sheet with
+    /// fast_water_squiggles keeps the calm water's glints and lays twice its squiggles, slipping downstream, under the
+    /// streaks, 16 frames a look with no still look, so calm and fast water read as one creek running faster.
     /// </summary>
     [CreateAssetMenu(menuName = "Bellwort Burrow/Fast Water Tile")]
     public class FastWaterTile : WaterTile

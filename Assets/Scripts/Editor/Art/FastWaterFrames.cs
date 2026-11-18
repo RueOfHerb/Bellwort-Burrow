@@ -25,6 +25,13 @@ namespace BellwortBurrow.EditorTools
         public const string StreaksSlice = "fast_water_streaks";
         public const string SquigglesSlice = "idle_water_squiggles";
 
+        /// <summary>
+        /// The fast water's own squiggles (Jocelyn's pick B, Nov 17): the frames across, the looks down, twice the calm
+        /// water's and slipping downstream. With it, fast water keeps the calm water's glints, every tile carries squiggles
+        /// (no still look) and each look's frames run as long as this slice is wide, the streaks looping inside them.
+        /// </summary>
+        public const string FastSquigglesSlice = "fast_water_squiggles";
+
         /// <summary>The idle looks' weights against the still look, and the idle frames a second (200 ms a frame).</summary>
         public const int IdleLookWeight = 1, IdleStillWeight = 4;
         public const float IdleFramesPerSecond = 5f;
@@ -96,7 +103,37 @@ namespace BellwortBurrow.EditorTools
             int framesPerLook = streaks.Width / Size, looks = streaks.Height / Size;
             if (framesPerLook == 0 || looks == 0) return null;
             var open = OpenWater(fullPieces.Select(p => Block(sheet, p.x, p.y)));
+            int sq = sheet.Slices.FindIndex(s => s.Name == FastSquigglesSlice);
             var blocks = new List<(Color32[] pixels, string name, Vector2 pivot)>();
+            if (sq >= 0)
+            {
+                // Squiggles and streaks together: each look is a look of the squiggles, with a look of the streaks or
+                // none (taken in turn), over the calm piece with its glints; the streaks loop inside the longer frames.
+                var squiggles = sheet.Slices[sq];
+                int streakFrames = framesPerLook, streakLooks = looks;
+                framesPerLook = squiggles.Width / Size;
+                looks = squiggles.Height / Size;
+                if (framesPerLook == 0 || looks == 0) return null;
+                for (int r = 0; r < rules.Count; r++)
+                {
+                    var (x, y, piece) = rules[r];
+                    var pivot = PivotOf(piece);
+                    var still = Block(sheet, x, y);
+                    for (int look = 0; look < looks; look++)
+                    {
+                        int streakLook = look % (streakLooks + 1);       // == streakLooks: no streak
+                        for (int f = 0; f < framesPerLook; f++)
+                        {
+                            var frame = WithStreaks(still, Block(sheet, squiggles.X + f * Size, squiggles.Y + look * Size), open);
+                            if (streakLook < streakLooks)
+                                frame = WithStreaks(frame, Block(sheet, streaks.X + (f % streakFrames) * Size, streaks.Y + streakLook * Size), open);
+                            blocks.Add((frame, $"fast_water_{r:00}_{look}_{f:00}", pivot));
+                        }
+                    }
+                    blocks.Add((still, $"fast_water_{r:00}_calm", pivot));
+                }
+                return (Save(blocks, texturePath), looks, framesPerLook);
+            }
             for (int r = 0; r < rules.Count; r++)
             {
                 var (x, y, piece) = rules[r];
